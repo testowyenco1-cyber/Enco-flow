@@ -381,27 +381,11 @@ export function setupRealtimeSync(options: {
 
   connect();
 
-  // Quick refresh when user switches tabs or window gets focus
-  const handleVisibilityChange = () => {
-    if (document.visibilityState === 'visible') {
-      fetchOrdersFromServer().then((orders) => {
-        if (orders) options.onOrdersUpdated(orders, false);
-      });
-      fetchDoorOrdersFromServer().then((doors) => {
-        if (doors) options.onDoorOrdersUpdated(doors, false);
-      });
-    }
-  };
-
-  window.addEventListener('visibilitychange', handleVisibilityChange);
-  window.addEventListener('focus', handleVisibilityChange);
-
+  // Realtime updates arrive through SSE; do not force a fetch when the tab gains focus.
   return () => {
     isClosed = true;
     if (reconnectTimer) clearTimeout(reconnectTimer);
     if (eventSource) eventSource.close();
-    window.removeEventListener('visibilitychange', handleVisibilityChange);
-    window.removeEventListener('focus', handleVisibilityChange);
   };
 }
 
