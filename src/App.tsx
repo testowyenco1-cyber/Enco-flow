@@ -357,8 +357,7 @@ export default function App() {
     }
     const newOrders = orders.filter((o) => o.id !== orderId);
     updateOrdersState(newOrders);
-    sessionStorage.removeItem('enco_selected_order_id');
-    setSelectedOrderId(null);
+    navigate('/zlecenia');
     showToast('Zlecenie zostało usunięte', 'info');
   };
 
