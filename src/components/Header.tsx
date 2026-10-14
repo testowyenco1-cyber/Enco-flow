@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, RotateCcw, Zap, Layers, AlertTriangle, Lock } from 'lucide-react';
+import { Plus, RotateCcw, RefreshCw, Zap, Layers, AlertTriangle, Lock } from 'lucide-react';
 import { UserRoleProfile, UserRoleId } from '../types/userRole';
 import { UserRoleSelector } from './UserRoleSelector';
 
@@ -7,6 +7,7 @@ interface HeaderProps {
   onNewOrder: () => void;
   onNewDoorOrder?: () => void;
   onResetData: () => void;
+  onRefresh: () => void;
   activeTab?: string;
   onSelectTab?: (tab: string) => void;
   problemCount?: number;
@@ -23,6 +24,7 @@ export const Header: React.FC<HeaderProps> = ({
   onNewOrder,
   onNewDoorOrder,
   onResetData,
+  onRefresh,
   activeTab = 'all',
   onSelectTab,
   problemCount = 0,
@@ -51,13 +53,15 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="text-base font-bold tracking-tight text-white whitespace-nowrap leading-none">
                   ENCO FLOW
                 </span>
-                <span
-                  title="Synchronizacja na żywo jest wyłączona. Zmiany zapisane przez innych użytkowników pojawią się po odświeżeniu strony."
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold bg-slate-800 text-slate-300 border border-slate-700/80 cursor-help"
+                <button
+                  type="button"
+                  onClick={onRefresh}
+                  title="Pobierz aktualne dane z serwera. Niezapisane zmiany lokalne zostaną odrzucone."
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold bg-slate-800 text-slate-300 border border-slate-700/80 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                  <RefreshCw className="w-2.5 h-2.5" />
                   <span>ODŚWIEŻ</span>
-                </span>
+                </button>
               </div>
               <span className="text-[10px] text-slate-400 font-mono tracking-wider mt-0.5">
                 Stacje Transformatorowe
