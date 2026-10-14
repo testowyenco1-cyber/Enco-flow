@@ -115,6 +115,9 @@ export default function App() {
   const [hasPendingChanges, setHasPendingChanges] = useState(false);
   const pendingOrdersRef = useRef(false);
   const pendingDoorOrdersRef = useRef(false);
+  // Wstrzymuj zdalne odświeżanie zleceń podczas edycji formularza lub przy niezapisanych zmianach.
+  const editingItemRef = useRef(false);
+  const queuedRemoteOrdersRef = useRef<Order[] | null>(null);
 
   // Background fetch & real-time SSE listener
   useEffect(() => {
@@ -134,8 +137,9 @@ export default function App() {
     // 2. Setup real-time SSE stream across all users and browsers
     const unsubscribe = setupRealtimeSync({
       onOrdersUpdated: (updatedOrders, isRemote) => {
-        if (pendingOrdersRef.current) {
-          showToast('Otrzymano zmianę z innej sesji. Najpierw zapisz lub rozstrzygnij lokalne zmiany zleceń.', 'warning');
+        if (pendingOrdersRef.current || editingItemRef.current) {
+          // Zapamiętaj najnowszy zdalny stan, ale nie zmieniaj widoku w trakcie edycji.
+          queuedRemoteOrdersRef.current = updatedOrders;
           return;
         }
         saveOrders(updatedOrders);
@@ -198,6 +202,32 @@ export default function App() {
     if (saved) {
       pendingOrdersRef.current = false;
       setHasPendingChanges(pendingDoorOrdersRef.current);
+
+      // Po zatwierdzeniu własnej edycji przywróć zdalne zmiany otrzymane w trakcie.
+      // Edytowane właśnie zlecenie zachowuje wersję, którą użytkownik świadomie zapisał.
+      const queuedRemoteOrders = queuedRemoteOrdersRef.current;
+      queuedRemoteOrdersRef.current = null;
+      if (queuedRemoteOrders) {
+        const localOrderIds = new Set(latestOrders.map((order) => order.id));
+        const mergedOrders = queuedRemoteOrders.map((remoteOrder) =>
+          remoteOrder.id === orderToSave.id
+            ? (latestOrders.find((localOrder) => localOrder.id === orderToSave.id) || remoteOrder)
+            : remoteOrder
+        );
+        latestOrders.forEach((localOrder) => {
+          if (!localOrderIds.has(localOrder.id)) mergedOrders.push(localOrder);
+        });
+        saveOrders(mergedOrders);
+        setOrders(mergedOrders);
+        // Rozgłoś scalony stan, aby zachować także zmiany innych zleceń.
+        const mergedSaved = await saveOrdersToServer(mergedOrders);
+        if (!mergedSaved) {
+          pendingOrdersRef.current = true;
+          setHasPendingChanges(true);
+          showToast('Twoje zmiany zapisano, ale nie udało się zsynchronizować zmian otrzymanych od innych użytkowników.', 'warning');
+          return;
+        }
+      }
       showToast(`Zapisano zmiany w zleceniu ${orderToSave.orderNumber}.`, 'success');
     } else {
       showToast('Nie udało się zapisać zmian na serwerze. Zmiany pozostają lokalnie — spróbuj ponownie.', 'warning');
@@ -506,7 +536,10 @@ export default function App() {
             onUpdateOrderStatus={handleUpdateOrderStatus}
             onSaveOrderChanges={handleSaveOrderChanges}
             onOpenEditOrderModal={() => setIsEditOrderModalOpen(true)}
-            onOpenEditItemModal={(item) => setEditingItem(item)}
+            onOpenEditItemModal={(item) => {
+              editingItemRef.current = true;
+              setEditingItem(item);
+            }}
             onNavigateToDoorModule={(numerDokumentu) => {
               setActiveModule('doors');
               setSelectedOrderId(null);
@@ -571,7 +604,18 @@ export default function App() {
         item={editingItem}
         doorOrders={doorOrders}
         isOpen={Boolean(editingItem)}
-        onClose={() => setEditingItem(null)}
+        onClose={() => {
+          editingItemRef.current = false;
+          setEditingItem(null);
+          // Anulowanie edycji bez lokalnych zmian pozwala od razu odświeżyć dane z serwera.
+          if (!pendingOrdersRef.current && queuedRemoteOrdersRef.current) {
+            const queued = queuedRemoteOrdersRef.current;
+            queuedRemoteOrdersRef.current = null;
+            saveOrders(queued);
+            setOrders(queued);
+            showToast('Zaktualizowano dane otrzymane od innych użytkowników.', 'info');
+          }
+        }}
         onSave={handleSaveEditedItem}
         currentProfile={currentProfile}
       />
