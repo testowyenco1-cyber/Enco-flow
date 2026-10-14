@@ -134,7 +134,7 @@ export default function App() {
     // 2. Setup real-time SSE stream across all users and browsers
     const unsubscribe = setupRealtimeSync({
       onOrdersUpdated: (updatedOrders, isRemote) => {
-        if (pendingOrdersRef.current && isRemote) {
+        if (pendingOrdersRef.current) {
           showToast('Otrzymano zmianę z innej sesji. Najpierw zapisz lub rozstrzygnij lokalne zmiany zleceń.', 'warning');
           return;
         }
@@ -145,7 +145,7 @@ export default function App() {
         }
       },
       onDoorOrdersUpdated: (updatedDoors, isRemote) => {
-        if (pendingDoorOrdersRef.current && isRemote) {
+        if (pendingDoorOrdersRef.current) {
           showToast('Otrzymano zmianę zamówień drzwi z innej sesji. Najpierw zapisz lub rozstrzygnij lokalne zmiany drzwi.', 'warning');
           return;
         }
