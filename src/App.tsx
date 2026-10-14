@@ -19,7 +19,6 @@ import {
   fetchDoorOrdersFromServer,
   saveDoorOrdersToServer,
   resetServerAndLocalData,
-  setupRealtimeSync,
 } from './services/storageService';
 import { Header } from './components/Header';
 import { DashboardView } from './components/DashboardView';
@@ -111,7 +110,6 @@ export default function App() {
     }, 3500);
   };
 
-  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const [hasPendingChanges, setHasPendingChanges] = useState(false);
   const pendingOrdersRef = useRef(false);
   const pendingDoorOrdersRef = useRef(false);
@@ -119,62 +117,26 @@ export default function App() {
   const editingItemRef = useRef(false);
   const queuedRemoteOrdersRef = useRef<Order[] | null>(null);
 
-  // Background fetch & real-time SSE listener
+  // Pobierz dane z serwera tylko przy uruchomieniu/odświeżeniu strony.
+  // Nie nasłuchujemy zmian na żywo — aktualizacje innych użytkowników pojawią się po odświeżeniu.
   useEffect(() => {
-    // 1. Initial fetch from server to get changes made by User B
+    let isMounted = true;
+
     fetchOrdersFromServer().then((srvOrders) => {
-      if (srvOrders && srvOrders.length > 0) {
+      if (isMounted && srvOrders && srvOrders.length > 0) {
         setOrders(srvOrders);
       }
     });
 
     fetchDoorOrdersFromServer().then((srvDoors) => {
-      if (srvDoors && srvDoors.length > 0) {
+      if (isMounted && srvDoors && srvDoors.length > 0) {
         setDoorOrders(srvDoors);
       }
     });
 
-    // 2. Setup real-time SSE stream across all users and browsers
-    const unsubscribe = setupRealtimeSync({
-      onOrdersUpdated: (updatedOrders, isRemote) => {
-        if (pendingOrdersRef.current || editingItemRef.current) {
-          // Zapamiętaj najnowszy zdalny stan, ale nie zmieniaj widoku w trakcie edycji.
-          queuedRemoteOrdersRef.current = updatedOrders;
-          return;
-        }
-        saveOrders(updatedOrders);
-        setOrders(updatedOrders);
-        if (isRemote) {
-          showToast('Dane zleceń zaktualizowane w czasie rzeczywistym z serwera', 'info');
-        }
-      },
-      onDoorOrdersUpdated: (updatedDoors, isRemote) => {
-        if (pendingDoorOrdersRef.current) {
-          showToast('Otrzymano zmianę zamówień drzwi z innej sesji. Najpierw zapisz lub rozstrzygnij lokalne zmiany drzwi.', 'warning');
-          return;
-        }
-        saveDoorOrders(updatedDoors);
-        setDoorOrders(updatedDoors);
-        if (isRemote) {
-          showToast('Dane zamówień drzwi zaktualizowane w czasie rzeczywistym z serwera', 'info');
-        }
-      },
-      onReset: () => {
-        if (pendingOrdersRef.current || pendingDoorOrdersRef.current || editingItemRef.current) {
-          showToast('Serwer zgłosił reset danych, ale masz niezapisane zmiany. Zapisz je lub odśwież aplikację po rozstrzygnięciu konfliktu.', 'warning');
-          return;
-        }
-        setOrders(loadOrders());
-        setDoorOrders(loadDoorOrders());
-        setSelectedOrderId(null);
-        showToast('Zresetowano dane demonstracyjne', 'info');
-      },
-      onStatusChange: (connected) => {
-        setIsRealtimeConnected(connected);
-      },
-    });
-
-    return unsubscribe;
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Keep edits local until the user explicitly saves them.
@@ -484,7 +446,6 @@ export default function App() {
         currentProfile={currentProfile}
         onSelectProfile={handleSelectProfile}
         onOpenMatrixModal={() => setIsRoleMatrixOpen(true)}
-        isRealtimeConnected={isRealtimeConnected}
       />
 
       {/* Main Viewport */}
