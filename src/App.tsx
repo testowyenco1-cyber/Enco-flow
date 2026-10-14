@@ -13,7 +13,6 @@ import {
   loadOrders,
   saveOrders,
   createNewOrder,
-  resetToDemoOrders,
   loadDoorOrders,
   saveDoorOrders,
   fetchOrdersFromServer,
