@@ -46,6 +46,22 @@ function getPendingChanges<T>(current: T[], snapshot: T[] | null): { changed: T[
   return { changed, deletedIds };
 }
 
+function applySavedChangesToSnapshot<T>(snapshotKey: string, changed: T[], deletedIds: string[]): void {
+  // Patch only records confirmed by this save. This preserves local baseline
+  // changes from other saves that may finish while this request is in flight.
+  const snapshot = readSnapshot<T>(snapshotKey) || [];
+  const deleted = new Set(deletedIds.map(String));
+  const next = snapshot.filter((entry: any) => !deleted.has(String(entry.id)));
+
+  changed.forEach((incoming: any) => {
+    const index = next.findIndex((existing: any) => String(existing.id) === String(incoming.id));
+    if (index >= 0) next[index] = incoming;
+    else next.push(incoming);
+  });
+
+  writeSnapshot(snapshotKey, next);
+}
+
 function hasPendingChanges<T>(current: T[], snapshotKey: string): boolean {
   const snapshot = readSnapshot<T>(snapshotKey);
   if (!snapshot) return true;
@@ -257,11 +273,7 @@ export async function saveSingleOrderToServer(order: Order): Promise<boolean> {
     });
     if (!res.ok) return false;
 
-    const nextSnapshot = [...snapshot];
-    const index = nextSnapshot.findIndex((existing) => String(existing.id) === String(order.id));
-    if (index >= 0) nextSnapshot[index] = order;
-    else nextSnapshot.push(order);
-    writeSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, nextSnapshot);
+    applySavedChangesToSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, [order], []);
     return true;
   } catch (err) {
     console.warn('Could not save single order to server:', err);
@@ -288,9 +300,8 @@ export async function saveOrdersToServer(orders: Order[]): Promise<boolean> {
       body: JSON.stringify({ orders: changed, deletedIds, merge: true }),
     });
     if (!res.ok) return false;
-    // Snapshot lokalnej listy pozwala wykrywać wyłącznie usunięcia wykonane w tej sesji.
-    // Nie zapisujemy tu całej odpowiedzi serwera, bo lokalny widok może celowo być starszy.
-    writeSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, orders);
+    // Advance only the records included in this successful request; preserve other baselines.
+    applySavedChangesToSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, changed, deletedIds);
     return true;
   } catch (err) {
     console.warn('Could not save orders to server:', err);
@@ -371,7 +382,7 @@ export async function saveDoorOrdersToServer(doorOrders: DoorOrder[]): Promise<b
       body: JSON.stringify({ doorOrders: changed, deletedIds, merge: true }),
     });
     if (!res.ok) return false;
-    writeSnapshot(SERVER_DOOR_SNAPSHOT_KEY, doorOrders);
+    applySavedChangesToSnapshot(SERVER_DOOR_SNAPSHOT_KEY, changed, deletedIds);
     return true;
   } catch (err) {
     console.warn('Could not save door orders to server:', err);
