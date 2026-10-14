@@ -180,8 +180,8 @@ export default function App() {
       pendingOrdersRef.current = false;
       setHasPendingChanges(pendingDoorOrdersRef.current);
 
-      await refreshDataFromServer({ orders: true, doors: false });
-      showToast(`Zapisano zmiany w zleceniu ${orderToSave.orderNumber}.`, 'success');
+      // Nie pobieraj ponownie danych po zapisie: zachowaj lokalny widok użytkownika.
+      showToast(`Zapisano zmiany na serwerze. Lokalny widok zlecenia ${orderToSave.orderNumber} pozostaje bez zmian.`, 'success');
     } else {
       showToast('Nie udało się zapisać zmian na serwerze. Zmiany pozostają lokalnie — spróbuj ponownie.', 'warning');
     }
@@ -197,8 +197,8 @@ export default function App() {
       pendingOrdersRef.current = false;
       pendingDoorOrdersRef.current = false;
       setHasPendingChanges(false);
-      await refreshDataFromServer({ discardPending: true });
-      showToast('Zmiany zapisane na serwerze i odświeżone.', 'success');
+      // Zapis nie aktualizuje lokalnej kopii danymi innych użytkowników.
+      showToast('Zmiany zapisane na serwerze. Lokalny widok nie został odświeżony.', 'success');
     } else {
       showToast('Nie udało się zapisać wszystkich zmian na serwerze. Dane pozostają w pamięci lokalnej — spróbuj ponownie.', 'warning');
     }
@@ -325,10 +325,10 @@ export default function App() {
     showToast('Zlecenie zostało usunięte', 'info');
   };
 
-  const handleCancelItemEdit = async () => {
+  const handleCancelItemEdit = () => {
+    // Anulowanie zamyka formularz bez pobierania danych z serwera.
     editingItemRef.current = false;
     setEditingItem(null);
-    await refreshDataFromServer({ orders: true, doors: false, discardPending: true, showMessage: true });
   };
 
   const handleSaveEditedItem = (updatedItem: OrderItem) => {
