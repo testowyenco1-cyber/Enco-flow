@@ -30,6 +30,15 @@ function writeSnapshot<T>(key: string, values: T[]): void {
   }
 }
 
+ // Called by App.tsx only after verifying that the response belongs to the latest refresh.
+export function setServerOrdersSnapshot(orders: Order[]): void {
+  writeSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, orders);
+}
+
+export function setServerDoorOrdersSnapshot(doorOrders: DoorOrder[]): void {
+  writeSnapshot(SERVER_DOOR_SNAPSHOT_KEY, doorOrders);
+}
+
 function getPendingChanges<T>(current: T[], snapshot: T[] | null): { changed: T[]; deletedIds: string[] } {
   // If the initial server read failed, upsert records but never infer deletions
   // from an incomplete local cache.
@@ -244,7 +253,6 @@ export async function fetchOrdersFromServer(): Promise<Order[] | null> {
     const json = await res.json();
     if (json.success && Array.isArray(json.orders)) {
       const sanitized = sanitizeOrders(json.orders);
-      writeSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, sanitized);
       return sanitized;
     }
     return null;
@@ -354,7 +362,6 @@ export async function fetchDoorOrdersFromServer(): Promise<DoorOrder[] | null> {
     if (!res.ok) return null;
     const json = await res.json();
     if (json.success && Array.isArray(json.doorOrders)) {
-      writeSnapshot(SERVER_DOOR_SNAPSHOT_KEY, json.doorOrders);
       return json.doorOrders;
     }
     return null;
