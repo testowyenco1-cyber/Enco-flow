@@ -90,9 +90,11 @@ export function hasPendingDoorOrderChanges(doorOrders: DoorOrder[]): boolean {
  * Sanitize and migrate orders array ensuring all fields and item structures are valid
  */
 export function sanitizeOrders(parsed: any[]): Order[] {
-  if (!Array.isArray(parsed) || parsed.length === 0) {
+  if (!Array.isArray(parsed)) {
     return INITIAL_ORDERS;
   }
+  // An empty server array is valid state; do not replace it with demo orders.
+  if (parsed.length === 0) return [];
 
   const validItemStatuses: Set<string> = new Set([
     'NOT_ORDERED',
@@ -331,10 +333,11 @@ export function loadDoorOrders(): DoorOrder[] {
       return INITIAL_DOOR_ORDERS;
     }
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) {
+    if (!Array.isArray(parsed)) {
       saveDoorOrders(INITIAL_DOOR_ORDERS);
       return INITIAL_DOOR_ORDERS;
     }
+    // An intentionally empty server list must remain empty.
     return parsed;
   } catch (err) {
     console.error('Failed to load door orders from sessionStorage:', err);
