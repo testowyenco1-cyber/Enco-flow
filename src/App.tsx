@@ -307,8 +307,8 @@ export default function App() {
     updateOrdersState(updated);
     sessionStorage.setItem('enco_active_module', 'orders');
     sessionStorage.setItem('enco_selected_order_id', newOrd.id);
-    setActiveModule('orders');
-    setSelectedOrderId(newOrd.id);
+    // Każde nowe zlecenie dostaje od razu własną podstronę i adres URL.
+    navigate(`/zlecenia/${encodeURIComponent(newOrd.id)}`);
     showToast(`Utworzono zlecenie ${newOrd.orderNumber} (${newOrd.projectName})`, 'success');
   };
 
@@ -409,6 +409,8 @@ export default function App() {
     } else {
       updated = [savedDoorOrder, ...doorOrders];
       showToast(`Dodano nowe zamówienie drzwi: ${savedDoorOrder.numerDokumentu}`, 'success');
+      // Nowe zamówienie drzwi od razu otwiera własną podstronę.
+      navigate(`/drzwi/${encodeURIComponent(savedDoorOrder.id)}`);
     }
     updateDoorOrdersState(updated);
   };
