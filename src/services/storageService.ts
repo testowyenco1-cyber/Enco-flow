@@ -191,9 +191,9 @@ export function sanitizeOrders(parsed: any[]): Order[] {
  */
 export function loadOrders(): Order[] {
   try {
-    let raw = localStorage.getItem(STORAGE_KEY);
+    let raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      raw = localStorage.getItem(PREV_STORAGE_KEY);
+      raw = sessionStorage.getItem(PREV_STORAGE_KEY);
     }
     if (!raw) {
       saveOrders(INITIAL_ORDERS);
@@ -202,7 +202,7 @@ export function loadOrders(): Order[] {
     const parsed: Order[] = JSON.parse(raw);
     return sanitizeOrders(parsed);
   } catch (err) {
-    console.error('Failed to load orders from localStorage:', err);
+    console.error('Failed to load orders from sessionStorage:', err);
     return INITIAL_ORDERS;
   }
 }
@@ -212,9 +212,9 @@ export function loadOrders(): Order[] {
  */
 export function saveOrders(orders: Order[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
   } catch (err) {
-    console.error('Failed to save orders to localStorage:', err);
+    console.error('Failed to save orders to sessionStorage:', err);
   }
 }
 
@@ -268,9 +268,9 @@ export async function saveOrdersToServer(orders: Order[]): Promise<boolean> {
  */
 export function loadDoorOrders(): DoorOrder[] {
   try {
-    let raw = localStorage.getItem(DOOR_STORAGE_KEY);
+    let raw = sessionStorage.getItem(DOOR_STORAGE_KEY);
     if (!raw) {
-      raw = localStorage.getItem(PREV_DOOR_STORAGE_KEY);
+      raw = sessionStorage.getItem(PREV_DOOR_STORAGE_KEY);
     }
     if (!raw) {
       saveDoorOrders(INITIAL_DOOR_ORDERS);
@@ -283,7 +283,7 @@ export function loadDoorOrders(): DoorOrder[] {
     }
     return parsed;
   } catch (err) {
-    console.error('Failed to load door orders from localStorage:', err);
+    console.error('Failed to load door orders from sessionStorage:', err);
     return INITIAL_DOOR_ORDERS;
   }
 }
@@ -293,9 +293,9 @@ export function loadDoorOrders(): DoorOrder[] {
  */
 export function saveDoorOrders(doorOrders: DoorOrder[]): void {
   try {
-    localStorage.setItem(DOOR_STORAGE_KEY, JSON.stringify(doorOrders));
+    sessionStorage.setItem(DOOR_STORAGE_KEY, JSON.stringify(doorOrders));
   } catch (err) {
-    console.error('Failed to save door orders to localStorage:', err);
+    console.error('Failed to save door orders to sessionStorage:', err);
   }
 }
 
