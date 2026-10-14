@@ -16,6 +16,9 @@ import {
   saveDoorOrders,
   fetchOrdersFromServer,
   saveOrdersToServer,
+  saveSingleOrderToServer,
+  hasPendingOrderChanges,
+  hasPendingDoorOrderChanges,
   fetchDoorOrdersFromServer,
   saveDoorOrdersToServer,
   resetServerAndLocalData,
@@ -49,6 +52,11 @@ export default function App() {
   });
   const [orders, setOrders] = useState<Order[]>(() => loadOrders());
   const [doorOrders, setDoorOrders] = useState<DoorOrder[]>(() => loadDoorOrders());
+  // Refs expose the newest local copies to async save/refresh callbacks.
+  const ordersRef = useRef<Order[]>(orders);
+  const doorOrdersRef = useRef<DoorOrder[]>(doorOrders);
+  useEffect(() => { ordersRef.current = orders; }, [orders]);
+  useEffect(() => { doorOrdersRef.current = doorOrders; }, [doorOrders]);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(() => {
     const match = window.location.pathname.match(/^\/zlecenia\/([^/]+)$/);
     return match ? decodeURIComponent(match[1]) : null;
@@ -161,38 +169,56 @@ export default function App() {
   const [hasPendingChanges, setHasPendingChanges] = useState(false);
   const pendingOrdersRef = useRef(false);
   const pendingDoorOrdersRef = useRef(false);
+  const refreshRequestIdRef = useRef(0);
   // Śledzi wyłącznie lokalnie otwarty formularz.
   const editingItemRef = useRef(false);
 
-  // Jedyny mechanizm pobierania danych: start strony albo jawne działanie użytkownika.
+  // Server data is applied only at startup or after the user clicks ODŚWIEŻ.
+  // The latest request wins; background/older requests cannot overwrite newer local state.
   const refreshDataFromServer = async (options?: { orders?: boolean; doors?: boolean; discardPending?: boolean; showMessage?: boolean }) => {
-    const loadOrders = options?.orders !== false;
-    const loadDoors = options?.doors !== false;
+    const requestId = ++refreshRequestIdRef.current;
+    const loadServerOrders = options?.orders !== false;
+    const loadServerDoors = options?.doors !== false;
     const [srvOrders, srvDoors] = await Promise.all([
-      loadOrders ? fetchOrdersFromServer() : Promise.resolve(null),
-      loadDoors ? fetchDoorOrdersFromServer() : Promise.resolve(null),
+      loadServerOrders ? fetchOrdersFromServer() : Promise.resolve(null),
+      loadServerDoors ? fetchDoorOrdersFromServer() : Promise.resolve(null),
     ]);
 
-    if (srvOrders) setOrders(srvOrders);
-    if (srvDoors) setDoorOrders(srvDoors);
+    // Ignore an older request if a later manual refresh has already started.
+    if (requestId !== refreshRequestIdRef.current) return;
 
+    const applyOrders = Boolean(srvOrders) &&
+      (options?.discardPending === true || !pendingOrdersRef.current);
+    const applyDoors = Boolean(srvDoors) &&
+      (options?.discardPending === true || !pendingDoorOrdersRef.current);
+
+    if (srvOrders && applyOrders) {
+      setOrders(srvOrders);
+      ordersRef.current = srvOrders;
+      saveOrders(srvOrders);
+    }
+    if (srvDoors && applyDoors) {
+      setDoorOrders(srvDoors);
+      doorOrdersRef.current = srvDoors;
+      saveDoorOrders(srvDoors);
+    }
+
+    // A failed refresh must not clear the unsaved indicator or discard local work.
     if (options?.discardPending) {
-      if (loadOrders) pendingOrdersRef.current = false;
-      if (loadDoors) pendingDoorOrdersRef.current = false;
+      if (loadServerOrders && srvOrders) pendingOrdersRef.current = false;
+      if (loadServerDoors && srvDoors) pendingDoorOrdersRef.current = false;
       setHasPendingChanges(pendingOrdersRef.current || pendingDoorOrdersRef.current);
     }
 
     if (options?.showMessage) {
-      if ((loadOrders && !srvOrders) || (loadDoors && !srvDoors)) {
-        showToast('Nie udało się pobrać wszystkich danych z serwera.', 'warning');
+      if ((loadServerOrders && !srvOrders) || (loadServerDoors && !srvDoors)) {
+        showToast('Nie udało się pobrać wszystkich danych z serwera. Niezapisane zmiany pozostają lokalnie.', 'warning');
       } else {
         showToast('Dane odświeżone z serwera.', 'success');
       }
     }
   };
 
-  // Brak synchronizacji automatycznej: pobieranie danych tylko po wejściu na stronę
-  // albo po wywołaniu refreshDataFromServer przez użytkownika.
   useEffect(() => {
     void refreshDataFromServer();
   }, []);
@@ -218,32 +244,45 @@ export default function App() {
     const latestOrders = orders.map((current) => current.id === orderToSave.id ? orderToSave : current);
     saveOrders(latestOrders);
     setOrders(latestOrders);
-    const saved = await saveOrdersToServer(latestOrders);
-    if (saved) {
-      pendingOrdersRef.current = false;
-      setHasPendingChanges(pendingDoorOrdersRef.current);
+    ordersRef.current = latestOrders;
+    pendingOrdersRef.current = true;
+    setHasPendingChanges(true);
 
-      // Nie pobieraj ponownie danych po zapisie: zachowaj lokalny widok użytkownika.
-      showToast(`Zapisano zmiany na serwerze. Lokalny widok zlecenia ${orderToSave.orderNumber} pozostaje bez zmian.`, 'success');
+    // Zapis pojedynczego zlecenia nie może wysłać do serwera innych
+    // zleceń, które w tej karcie są jeszcze niezapisane.
+    const saved = await saveSingleOrderToServer(orderToSave);
+    pendingOrdersRef.current = hasPendingOrderChanges(ordersRef.current);
+    setHasPendingChanges(pendingOrdersRef.current || pendingDoorOrdersRef.current);
+
+    if (saved) {
+      showToast(`Zapisano zlecenie ${orderToSave.orderNumber} na serwerze. Pozostałe lokalne zmiany nie zostały wysłane.`, 'success');
     } else {
-      showToast('Nie udało się zapisać zmian na serwerze. Zmiany pozostają lokalnie — spróbuj ponownie.', 'warning');
+      showToast('Nie udało się zapisać zlecenia na serwerze. Zmiany pozostają lokalnie — spróbuj ponownie.', 'warning');
     }
   };
 
   const handleSaveAllChanges = async () => {
+    const ordersAtClick = orders;
+    const doorsAtClick = doorOrders;
     const [ordersSaved, doorsSaved] = await Promise.all([
-      pendingOrdersRef.current ? saveOrdersToServer(orders) : Promise.resolve(true),
-      pendingDoorOrdersRef.current ? saveDoorOrdersToServer(doorOrders) : Promise.resolve(true),
+      pendingOrdersRef.current ? saveOrdersToServer(ordersAtClick) : Promise.resolve(true),
+      pendingDoorOrdersRef.current ? saveDoorOrdersToServer(doorsAtClick) : Promise.resolve(true),
     ]);
 
+    // Recalculate against the snapshot actually saved. If the user edited more
+    // data while the request was in flight, those newer edits remain pending.
+    if (ordersSaved) pendingOrdersRef.current = hasPendingOrderChanges(ordersRef.current);
+    if (doorsSaved) pendingDoorOrdersRef.current = hasPendingDoorOrderChanges(doorOrdersRef.current);
+    setHasPendingChanges(pendingOrdersRef.current || pendingDoorOrdersRef.current);
+
     if (ordersSaved && doorsSaved) {
-      pendingOrdersRef.current = false;
-      pendingDoorOrdersRef.current = false;
-      setHasPendingChanges(false);
-      // Zapis nie aktualizuje lokalnej kopii danymi innych użytkowników.
-      showToast('Zmiany zapisane na serwerze. Lokalny widok nie został odświeżony.', 'success');
+      if (pendingOrdersRef.current || pendingDoorOrdersRef.current) {
+        showToast('Zapisano poprzedni zestaw zmian. Nowsze zmiany nadal pozostają lokalne — zapisz je ponownie.', 'info');
+      } else {
+        showToast('Zmiany zapisane na serwerze. Lokalny widok nie został odświeżony.', 'success');
+      }
     } else {
-      showToast('Nie udało się zapisać wszystkich zmian na serwerze. Dane pozostają w pamięci lokalnej — spróbuj ponownie.', 'warning');
+      showToast('Nie udało się zapisać wszystkich zmian na serwerze. Dane pozostają lokalnie — spróbuj ponownie.', 'warning');
     }
   };
 
@@ -461,6 +500,11 @@ export default function App() {
     const res = await resetServerAndLocalData();
     setOrders(res.orders);
     setDoorOrders(res.doorOrders);
+    ordersRef.current = res.orders;
+    doorOrdersRef.current = res.doorOrders;
+    pendingOrdersRef.current = false;
+    pendingDoorOrdersRef.current = false;
+    setHasPendingChanges(false);
     sessionStorage.removeItem('enco_selected_order_id');
     setSelectedOrderId(null);
     showToast('Przywrócono przykładowe dane testowe zleceń i drzwi (zsynchronizowano z serwerem)', 'info');
