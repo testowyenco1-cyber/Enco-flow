@@ -22,6 +22,7 @@ interface EditItemModalProps {
   doorOrders?: DoorOrder[];
   isOpen: boolean;
   onClose: () => void;
+  onCancel?: () => void;
   onSave: (updatedItem: OrderItem) => void;
   currentProfile?: UserRoleProfile;
 }
@@ -31,6 +32,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
   doorOrders = [],
   isOpen,
   onClose,
+  onCancel,
   onSave,
   currentProfile,
 }) => {
@@ -227,7 +229,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={onCancel || onClose}
             className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -1277,7 +1279,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
             <button
               type="button"
-              onClick={onClose}
+              onClick={onCancel || onClose}
               className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer"
             >
               {isReadOnly ? 'Zamknij' : 'Anuluj'}
