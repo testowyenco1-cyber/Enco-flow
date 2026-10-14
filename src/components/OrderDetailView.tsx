@@ -406,7 +406,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
                 {profile.canEditAll
-                  ? 'Kliknij status, aby natychmiast go zmienić. Kliknij element, aby przejść do szczegółów.'
+                  ? 'Zmiany statusu i parametrów pozostają lokalne. Kliknij „Zapisz zmiany” przy odpowiednim elemencie, aby wysłać je na serwer.'
                   : `Uprawnienia konta „${profile.name}”: edycja wybranych elementów, podgląd pozostałych.`}
               </p>
             </div>
