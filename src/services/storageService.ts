@@ -285,7 +285,7 @@ export async function saveOrdersToServer(orders: Order[]): Promise<boolean> {
     const res = await fetch('/api/orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orders: changed, deletedIds, merge: true, originId: CLIENT_ID }),
+      body: JSON.stringify({ orders: changed, deletedIds, merge: true }),
     });
     if (!res.ok) return false;
     // Snapshot lokalnej listy pozwala wykrywać wyłącznie usunięcia wykonane w tej sesji.
@@ -368,7 +368,7 @@ export async function saveDoorOrdersToServer(doorOrders: DoorOrder[]): Promise<b
     const res = await fetch('/api/door-orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ doorOrders: changed, deletedIds, merge: true, originId: CLIENT_ID }),
+      body: JSON.stringify({ doorOrders: changed, deletedIds, merge: true }),
     });
     if (!res.ok) return false;
     writeSnapshot(SERVER_DOOR_SNAPSHOT_KEY, doorOrders);
