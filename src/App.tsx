@@ -316,9 +316,8 @@ export default function App() {
       updatedAt: new Date().toISOString(),
     };
 
-    const newOrders = orders.map((o) => (o.id === selectedOrderId ? updated : o));
-    updateOrdersState(newOrders);
-    showToast(`Zaktualizowano dane zlecenia ${updated.orderNumber}`, 'success');
+    void handleSaveOrderChanges(updated);
+    showToast(`Zaktualizowano dane zlecenia ${updated.orderNumber}`, 'info');
   };
 
   const handleDeleteOrder = (orderId: string) => {
@@ -347,9 +346,8 @@ export default function App() {
       updatedAt: new Date().toISOString(),
     };
 
-    const newOrders = orders.map((o) => (o.id === selectedOrder.id ? updatedOrder : o));
-    updateOrdersState(newOrders);
-    showToast(`Zapisano parametry elementu: ${updatedItem.name}`, 'success');
+    void handleSaveOrderChanges(updatedOrder);
+    showToast(`Zapisano parametry elementu: ${updatedItem.name}`, 'info');
   };
 
   // Door Order Handlers
