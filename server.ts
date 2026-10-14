@@ -52,7 +52,8 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
 
   // Ensure persistent data directory and uploads root exist
-  const DATA_DIR = path.resolve(__dirname, 'data_store');
+  // Configure DATA_DIR to a persistent mounted directory in hosted deployments.
+  const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(__dirname, 'data_store'));
   const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 
   if (!fs.existsSync(DATA_DIR)) {
