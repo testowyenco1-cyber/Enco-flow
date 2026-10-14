@@ -654,7 +654,7 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                                 <>
                                   <button
                                     type="button"
-                                    onClick={() => onEditDoorOrder(doorOrd)
+                                    onClick={() => onEditDoorOrder(doorOrd)}
                                     className="w-full max-w-[130px] px-3 py-1.5 bg-white hover:bg-blue-50 text-blue-700 hover:text-blue-800 border border-blue-200 rounded-lg text-xs font-semibold cursor-pointer transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
                                   >
                                     <Edit2 className="w-3.5 h-3.5" />
