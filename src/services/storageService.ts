@@ -253,13 +253,9 @@ export async function saveOrdersToServer(orders: Order[]): Promise<boolean> {
       body: JSON.stringify({ orders: changed, deletedIds, merge: true, originId: CLIENT_ID }),
     });
     if (!res.ok) return false;
-    const result = await res.json();
-    // Snapshot musi odzwierciedlać stan serwera po scaleniu, a nie tylko lokalną listę.
-    if (Array.isArray(result.orders)) {
-      writeSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, result.orders);
-    } else {
-      writeSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, orders);
-    }
+    // Snapshot lokalnej listy pozwala wykrywać wyłącznie usunięcia wykonane w tej sesji.
+    // Nie zapisujemy tu całej odpowiedzi serwera, bo lokalny widok może celowo być starszy.
+    writeSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, orders);
     return true;
   } catch (err) {
     console.warn('Could not save orders to server:', err);
@@ -336,12 +332,7 @@ export async function saveDoorOrdersToServer(doorOrders: DoorOrder[]): Promise<b
       body: JSON.stringify({ doorOrders: changed, deletedIds, merge: true, originId: CLIENT_ID }),
     });
     if (!res.ok) return false;
-    const result = await res.json();
-    if (Array.isArray(result.doorOrders)) {
-      writeSnapshot(SERVER_DOOR_SNAPSHOT_KEY, result.doorOrders);
-    } else {
-      writeSnapshot(SERVER_DOOR_SNAPSHOT_KEY, doorOrders);
-    }
+    writeSnapshot(SERVER_DOOR_SNAPSHOT_KEY, doorOrders);
     return true;
   } catch (err) {
     console.warn('Could not save door orders to server:', err);
