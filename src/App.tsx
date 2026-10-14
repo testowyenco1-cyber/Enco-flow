@@ -118,9 +118,8 @@ export default function App() {
   const [hasPendingChanges, setHasPendingChanges] = useState(false);
   const pendingOrdersRef = useRef(false);
   const pendingDoorOrdersRef = useRef(false);
-  // Wstrzymuj zdalne odświeżanie zleceń podczas edycji formularza lub przy niezapisanych zmianach.
+  // Śledzi wyłącznie lokalnie otwarty formularz.
   const editingItemRef = useRef(false);
-  const queuedRemoteOrdersRef = useRef<Order[] | null>(null);
 
   // Jedyny mechanizm pobierania danych: start strony albo jawne działanie użytkownika.
   const refreshDataFromServer = async (options?: { orders?: boolean; doors?: boolean; discardPending?: boolean; showMessage?: boolean }) => {
@@ -137,7 +136,6 @@ export default function App() {
     if (options?.discardPending) {
       if (loadOrders) pendingOrdersRef.current = false;
       if (loadDoors) pendingDoorOrdersRef.current = false;
-      queuedRemoteOrdersRef.current = null;
       setHasPendingChanges(pendingOrdersRef.current || pendingDoorOrdersRef.current);
     }
 
@@ -182,31 +180,6 @@ export default function App() {
       pendingOrdersRef.current = false;
       setHasPendingChanges(pendingDoorOrdersRef.current);
 
-      // Po zatwierdzeniu własnej edycji przywróć zdalne zmiany otrzymane w trakcie.
-      // Edytowane właśnie zlecenie zachowuje wersję, którą użytkownik świadomie zapisał.
-      const queuedRemoteOrders = queuedRemoteOrdersRef.current;
-      queuedRemoteOrdersRef.current = null;
-      if (queuedRemoteOrders) {
-        const remoteOrderIds = new Set(queuedRemoteOrders.map((order) => order.id));
-        const mergedOrders = queuedRemoteOrders.map((remoteOrder) =>
-          remoteOrder.id === orderToSave.id
-            ? (latestOrders.find((localOrder) => localOrder.id === orderToSave.id) || remoteOrder)
-            : remoteOrder
-        );
-        latestOrders.forEach((localOrder) => {
-          if (!remoteOrderIds.has(localOrder.id)) mergedOrders.push(localOrder);
-        });
-        saveOrders(mergedOrders);
-        setOrders(mergedOrders);
-        // Rozgłoś scalony stan, aby zachować także zmiany innych zleceń.
-        const mergedSaved = await saveOrdersToServer(mergedOrders);
-        if (!mergedSaved) {
-          pendingOrdersRef.current = true;
-          setHasPendingChanges(true);
-          showToast('Twoje zmiany zapisano, ale nie udało się zsynchronizować zmian otrzymanych od innych użytkowników.', 'warning');
-          return;
-        }
-      }
       await refreshDataFromServer({ orders: true, doors: false });
       showToast(`Zapisano zmiany w zleceniu ${orderToSave.orderNumber}.`, 'success');
     } else {
@@ -223,7 +196,6 @@ export default function App() {
     if (ordersSaved && doorsSaved) {
       pendingOrdersRef.current = false;
       pendingDoorOrdersRef.current = false;
-      queuedRemoteOrdersRef.current = null;
       setHasPendingChanges(false);
       await refreshDataFromServer({ discardPending: true });
       showToast('Zmiany zapisane na serwerze i odświeżone.', 'success');
