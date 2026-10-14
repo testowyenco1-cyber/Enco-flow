@@ -13,7 +13,7 @@ const SERVER_DOOR_SNAPSHOT_KEY = 'enco_flow_server_snapshot_doors_v1';
 // browser's changed records, instead of replacing the shared server list.
 function readSnapshot<T>(key: string): T[] | null {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = sessionStorage.getItem(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed as T[] : null;
@@ -24,7 +24,7 @@ function readSnapshot<T>(key: string): T[] | null {
 
 function writeSnapshot<T>(key: string, values: T[]): void {
   try {
-    localStorage.setItem(key, JSON.stringify(values));
+    sessionStorage.setItem(key, JSON.stringify(values));
   } catch (err) {
     console.error('Failed to save server snapshot:', err);
   }
@@ -34,7 +34,7 @@ function getPendingChanges<T>(current: T[], snapshot: T[] | null): { changed: T[
   // If the initial server read failed, upsert records but never infer deletions
   // from an incomplete local cache.
   if (!snapshot) return { changed: current, deletedIds: [] };
-  const previousById = new Map(snapshot.map((entry: any) => [String(entry.id), entry]));
+  const previousById = new Map<string, T>(snapshot.map((entry: any) => [String(entry.id), entry as T] as [string, T]));
   const currentIds = new Set(current.map((entry: any) => String(entry.id)));
   const changed = current.filter((entry: any) => {
     const previous = previousById.get(String(entry.id));
