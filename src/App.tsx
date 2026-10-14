@@ -122,26 +122,38 @@ export default function App() {
   const editingItemRef = useRef(false);
   const queuedRemoteOrdersRef = useRef<Order[] | null>(null);
 
-  // Pobierz dane z serwera tylko przy uruchomieniu/odświeżeniu strony.
-  // Nie nasłuchujemy zmian na żywo — aktualizacje innych użytkowników pojawią się po odświeżeniu.
+  // Jedyny mechanizm pobierania danych: start strony albo jawne działanie użytkownika.
+  const refreshDataFromServer = async (options?: { orders?: boolean; doors?: boolean; discardPending?: boolean; showMessage?: boolean }) => {
+    const loadOrders = options?.orders !== false;
+    const loadDoors = options?.doors !== false;
+    const [srvOrders, srvDoors] = await Promise.all([
+      loadOrders ? fetchOrdersFromServer() : Promise.resolve(null),
+      loadDoors ? fetchDoorOrdersFromServer() : Promise.resolve(null),
+    ]);
+
+    if (srvOrders) setOrders(srvOrders);
+    if (srvDoors) setDoorOrders(srvDoors);
+
+    if (options?.discardPending) {
+      if (loadOrders) pendingOrdersRef.current = false;
+      if (loadDoors) pendingDoorOrdersRef.current = false;
+      queuedRemoteOrdersRef.current = null;
+      setHasPendingChanges(pendingOrdersRef.current || pendingDoorOrdersRef.current);
+    }
+
+    if (options?.showMessage) {
+      if ((loadOrders && !srvOrders) || (loadDoors && !srvDoors)) {
+        showToast('Nie udało się pobrać wszystkich danych z serwera.', 'warning');
+      } else {
+        showToast('Dane odświeżone z serwera.', 'success');
+      }
+    }
+  };
+
+  // Brak synchronizacji automatycznej: pobieranie danych tylko po wejściu na stronę
+  // albo po wywołaniu refreshDataFromServer przez użytkownika.
   useEffect(() => {
-    let isMounted = true;
-
-    fetchOrdersFromServer().then((srvOrders) => {
-      if (isMounted && srvOrders && srvOrders.length > 0) {
-        setOrders(srvOrders);
-      }
-    });
-
-    fetchDoorOrdersFromServer().then((srvDoors) => {
-      if (isMounted && srvDoors && srvDoors.length > 0) {
-        setDoorOrders(srvDoors);
-      }
-    });
-
-    return () => {
-      isMounted = false;
-    };
+    void refreshDataFromServer();
   }, []);
 
   // Keep edits local until the user explicitly saves them.
@@ -195,6 +207,7 @@ export default function App() {
           return;
         }
       }
+      await refreshDataFromServer({ orders: true, doors: false });
       showToast(`Zapisano zmiany w zleceniu ${orderToSave.orderNumber}.`, 'success');
     } else {
       showToast('Nie udało się zapisać zmian na serwerze. Zmiany pozostają lokalnie — spróbuj ponownie.', 'warning');
@@ -212,7 +225,8 @@ export default function App() {
       pendingDoorOrdersRef.current = false;
       queuedRemoteOrdersRef.current = null;
       setHasPendingChanges(false);
-      showToast('Zmiany zapisane na serwerze i zsynchronizowane.', 'success');
+      await refreshDataFromServer({ discardPending: true });
+      showToast('Zmiany zapisane na serwerze i odświeżone.', 'success');
     } else {
       showToast('Nie udało się zapisać wszystkich zmian na serwerze. Dane pozostają w pamięci lokalnej — spróbuj ponownie.', 'warning');
     }
@@ -339,6 +353,12 @@ export default function App() {
     showToast('Zlecenie zostało usunięte', 'info');
   };
 
+  const handleCancelItemEdit = async () => {
+    editingItemRef.current = false;
+    setEditingItem(null);
+    await refreshDataFromServer({ orders: true, doors: false, discardPending: true, showMessage: true });
+  };
+
   const handleSaveEditedItem = (updatedItem: OrderItem) => {
     if (!selectedOrder) return;
 
@@ -446,6 +466,7 @@ export default function App() {
           setIsDoorOrderModalOpen(true);
         }}
         onResetData={handleResetData}
+        onRefresh={() => void refreshDataFromServer({ discardPending: true, showMessage: true })}
         activeTab={filterTab}
         onSelectTab={(tab) => {
           setFilterTab(tab);
@@ -597,15 +618,8 @@ export default function App() {
         onClose={() => {
           editingItemRef.current = false;
           setEditingItem(null);
-          // Anulowanie edycji bez lokalnych zmian pozwala od razu odświeżyć dane z serwera.
-          if (!pendingOrdersRef.current && queuedRemoteOrdersRef.current) {
-            const queued = queuedRemoteOrdersRef.current;
-            queuedRemoteOrdersRef.current = null;
-            saveOrders(queued);
-            setOrders(queued);
-            showToast('Zaktualizowano dane otrzymane od innych użytkowników.', 'info');
-          }
         }}
+        onCancel={handleCancelItemEdit}
         onSave={handleSaveEditedItem}
         currentProfile={currentProfile}
       />
