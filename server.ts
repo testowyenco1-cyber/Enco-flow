@@ -64,7 +64,7 @@ async function startServer() {
 
   const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
   const DOORS_FILE = path.join(DATA_DIR, 'door_orders.json');
-  const OBUdOWA_VARIANTS_FILE = path.join(DATA_DIR, 'obudowa_variants.json');
+  const OBUDOWA_VARIANTS_FILE = path.join(DATA_DIR, 'obudowa_variants.json');
 
   // Seed initial data if files do not exist
   let currentOrders = INITIAL_ORDERS;
@@ -94,9 +94,9 @@ async function startServer() {
   }
 
   // Shared custom enclosure sizes are configuration data, not browser-local data.
-  if (!fs.existsSync(OBUdOWA_VARIANTS_FILE)) {
+  if (!fs.existsSync(OBUDOWA_VARIANTS_FILE)) {
     try {
-      fs.writeFileSync(OBUdOWA_VARIANTS_FILE, JSON.stringify([], null, 2), 'utf-8');
+      fs.writeFileSync(OBUDOWA_VARIANTS_FILE, JSON.stringify([], null, 2), 'utf-8');
       console.log('Initialized shared custom enclosure sizes in data_store/obudowa_variants.json');
     } catch (e) {
       console.error('Failed to initialize shared enclosure sizes file:', e);
@@ -337,7 +337,7 @@ async function startServer() {
   // Shared custom enclosure-size catalogue. Changes reach other screens only on their next manual refresh.
   app.get('/api/obudowa-variants', (_req, res) => {
     try {
-      const raw = fs.readFileSync(OBUdOWA_VARIANTS_FILE, 'utf-8');
+      const raw = fs.readFileSync(OBUDOWA_VARIANTS_FILE, 'utf-8');
       const variants = JSON.parse(raw);
       if (!Array.isArray(variants)) {
         return res.status(500).json({ success: false, error: 'Nieprawidłowy format katalogu rozmiarów obudów' });
@@ -369,7 +369,7 @@ async function startServer() {
         return res.status(400).json({ success: false, error: 'Nieprawidłowe dane niestandardowego rozmiaru obudowy' });
       }
 
-      const raw = fs.readFileSync(OBUdOWA_VARIANTS_FILE, 'utf-8');
+      const raw = fs.readFileSync(OBUDOWA_VARIANTS_FILE, 'utf-8');
       const parsed = JSON.parse(raw);
       const variants: any[] = Array.isArray(parsed) ? parsed : [];
       const normalized = {
@@ -388,7 +388,7 @@ async function startServer() {
       if (index >= 0) variants[index] = normalized;
       else variants.push(normalized);
 
-      writeJsonAtomically(OBUdOWA_VARIANTS_FILE, variants);
+      writeJsonAtomically(OBUDOWA_VARIANTS_FILE, variants);
       return res.json({ success: true, variants, timestamp: Date.now() });
     } catch (err) {
       console.error('Error saving shared enclosure size:', err);
