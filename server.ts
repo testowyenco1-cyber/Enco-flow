@@ -221,7 +221,15 @@ async function startServer() {
   // Automatyczne powiadomienia SSE są celowo wyłączone.
   // Pozostali użytkownicy nie otrzymują zmian ani sygnałów resetowania na żywo.
   function broadcastSSE(_type: 'orders' | 'doorOrders' | 'reset', _data: any, _originId?: string) {
-    // Intentionally disabled: each user refreshes data only through their own actions.
+    // Celowo brak broadcastu danych: użytkownicy pracują niezależnie.
+    // Zmiany innych osób stają się widoczne po ręcznym odświeżeniu lub własnym zapisie.
+  }
+
+  // Zapis atomowy: awaria procesu podczas zapisu nie zostawi uciętego pliku JSON.
+  function writeJsonAtomically(filePath: string, data: unknown) {
+    const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+    fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), 'utf-8');
+    fs.renameSync(tempPath, filePath);
   }
 
   // 1. SSE Stream for Real-time Synchronization across all connected browsers
@@ -297,11 +305,11 @@ async function startServer() {
         if (ord.orderNumber) ensureOrderFolders(ord.orderNumber, ord.projectName);
       });
 
-      fs.writeFileSync(ORDERS_FILE, JSON.stringify(ordersToSave, null, 2), 'utf-8');
+      writeJsonAtomically(ORDERS_FILE, ordersToSave);
       currentOrders = ordersToSave;
       broadcastSSE('orders', ordersToSave, originId);
 
-      return res.json({ success: true, count: ordersToSave.length, timestamp: Date.now() });
+      return res.json({ success: true, count: ordersToSave.length, orders: ordersToSave, timestamp: Date.now() });
     } catch (err) {
       console.error('Error writing orders file:', err);
       return res.status(500).json({ success: false, error: 'Błąd zapisu zleceń na serwerze' });
@@ -346,10 +354,10 @@ async function startServer() {
         else doorOrdersToSave.push(incoming);
       });
 
-      fs.writeFileSync(DOORS_FILE, JSON.stringify(doorOrdersToSave, null, 2), 'utf-8');
+      writeJsonAtomically(DOORS_FILE, doorOrdersToSave);
       broadcastSSE('doorOrders', doorOrdersToSave, originId);
 
-      return res.json({ success: true, count: doorOrdersToSave.length, timestamp: Date.now() });
+      return res.json({ success: true, count: doorOrdersToSave.length, doorOrders: doorOrdersToSave, timestamp: Date.now() });
     } catch (err) {
       console.error('Error writing door orders file:', err);
       return res.status(500).json({ success: false, error: 'Błąd zapisu zamówień drzwi na serwerze' });
