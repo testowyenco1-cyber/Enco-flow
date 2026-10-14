@@ -39,6 +39,7 @@ interface DoorOrdersViewProps {
   doorOrders: DoorOrder[];
   orders: Order[];
   onAddDoorOrder: () => void;
+  onOpenDoorOrder?: (order: DoorOrder) => void;
   onEditDoorOrder: (order: DoorOrder) => void;
   onDeleteDoorOrder: (id: string) => void;
   onQuickConfirmDelivery: (order: DoorOrder) => void;
@@ -53,6 +54,7 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
   doorOrders,
   orders,
   onAddDoorOrder,
+  onOpenDoorOrder,
   onEditDoorOrder,
   onDeleteDoorOrder,
   onQuickConfirmDelivery,
@@ -638,11 +640,21 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                                 {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                               </button>
 
+                              {onOpenDoorOrder && (
+                                <button
+                                  type="button"
+                                  onClick={() => onOpenDoorOrder(doorOrd)}
+                                  className="w-full max-w-[130px] px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                                >
+                                  Otwórz podstronę
+                                </button>
+                              )}
+
                               {canManageDoors && (
                                 <>
                                   <button
                                     type="button"
-                                    onClick={() => onEditDoorOrder(doorOrd)}
+                                    onClick={() => onEditDoorOrder(doorOrd)
                                     className="w-full max-w-[130px] px-3 py-1.5 bg-white hover:bg-blue-50 text-blue-700 hover:text-blue-800 border border-blue-200 rounded-lg text-xs font-semibold cursor-pointer transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
                                   >
                                     <Edit2 className="w-3.5 h-3.5" />
@@ -912,6 +924,7 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
 
                       {/* Akcje nagłówka */}
                       <div className="flex items-center gap-1">
+                        {onOpenDoorOrder && <button type="button" onClick={() => onOpenDoorOrder(doorOrd)} className="rounded-lg p-1.5 text-blue-700 hover:bg-blue-50" title="Otwórz osobną podstronę"><FileText className="h-4 w-4" /></button>}
                         {canManageDoors ? (
                           <>
                             <button
