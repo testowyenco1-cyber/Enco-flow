@@ -23,8 +23,6 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
   existingOrders = [],
   currentProfile,
 }) => {
-  if (!isOpen || !order) return null;
-
   const profile = currentProfile || USER_PROFILES.admin;
   const canEditMainMeta = profile.canEditOrderMetadata; // Admin & Dział Handlowy
   const canEditDeparture = profile.canEditDepartureDate; // Admin, Dział Handlowy, Logistyka, Pyskowice
@@ -33,18 +31,18 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
   const canDelete = Boolean(onDelete && profile.canDeleteOrders); // Admin & Dział Handlowy
   const isAllReadOnly = profile.id === 'ogolny';
 
-  const [orderNumber, setOrderNumber] = useState(order.orderNumber);
-  const [client, setClient] = useState(order.client);
-  const [projectName, setProjectName] = useState(order.projectName);
-  const [stationSize, setStationSize] = useState(order.stationSize);
-  const [departureDate, setDepartureDate] = useState(order.departureDate);
-  const [generalNotes, setGeneralNotes] = useState(order.generalNotes);
-  const [additionalInfo, setAdditionalInfo] = useState(order.additionalInfo || '');
+  const [orderNumber, setOrderNumber] = useState(order?.orderNumber || '');
+  const [client, setClient] = useState(order?.client || '');
+  const [projectName, setProjectName] = useState(order?.projectName || '');
+  const [stationSize, setStationSize] = useState(order?.stationSize || '');
+  const [departureDate, setDepartureDate] = useState(order?.departureDate || '');
+  const [generalNotes, setGeneralNotes] = useState(order?.generalNotes || '');
+  const [additionalInfo, setAdditionalInfo] = useState(order?.additionalInfo || '');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (order) {
+    if (isOpen && order) {
       setOrderNumber(order.orderNumber);
       setClient(order.client);
       setProjectName(order.projectName);
@@ -55,15 +53,16 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
       setConfirmDelete(false);
       setError('');
     }
-  }, [order]);
+  }, [isOpen, order?.id]);
 
   const validation = useMemo(() => {
+    if (!order) return { isValid: false, error: 'Nie wybrano zlecenia', normalized: orderNumber };
     return validateOrderNumber(orderNumber, existingOrders, order.id);
-  }, [orderNumber, existingOrders, order.id]);
+  }, [orderNumber, existingOrders, order?.id]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isAllReadOnly) return;
+    if (!order || isAllReadOnly) return;
 
     if (canEditMainMeta && !validation.isValid) {
       setError(validation.error || 'Numer zlecenia jest nieprawidłowy lub zajęty.');
@@ -92,6 +91,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
   };
 
   const handleDelete = () => {
+    if (!order) return;
     if (confirmDelete && canDelete && onDelete) {
       onDelete(order.id);
       onClose();
@@ -99,6 +99,8 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
       setConfirmDelete(true);
     }
   };
+
+  if (!isOpen || !order) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs overflow-y-auto">
