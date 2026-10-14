@@ -218,17 +218,10 @@ async function startServer() {
   let sseClients: { id: number; res: express.Response }[] = [];
   let nextClientId = 1;
 
-  function broadcastSSE(type: 'orders' | 'doorOrders' | 'reset', data: any, originId?: string) {
-    const payload = JSON.stringify({ type, data, originId, timestamp: Date.now() });
-    const message = `data: ${payload}\n\n`;
-
-    sseClients.forEach((client) => {
-      try {
-        client.res.write(message);
-      } catch (err) {
-        // Handled in close listener
-      }
-    });
+  // Automatyczne powiadomienia SSE są celowo wyłączone.
+  // Pozostali użytkownicy nie otrzymują zmian ani sygnałów resetowania na żywo.
+  function broadcastSSE(_type: 'orders' | 'doorOrders' | 'reset', _data: any, _originId?: string) {
+    // Intentionally disabled: each user refreshes data only through their own actions.
   }
 
   // 1. SSE Stream for Real-time Synchronization across all connected browsers
