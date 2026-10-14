@@ -190,6 +190,20 @@ export default function App() {
     markChangesPending();
   };
 
+  const handleSaveOrderChanges = async (orderToSave: Order) => {
+    const latestOrders = orders.map((current) => current.id === orderToSave.id ? orderToSave : current);
+    saveOrders(latestOrders);
+    setOrders(latestOrders);
+    const saved = await saveOrdersToServer(latestOrders);
+    if (saved) {
+      pendingOrdersRef.current = false;
+      setHasPendingChanges(pendingDoorOrdersRef.current);
+      showToast(`Zapisano zmiany w zleceniu ${orderToSave.orderNumber}.`, 'success');
+    } else {
+      showToast('Nie udało się zapisać zmian na serwerze. Zmiany pozostają lokalnie — spróbuj ponownie.', 'warning');
+    }
+  };
+
   const handleSaveAllChanges = async () => {
     const [ordersSaved, doorsSaved] = await Promise.all([
       pendingOrdersRef.current ? saveOrdersToServer(orders) : Promise.resolve(true),
@@ -483,6 +497,7 @@ export default function App() {
             doorOrders={doorOrders}
             onBack={handleBackToDashboard}
             onUpdateOrderStatus={handleUpdateOrderStatus}
+            onSaveOrderChanges={handleSaveOrderChanges}
             onOpenEditOrderModal={() => setIsEditOrderModalOpen(true)}
             onOpenEditItemModal={(item) => setEditingItem(item)}
             onNavigateToDoorModule={(numerDokumentu) => {
