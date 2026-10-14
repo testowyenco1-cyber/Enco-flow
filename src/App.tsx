@@ -504,6 +504,10 @@ export default function App() {
       return;
     }
     const res = await resetServerAndLocalData();
+    if (!res.success) {
+      showToast('Nie udało się przywrócić danych na serwerze. Lokalny widok pozostawiono bez zmian.', 'warning');
+      return;
+    }
     setOrders(res.orders);
     setDoorOrders(res.doorOrders);
     ordersRef.current = res.orders;
@@ -513,7 +517,7 @@ export default function App() {
     setHasPendingChanges(false);
     sessionStorage.removeItem('enco_selected_order_id');
     setSelectedOrderId(null);
-    showToast('Przywrócono przykładowe dane testowe zleceń i drzwi (zsynchronizowano z serwerem)', 'info');
+    showToast('Przywrócono przykładowe dane testowe zleceń i drzwi na serwerze.', 'info');
   };
 
   return (
