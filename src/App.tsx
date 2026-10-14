@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Order,
   OrderItem,
@@ -112,6 +112,8 @@ export default function App() {
   };
 
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
+  const [hasPendingChanges, setHasPendingChanges] = useState(false);
+  const hasPendingChangesRef = useRef(false);
 
   // Background fetch & real-time SSE listener
   useEffect(() => {
@@ -131,12 +133,20 @@ export default function App() {
     // 2. Setup real-time SSE stream across all users and browsers
     const unsubscribe = setupRealtimeSync({
       onOrdersUpdated: (updatedOrders, isRemote) => {
+        if (hasPendingChangesRef.current && isRemote) {
+          showToast('Otrzymano zmianę z innej sesji. Zapisz lub rozstrzygnij lokalne zmiany przed synchronizacją.', 'warning');
+          return;
+        }
         setOrders(updatedOrders);
         if (isRemote) {
           showToast('Dane zleceń zaktualizowane w czasie rzeczywistym z serwera', 'info');
         }
       },
       onDoorOrdersUpdated: (updatedDoors, isRemote) => {
+        if (hasPendingChangesRef.current && isRemote) {
+          showToast('Otrzymano zmianę zamówień drzwi z innej sesji. Zapisz lub rozstrzygnij lokalne zmiany przed synchronizacją.', 'warning');
+          return;
+        }
         setDoorOrders(updatedDoors);
         if (isRemote) {
           showToast('Dane zamówień drzwi zaktualizowane w czasie rzeczywistym z serwera', 'info');
@@ -156,15 +166,37 @@ export default function App() {
     return unsubscribe;
   }, []);
 
-  // Sync state to storage and server whenever orders change
+  // Keep edits local until the user explicitly saves them.
+  const markChangesPending = () => {
+    hasPendingChangesRef.current = true;
+    setHasPendingChanges(true);
+  };
+
   const updateOrdersState = (newOrders: Order[]) => {
     setOrders(newOrders);
-    saveOrdersToServer(newOrders);
+    saveOrders(newOrders);
+    markChangesPending();
   };
 
   const updateDoorOrdersState = (newDoorOrders: DoorOrder[]) => {
     setDoorOrders(newDoorOrders);
-    saveDoorOrdersToServer(newDoorOrders);
+    saveDoorOrders(newDoorOrders);
+    markChangesPending();
+  };
+
+  const handleSaveAllChanges = async () => {
+    const [ordersSaved, doorsSaved] = await Promise.all([
+      saveOrdersToServer(orders),
+      saveDoorOrdersToServer(doorOrders),
+    ]);
+
+    if (ordersSaved && doorsSaved) {
+      hasPendingChangesRef.current = false;
+      setHasPendingChanges(false);
+      showToast('Zmiany zapisane na serwerze i zsynchronizowane.', 'success');
+    } else {
+      showToast('Nie udało się zapisać wszystkich zmian na serwerze. Dane pozostają w pamięci lokalnej — spróbuj ponownie.', 'warning');
+    }
   };
 
   const selectedOrder = orders.find((o) => o.id === selectedOrderId) || null;
@@ -400,6 +432,24 @@ export default function App() {
       <main className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 ${
         activeModule === 'doors' ? 'max-w-full xl:max-w-[1600px]' : 'max-w-7xl'
       }`}>
+        <div className="flex items-center justify-between gap-3 mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-2xs">
+          <div className="text-xs text-slate-600">
+            {hasPendingChanges ? 'Masz niezapisane zmiany.' : 'Wszystkie zmiany są zapisane.'}
+          </div>
+          <button
+            type="button"
+            onClick={handleSaveAllChanges}
+            disabled={!hasPendingChanges}
+            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-colors ${
+              hasPendingChanges
+                ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
+                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+            }`}
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            Zapisz zmiany
+          </button>
+        </div>
         {activeModule === 'doors' ? (
           <DoorOrdersView
             doorOrders={doorOrders}
