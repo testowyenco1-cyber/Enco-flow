@@ -41,10 +41,15 @@ import {
 } from './types/userRole';
 
 export default function App() {
-  const [activeModule, setActiveModule] = useState<'orders' | 'doors'>('orders');
+  const [activeModule, setActiveModule] = useState<'orders' | 'doors'>(() => {
+    const savedModule = sessionStorage.getItem('enco_active_module');
+    return savedModule === 'doors' ? 'doors' : 'orders';
+  });
   const [orders, setOrders] = useState<Order[]>(() => loadOrders());
   const [doorOrders, setDoorOrders] = useState<DoorOrder[]>(() => loadDoorOrders());
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(() => {
+    return sessionStorage.getItem('enco_selected_order_id');
+  });
   const [filterTab, setFilterTab] = useState<string>('all');
 
   // User Profile Role State
@@ -238,11 +243,17 @@ export default function App() {
   }, [orders]);
 
   const handleSelectOrder = (orderId: string) => {
+    // Otwarcie konkretnego ZL zapisujemy jako bieżący widok, aby odświeżenie
+    // strony wróciło do tego samego zlecenia.
+    sessionStorage.setItem('enco_active_module', 'orders');
+    sessionStorage.setItem('enco_selected_order_id', orderId);
+    setActiveModule('orders');
     setSelectedOrderId(orderId);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleBackToDashboard = () => {
+    sessionStorage.removeItem('enco_selected_order_id');
     setSelectedOrderId(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -271,6 +282,9 @@ export default function App() {
     });
     const updated = [newOrd, ...orders];
     updateOrdersState(updated);
+    sessionStorage.setItem('enco_active_module', 'orders');
+    sessionStorage.setItem('enco_selected_order_id', newOrd.id);
+    setActiveModule('orders');
     setSelectedOrderId(newOrd.id);
     showToast(`Utworzono zlecenie ${newOrd.orderNumber} (${newOrd.projectName})`, 'success');
   };
@@ -320,6 +334,7 @@ export default function App() {
     }
     const newOrders = orders.filter((o) => o.id !== orderId);
     updateOrdersState(newOrders);
+    sessionStorage.removeItem('enco_selected_order_id');
     setSelectedOrderId(null);
     showToast('Zlecenie zostało usunięte', 'info');
   };
@@ -416,6 +431,7 @@ export default function App() {
     const res = await resetServerAndLocalData();
     setOrders(res.orders);
     setDoorOrders(res.doorOrders);
+    sessionStorage.removeItem('enco_selected_order_id');
     setSelectedOrderId(null);
     showToast('Przywrócono przykładowe dane testowe zleceń i drzwi (zsynchronizowano z serwerem)', 'info');
   };
@@ -433,11 +449,14 @@ export default function App() {
         activeTab={filterTab}
         onSelectTab={(tab) => {
           setFilterTab(tab);
+          sessionStorage.removeItem('enco_selected_order_id');
           setSelectedOrderId(null);
         }}
         problemCount={problemOrdersCount}
         activeModule={activeModule}
         onSelectModule={(mod) => {
+          sessionStorage.setItem('enco_active_module', mod);
+          sessionStorage.removeItem('enco_selected_order_id');
           setActiveModule(mod);
           setSelectedOrderId(null);
         }}
@@ -485,6 +504,8 @@ export default function App() {
             onDeleteDoorOrder={handleDeleteDoorOrder}
             onQuickConfirmDelivery={handleQuickConfirmDelivery}
             onNavigateToOrder={(ordId) => {
+              sessionStorage.setItem('enco_active_module', 'orders');
+              sessionStorage.setItem('enco_selected_order_id', ordId);
               setActiveModule('orders');
               setSelectedOrderId(ordId);
             }}
@@ -503,6 +524,8 @@ export default function App() {
               setEditingItem(item);
             }}
             onNavigateToDoorModule={(numerDokumentu) => {
+              sessionStorage.setItem('enco_active_module', 'doors');
+              sessionStorage.removeItem('enco_selected_order_id');
               setActiveModule('doors');
               setSelectedOrderId(null);
             }}
@@ -524,7 +547,12 @@ export default function App() {
             filterTab={filterTab}
             onFilterTabChange={setFilterTab}
             doorOrders={doorOrders}
-            onOpenDoorModule={() => setActiveModule('doors')}
+            onOpenDoorModule={() => {
+              sessionStorage.setItem('enco_active_module', 'doors');
+              sessionStorage.removeItem('enco_selected_order_id');
+              setActiveModule('doors');
+              setSelectedOrderId(null);
+            }}
             currentProfile={currentProfile}
           />
         )}
