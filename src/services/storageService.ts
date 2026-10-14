@@ -46,20 +46,20 @@ function getPendingChanges<T>(current: T[], snapshot: T[] | null): { changed: T[
   return { changed, deletedIds };
 }
 
-// Unique client identifier for current browser tab to avoid echo loops
-export const CLIENT_ID =
-  typeof window !== 'undefined'
-    ? sessionStorage.getItem('enco_client_id') ||
-      (() => {
-        const id = 'c_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8);
-        try {
-          sessionStorage.setItem('enco_client_id', id);
-        } catch (e) {
-          // ignore storage error
-        }
-        return id;
-      })()
-    : 'server';
+function hasPendingChanges<T>(current: T[], snapshotKey: string): boolean {
+  const snapshot = readSnapshot<T>(snapshotKey);
+  if (!snapshot) return true;
+  const pending = getPendingChanges(current, snapshot);
+  return pending.changed.length > 0 || pending.deletedIds.length > 0;
+}
+
+export function hasPendingOrderChanges(orders: Order[]): boolean {
+  return hasPendingChanges(orders, SERVER_ORDERS_SNAPSHOT_KEY);
+}
+
+export function hasPendingDoorOrderChanges(doorOrders: DoorOrder[]): boolean {
+  return hasPendingChanges(doorOrders, SERVER_DOOR_SNAPSHOT_KEY);
+}
 
 /**
  * Sanitize and migrate orders array ensuring all fields and item structures are valid
@@ -228,7 +228,6 @@ export async function fetchOrdersFromServer(): Promise<Order[] | null> {
     const json = await res.json();
     if (json.success && Array.isArray(json.orders)) {
       const sanitized = sanitizeOrders(json.orders);
-      saveOrders(sanitized);
       writeSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, sanitized);
       return sanitized;
     }
@@ -240,12 +239,48 @@ export async function fetchOrdersFromServer(): Promise<Order[] | null> {
 }
 
 /**
+ * Save exactly one order record. Other records edited locally in this tab remain unsent.
+ * Only this record is advanced in the server snapshot after a successful response.
+ */
+export async function saveSingleOrderToServer(order: Order): Promise<boolean> {
+  const snapshot = readSnapshot<Order>(SERVER_ORDERS_SNAPSHOT_KEY);
+  if (!snapshot) {
+    console.warn('Cannot save an order before a successful server refresh establishes a baseline.');
+    return false;
+  }
+
+  try {
+    const res = await fetch('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orders: [order], deletedIds: [], merge: true }),
+    });
+    if (!res.ok) return false;
+
+    const nextSnapshot = [...snapshot];
+    const index = nextSnapshot.findIndex((existing) => String(existing.id) === String(order.id));
+    if (index >= 0) nextSnapshot[index] = order;
+    else nextSnapshot.push(order);
+    writeSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, nextSnapshot);
+    return true;
+  } catch (err) {
+    console.warn('Could not save single order to server:', err);
+    return false;
+  }
+}
+
+/**
  * Save only this browser's changed records; the server merges them without
  * replacing records created or updated by other users.
  */
 export async function saveOrdersToServer(orders: Order[]): Promise<boolean> {
   saveOrders(orders);
-  const { changed, deletedIds } = getPendingChanges(orders, readSnapshot<Order>(SERVER_ORDERS_SNAPSHOT_KEY));
+  const snapshot = readSnapshot<Order>(SERVER_ORDERS_SNAPSHOT_KEY);
+  if (!snapshot) {
+    console.warn('Cannot save orders before a successful server refresh establishes a baseline.');
+    return false;
+  }
+  const { changed, deletedIds } = getPendingChanges(orders, snapshot);
   try {
     const res = await fetch('/api/orders', {
       method: 'POST',
@@ -308,7 +343,6 @@ export async function fetchDoorOrdersFromServer(): Promise<DoorOrder[] | null> {
     if (!res.ok) return null;
     const json = await res.json();
     if (json.success && Array.isArray(json.doorOrders)) {
-      saveDoorOrders(json.doorOrders);
       writeSnapshot(SERVER_DOOR_SNAPSHOT_KEY, json.doorOrders);
       return json.doorOrders;
     }
@@ -324,7 +358,12 @@ export async function fetchDoorOrdersFromServer(): Promise<DoorOrder[] | null> {
  */
 export async function saveDoorOrdersToServer(doorOrders: DoorOrder[]): Promise<boolean> {
   saveDoorOrders(doorOrders);
-  const { changed, deletedIds } = getPendingChanges(doorOrders, readSnapshot<DoorOrder>(SERVER_DOOR_SNAPSHOT_KEY));
+  const snapshot = readSnapshot<DoorOrder>(SERVER_DOOR_SNAPSHOT_KEY);
+  if (!snapshot) {
+    console.warn('Cannot save door orders before a successful server refresh establishes a baseline.');
+    return false;
+  }
+  const { changed, deletedIds } = getPendingChanges(doorOrders, snapshot);
   try {
     const res = await fetch('/api/door-orders', {
       method: 'POST',
@@ -365,76 +404,6 @@ export function resetToDemoOrders(): Order[] {
 export function resetToDemoDoorOrders(): DoorOrder[] {
   saveDoorOrders(INITIAL_DOOR_ORDERS);
   return INITIAL_DOOR_ORDERS;
-}
-
-/**
- * Setup Real-time SSE synchronization listener
- */
-export function setupRealtimeSync(options: {
-  onOrdersUpdated: (orders: Order[], isRemote: boolean) => void;
-  onDoorOrdersUpdated: (doorOrders: DoorOrder[], isRemote: boolean) => void;
-  onReset: () => void;
-  onStatusChange?: (isConnected: boolean) => void;
-}): () => void {
-  let eventSource: EventSource | null = null;
-  let isClosed = false;
-  let reconnectTimer: NodeJS.Timeout | null = null;
-
-  function connect() {
-    if (isClosed) return;
-
-    try {
-      eventSource = new EventSource('/api/realtime/stream');
-
-      eventSource.onopen = () => {
-        options.onStatusChange?.(true);
-      };
-
-      eventSource.onmessage = (event) => {
-        if (!event.data || event.data.trim() === ': keepalive') return;
-        try {
-          const payload = JSON.parse(event.data);
-          const isRemote = Boolean(payload.originId && payload.originId !== CLIENT_ID);
-
-          if (payload.type === 'orders' && Array.isArray(payload.data)) {
-            const sanitized = sanitizeOrders(payload.data);
-            options.onOrdersUpdated(sanitized, isRemote);
-          } else if (payload.type === 'doorOrders' && Array.isArray(payload.data)) {
-            options.onDoorOrdersUpdated(payload.data, isRemote);
-          } else if (payload.type === 'reset') {
-            options.onReset();
-          }
-        } catch (e) {
-          console.error('Error handling SSE message:', e);
-        }
-      };
-
-      eventSource.onerror = () => {
-        options.onStatusChange?.(false);
-        if (eventSource) {
-          eventSource.close();
-          eventSource = null;
-        }
-        if (!isClosed) {
-          reconnectTimer = setTimeout(connect, 3000);
-        }
-      };
-    } catch (e) {
-      options.onStatusChange?.(false);
-      if (!isClosed) {
-        reconnectTimer = setTimeout(connect, 3000);
-      }
-    }
-  }
-
-  connect();
-
-  // Realtime updates arrive through SSE; do not force a fetch when the tab gains focus.
-  return () => {
-    isClosed = true;
-    if (reconnectTimer) clearTimeout(reconnectTimer);
-    if (eventSource) eventSource.close();
-  };
 }
 
 export function createNewOrder(params: {
