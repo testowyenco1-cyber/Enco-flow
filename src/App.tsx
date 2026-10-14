@@ -30,6 +30,7 @@ import { EditOrderModal } from './components/EditOrderModal';
 import { EditItemModal } from './components/EditItemModal';
 import { RoleMatrixModal } from './components/RoleMatrixModal';
 import { PasswordAuthModal } from './components/PasswordAuthModal';
+import { DoorOrderDetailView } from './components/DoorOrderDetailView';
 import { CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 import { validateOrderNumber } from './utils/orderNumberUtils';
 import {
@@ -41,15 +42,57 @@ import {
 } from './types/userRole';
 
 export default function App() {
+  const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
   const [activeModule, setActiveModule] = useState<'orders' | 'doors'>(() => {
-    const savedModule = sessionStorage.getItem('enco_active_module');
-    return savedModule === 'doors' ? 'doors' : 'orders';
+    const path = window.location.pathname;
+    return path === '/drzwi' || path.startsWith('/drzwi/') ? 'doors' : 'orders';
   });
   const [orders, setOrders] = useState<Order[]>(() => loadOrders());
   const [doorOrders, setDoorOrders] = useState<DoorOrder[]>(() => loadDoorOrders());
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(() => {
-    return sessionStorage.getItem('enco_selected_order_id');
+    const match = window.location.pathname.match(/^\/zlecenia\/([^/]+)$/);
+    return match ? decodeURIComponent(match[1]) : null;
   });
+  const selectedDoorOrderId = (() => {
+    const match = currentPath.match(/^\/drzwi\/([^/]+)$/);
+    return match ? decodeURIComponent(match[1]) : null;
+  })();
+
+  const navigate = (path: string) => {
+    if (window.location.pathname !== path) window.history.pushState({}, '', path);
+    setCurrentPath(path);
+    if (path === '/drzwi' || path.startsWith('/drzwi/')) {
+      setActiveModule('doors');
+      setSelectedOrderId(null);
+      sessionStorage.setItem('enco_active_module', 'doors');
+      sessionStorage.removeItem('enco_selected_order_id');
+    } else {
+      setActiveModule('orders');
+      const match = path.match(/^\/zlecenia\/([^/]+)$/);
+      const id = match ? decodeURIComponent(match[1]) : null;
+      setSelectedOrderId(id);
+      sessionStorage.setItem('enco_active_module', 'orders');
+      if (id) sessionStorage.setItem('enco_selected_order_id', id);
+      else sessionStorage.removeItem('enco_selected_order_id');
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      setCurrentPath(path);
+      if (path === '/drzwi' || path.startsWith('/drzwi/')) {
+        setActiveModule('doors');
+        setSelectedOrderId(null);
+      } else {
+        setActiveModule('orders');
+        const match = path.match(/^\/zlecenia\/([^/]+)$/);
+        setSelectedOrderId(match ? decodeURIComponent(match[1]) : null);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
   const [filterTab, setFilterTab] = useState<string>('all');
 
   // User Profile Role State
@@ -229,18 +272,12 @@ export default function App() {
   }, [orders]);
 
   const handleSelectOrder = (orderId: string) => {
-    // Otwarcie konkretnego ZL zapisujemy jako bieżący widok, aby odświeżenie
-    // strony wróciło do tego samego zlecenia.
-    sessionStorage.setItem('enco_active_module', 'orders');
-    sessionStorage.setItem('enco_selected_order_id', orderId);
-    setActiveModule('orders');
-    setSelectedOrderId(orderId);
+    navigate(`/zlecenia/${encodeURIComponent(orderId)}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleBackToDashboard = () => {
-    sessionStorage.removeItem('enco_selected_order_id');
-    setSelectedOrderId(null);
+    navigate('/zlecenia');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -442,17 +479,11 @@ export default function App() {
         activeTab={filterTab}
         onSelectTab={(tab) => {
           setFilterTab(tab);
-          sessionStorage.removeItem('enco_selected_order_id');
-          setSelectedOrderId(null);
+          navigate('/zlecenia');
         }}
         problemCount={problemOrdersCount}
         activeModule={activeModule}
-        onSelectModule={(mod) => {
-          sessionStorage.setItem('enco_active_module', mod);
-          sessionStorage.removeItem('enco_selected_order_id');
-          setActiveModule(mod);
-          setSelectedOrderId(null);
-        }}
+        onSelectModule={(mod) => navigate(mod === 'doors' ? '/drzwi' : '/zlecenia')}
         doorOrdersCount={doorOrders.length}
         doorOverdueCount={doorOverdueCount}
         currentProfile={currentProfile}
@@ -483,9 +514,17 @@ export default function App() {
           </button>
         </div>
         {activeModule === 'doors' ? (
+          selectedDoorOrderId ? (
+            (() => {
+              const doorOrder = doorOrders.find((item) => item.id === selectedDoorOrderId);
+              if (!doorOrder) return <div className="rounded-xl border border-slate-200 bg-white p-8 text-center"><h2 className="text-lg font-bold">Nie znaleziono zamówienia drzwi</h2><button type="button" onClick={() => navigate('/drzwi')} className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white">Wróć do modułu drzwi</button></div>;
+              return <DoorOrderDetailView order={doorOrder} onBack={() => navigate('/drzwi')} onEdit={() => { setEditingDoorOrder(doorOrder); setIsDoorOrderModalOpen(true); }} onDelete={() => { handleDeleteDoorOrder(doorOrder.id); navigate('/drzwi'); }} onQuickConfirm={() => handleQuickConfirmDelivery(doorOrder)} currentProfile={currentProfile} />;
+            })()
+          ) : (
           <DoorOrdersView
             doorOrders={doorOrders}
             orders={orders}
+            onOpenDoorOrder={(doorOrd) => navigate(`/drzwi/${encodeURIComponent(doorOrd.id)}`)}
             onAddDoorOrder={() => {
               setEditingDoorOrder(null);
               setIsDoorOrderModalOpen(true);
@@ -496,14 +535,10 @@ export default function App() {
             }}
             onDeleteDoorOrder={handleDeleteDoorOrder}
             onQuickConfirmDelivery={handleQuickConfirmDelivery}
-            onNavigateToOrder={(ordId) => {
-              sessionStorage.setItem('enco_active_module', 'orders');
-              sessionStorage.setItem('enco_selected_order_id', ordId);
-              setActiveModule('orders');
-              setSelectedOrderId(ordId);
-            }}
+            onNavigateToOrder={(ordId) => navigate(`/zlecenia/${encodeURIComponent(ordId)}`)}
             currentProfile={currentProfile}
           />
+          )
         ) : selectedOrder ? (
           <OrderDetailView
             order={selectedOrder}
@@ -517,10 +552,8 @@ export default function App() {
               setEditingItem(item);
             }}
             onNavigateToDoorModule={(numerDokumentu) => {
-              sessionStorage.setItem('enco_active_module', 'doors');
-              sessionStorage.removeItem('enco_selected_order_id');
-              setActiveModule('doors');
-              setSelectedOrderId(null);
+              const matchingDoor = doorOrders.find((item) => item.numerDokumentu === numerDokumentu);
+              navigate(matchingDoor ? `/drzwi/${encodeURIComponent(matchingDoor.id)}` : '/drzwi');
             }}
             onCreateDoorOrder={(defaultZl, defaultStation) => {
               setEditingDoorOrder(null);
@@ -540,12 +573,7 @@ export default function App() {
             filterTab={filterTab}
             onFilterTabChange={setFilterTab}
             doorOrders={doorOrders}
-            onOpenDoorModule={() => {
-              sessionStorage.setItem('enco_active_module', 'doors');
-              sessionStorage.removeItem('enco_selected_order_id');
-              setActiveModule('doors');
-              setSelectedOrderId(null);
-            }}
+            onOpenDoorModule={() => navigate('/drzwi')}
             currentProfile={currentProfile}
           />
         )}
