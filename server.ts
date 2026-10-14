@@ -270,22 +270,43 @@ async function startServer() {
 
   app.post('/api/orders', (req, res) => {
     try {
-      const { orders, originId } = req.body;
+      const { orders, originId, merge, deletedIds } = req.body;
       if (!Array.isArray(orders)) {
         return res.status(400).json({ success: false, error: 'Nieprawidłowy format listy zleceń' });
       }
 
-      // Automatically ensure folders exist for all updated/new orders
-      orders.forEach((ord: any) => {
-        if (ord.orderNumber) {
-          ensureOrderFolders(ord.orderNumber, ord.projectName);
+      let ordersToSave: any[];
+      if (merge === true) {
+        // Merge changed records into the latest server state. Never replace the
+        // entire list with a potentially stale snapshot from one browser.
+        let serverOrders: any[] = INITIAL_ORDERS;
+        if (fs.existsSync(ORDERS_FILE)) {
+          const raw = fs.readFileSync(ORDERS_FILE, 'utf-8');
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) serverOrders = parsed;
         }
+        const deleted = new Set(Array.isArray(deletedIds) ? deletedIds.map((id: any) => String(id)) : []);
+        ordersToSave = serverOrders.filter((ord: any) => !deleted.has(String(ord.id)));
+        orders.forEach((incoming: any) => {
+          const index = ordersToSave.findIndex((existing: any) => String(existing.id) === String(incoming.id));
+          if (index >= 0) ordersToSave[index] = incoming;
+          else ordersToSave.push(incoming);
+        });
+      } else {
+        // Backward compatibility for older deployed clients.
+        ordersToSave = orders;
+      }
+
+      // Ensure folders exist for changed/new orders.
+      orders.forEach((ord: any) => {
+        if (ord.orderNumber) ensureOrderFolders(ord.orderNumber, ord.projectName);
       });
 
-      fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders, null, 2), 'utf-8');
-      broadcastSSE('orders', orders, originId);
+      fs.writeFileSync(ORDERS_FILE, JSON.stringify(ordersToSave, null, 2), 'utf-8');
+      currentOrders = ordersToSave;
+      broadcastSSE('orders', ordersToSave, originId);
 
-      return res.json({ success: true, count: orders.length, timestamp: Date.now() });
+      return res.json({ success: true, count: ordersToSave.length, timestamp: Date.now() });
     } catch (err) {
       console.error('Error writing orders file:', err);
       return res.status(500).json({ success: false, error: 'Błąd zapisu zleceń na serwerze' });
@@ -309,15 +330,36 @@ async function startServer() {
 
   app.post('/api/door-orders', (req, res) => {
     try {
-      const { doorOrders, originId } = req.body;
+      const { doorOrders, originId, merge, deletedIds } = req.body;
       if (!Array.isArray(doorOrders)) {
         return res.status(400).json({ success: false, error: 'Nieprawidłowy format zamówień drzwi' });
       }
 
-      fs.writeFileSync(DOORS_FILE, JSON.stringify(doorOrders, null, 2), 'utf-8');
-      broadcastSSE('doorOrders', doorOrders, originId);
+      let doorOrdersToSave: any[];
+      if (merge === true) {
+        // Apply only this browser's changes to the latest server copy.
+        let serverDoorOrders: any[] = INITIAL_DOOR_ORDERS;
+        if (fs.existsSync(DOORS_FILE)) {
+          const raw = fs.readFileSync(DOORS_FILE, 'utf-8');
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) serverDoorOrders = parsed;
+        }
+        const deleted = new Set(Array.isArray(deletedIds) ? deletedIds.map((id: any) => String(id)) : []);
+        doorOrdersToSave = serverDoorOrders.filter((ord: any) => !deleted.has(String(ord.id)));
+        doorOrders.forEach((incoming: any) => {
+          const index = doorOrdersToSave.findIndex((existing: any) => String(existing.id) === String(incoming.id));
+          if (index >= 0) doorOrdersToSave[index] = incoming;
+          else doorOrdersToSave.push(incoming);
+        });
+      } else {
+        // Backward compatibility for older deployed clients.
+        doorOrdersToSave = doorOrders;
+      }
 
-      return res.json({ success: true, count: doorOrders.length, timestamp: Date.now() });
+      fs.writeFileSync(DOORS_FILE, JSON.stringify(doorOrdersToSave, null, 2), 'utf-8');
+      broadcastSSE('doorOrders', doorOrdersToSave, originId);
+
+      return res.json({ success: true, count: doorOrdersToSave.length, timestamp: Date.now() });
     } catch (err) {
       console.error('Error writing door orders file:', err);
       return res.status(500).json({ success: false, error: 'Błąd zapisu zamówień drzwi na serwerze' });
