@@ -400,17 +400,30 @@ export async function saveDoorOrdersToServer(doorOrders: DoorOrder[]): Promise<b
 /**
  * Reset demo data on server and locally
  */
-export async function resetServerAndLocalData(): Promise<{ orders: Order[]; doorOrders: DoorOrder[] }> {
-  saveOrders(INITIAL_ORDERS);
-  saveDoorOrders(INITIAL_DOOR_ORDERS);
-
+export async function resetServerAndLocalData(): Promise<{ orders: Order[]; doorOrders: DoorOrder[]; success: boolean }> {
   try {
-    await fetch('/api/reset-data', { method: 'POST' });
-  } catch (e) {
-    console.warn('Could not notify server of demo reset:', e);
-  }
+    const res = await fetch('/api/reset-data', { method: 'POST' });
+    if (!res.ok) {
+      console.warn('Server rejected demo-data reset:', res.status);
+      return { orders: [], doorOrders: [], success: false };
+    }
 
-  return { orders: INITIAL_ORDERS, doorOrders: INITIAL_DOOR_ORDERS };
+    const json = await res.json();
+    if (!json.success || !Array.isArray(json.orders) || !Array.isArray(json.doorOrders)) {
+      return { orders: [], doorOrders: [], success: false };
+    }
+
+    const orders = sanitizeOrders(json.orders);
+    const doorOrders = json.doorOrders as DoorOrder[];
+    saveOrders(orders);
+    saveDoorOrders(doorOrders);
+    setServerOrdersSnapshot(orders);
+    setServerDoorOrdersSnapshot(doorOrders);
+    return { orders, doorOrders, success: true };
+  } catch (err) {
+    console.warn('Could not reset demo data on the server:', err);
+    return { orders: [], doorOrders: [], success: false };
+  }
 }
 
 export function resetToDemoOrders(): Order[] {
