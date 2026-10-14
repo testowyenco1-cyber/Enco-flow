@@ -34,22 +34,16 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
   onSave,
   currentProfile,
 }) => {
-  if (!isOpen || !item) return null;
-
-  const profile = currentProfile || USER_PROFILES.admin;
-  const isReadOnly = !canEditItemType(profile, item.type);
-  const permHint = getItemPermissionHint(profile, item.type, item.name);
-
-  const [status, setStatus] = useState<ItemStatus>(item.status);
-  const [orderDate, setOrderDate] = useState(item.orderDate || '');
-  const [plannedDate, setPlannedDate] = useState(item.plannedDate || '');
-  const [completedDate, setCompletedDate] = useState(item.completedDate || '');
-  const [notes, setNotes] = useState(item.notes || '');
-  const [details, setDetails] = useState<Record<string, any>>(item.details || {});
+  const [status, setStatus] = useState<ItemStatus>(item?.status || 'NOT_ORDERED');
+  const [orderDate, setOrderDate] = useState(item?.orderDate || '');
+  const [plannedDate, setPlannedDate] = useState(item?.plannedDate || '');
+  const [completedDate, setCompletedDate] = useState(item?.completedDate || '');
+  const [notes, setNotes] = useState(item?.notes || '');
+  const [details, setDetails] = useState<Record<string, any>>(item?.details || {});
   const [snError, setSnError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (item) {
+    if (isOpen && item) {
       setStatus(item.status);
       setOrderDate(item.orderDate || '');
       setPlannedDate(item.plannedDate || '');
@@ -89,7 +83,14 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
       setDetails(initialDetails);
       setSnError(null);
     }
-  }, [item]);
+  }, [isOpen, item?.id]);
+
+  // Wszystkie hooki muszą wykonać się przed warunkowym zakończeniem renderowania.
+  if (!isOpen || !item) return null;
+
+  const profile = currentProfile || USER_PROFILES.admin;
+  const isReadOnly = !canEditItemType(profile, item.type);
+  const permHint = getItemPermissionHint(profile, item.type, item.name);
 
   const handleDetailChange = (key: string, val: any) => {
     setDetails((prev) => ({
