@@ -5,6 +5,7 @@ import {
   ObudowaSizeVariant,
   getObudowaVariantsForType,
   saveCustomObudowaVariant,
+  CUSTOM_OBUDOWA_VARIANTS_UPDATED_EVENT,
   formatDimensionM,
   checkReadinessOverdue,
   ItemStatus,
@@ -114,10 +115,14 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
     getObudowaVariantsForType(initialType)
   );
 
-  // Refresh available variants when type changes
+  // Refresh options when type changes or the user explicitly refreshes shared server data.
   useEffect(() => {
-    const list = getObudowaVariantsForType(typObudowy);
-    setAvailableVariants(list);
+    const refreshVariants = () => {
+      setAvailableVariants(getObudowaVariantsForType(typObudowy));
+    };
+    refreshVariants();
+    window.addEventListener(CUSTOM_OBUDOWA_VARIANTS_UPDATED_EVENT, refreshVariants);
+    return () => window.removeEventListener(CUSTOM_OBUDOWA_VARIANTS_UPDATED_EVENT, refreshVariants);
   }, [typObudowy]);
 
   // Sync initialData changes from parent
@@ -274,7 +279,7 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
   };
 
   // Handle saving new variant to config
-  const handleSaveNewVariant = (e: React.FormEvent) => {
+  const handleSaveNewVariant = async (e: React.FormEvent) => {
     e.preventDefault();
     setNewVarError(null);
 
@@ -310,7 +315,11 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
       isCustom: true,
     };
 
-    saveCustomObudowaVariant(newVar);
+    const savedToServer = await saveCustomObudowaVariant(newVar);
+    if (!savedToServer) {
+      setNewVarError('Nie udało się zapisać rozmiaru na serwerze. Sprawdź połączenie i spróbuj ponownie.');
+      return;
+    }
     const updatedList = getObudowaVariantsForType(typObudowy);
     setAvailableVariants(updatedList);
     setRozmiar(name);
