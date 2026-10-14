@@ -6,6 +6,8 @@ import {
   DoorOrder,
   checkDoorOrderOverdue,
   formatDatePL,
+  fetchCustomObudowaVariantsFromServer,
+  setCustomObudowaVariants,
 } from './types/enco';
 import {
   loadOrders,
@@ -181,9 +183,10 @@ export default function App() {
     const requestId = ++refreshRequestIdRef.current;
     const loadServerOrders = options?.orders !== false;
     const loadServerDoors = options?.doors !== false;
-    const [srvOrders, srvDoors] = await Promise.all([
+    const [srvOrders, srvDoors, srvCustomObudowaVariants] = await Promise.all([
       loadServerOrders ? fetchOrdersFromServer() : Promise.resolve(null),
       loadServerDoors ? fetchDoorOrdersFromServer() : Promise.resolve(null),
+      fetchCustomObudowaVariantsFromServer(),
     ]);
 
     // Ignore an older request if a later manual refresh has already started.
@@ -192,6 +195,7 @@ export default function App() {
     // Only the newest completed refresh may advance the server baseline.
     if (srvOrders) setServerOrdersSnapshot(srvOrders);
     if (srvDoors) setServerDoorOrdersSnapshot(srvDoors);
+    if (srvCustomObudowaVariants) setCustomObudowaVariants(srvCustomObudowaVariants);
 
     const applyOrders = Boolean(srvOrders) &&
       (options?.discardPending === true || !pendingOrdersRef.current);
@@ -217,7 +221,7 @@ export default function App() {
     }
 
     if (options?.showMessage) {
-      if ((loadServerOrders && !srvOrders) || (loadServerDoors && !srvDoors)) {
+      if ((loadServerOrders && !srvOrders) || (loadServerDoors && !srvDoors) || !srvCustomObudowaVariants) {
         showToast('Nie udało się pobrać wszystkich danych z serwera. Niezapisane zmiany pozostają lokalnie.', 'warning');
       } else {
         showToast('Dane odświeżone z serwera.', 'success');
