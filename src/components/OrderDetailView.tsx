@@ -32,6 +32,7 @@ interface OrderDetailViewProps {
   doorOrders?: DoorOrder[];
   onBack: () => void;
   onUpdateOrderStatus: (orderId: string, updatedOrder: Order) => void;
+  onSaveOrderChanges: (order: Order) => void;
   onOpenEditOrderModal: () => void;
   onOpenEditItemModal: (item: OrderItem) => void;
   onNavigateToDoorModule?: (numerDokumentu?: string) => void;
@@ -44,6 +45,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
   doorOrders = [],
   onBack,
   onUpdateOrderStatus,
+  onSaveOrderChanges,
   onOpenEditOrderModal,
   onOpenEditItemModal,
   onNavigateToDoorModule,
@@ -624,8 +626,8 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
         {/* List of full item cards */}
         <div className="space-y-4">
           {order.items.map((item) => (
+            <div key={item.id} id={`item-section-${item.type}`} className="space-y-2">
             <ItemDetailsCard
-              key={item.id}
               item={item}
               orderNumber={order.orderNumber}
               doorOrders={doorOrders}
@@ -650,6 +652,20 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 setIsOrderFilesModalOpen(true);
               }}
             />
+            {canEditItemType(profile, item.type) && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => onSaveOrderChanges(order)}
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 transition-colors cursor-pointer"
+                  title={`Zapisz zmiany dotyczące elementu ${item.name} na serwerze`}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Zapisz zmiany — {item.shortName}
+                </button>
+              </div>
+            )}
+            </div>
           ))}
         </div>
       </div>
