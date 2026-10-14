@@ -346,8 +346,17 @@ export default function App() {
       updatedAt: new Date().toISOString(),
     };
 
-    void handleSaveOrderChanges(updatedOrder);
-    showToast(`Zapisano parametry elementu: ${updatedItem.name}`, 'info');
+    // Zatwierdzenie formularza aktualizuje wyłącznie lokalny stan.
+    // Wysłanie zmian na serwer następuje dopiero po kliknięciu
+    // przycisku „Zapisz zmiany” przy odpowiednim elemencie.
+    const updatedOrders = orders.map((order) =>
+      order.id === updatedOrder.id ? updatedOrder : order
+    );
+    updateOrdersState(updatedOrders);
+    showToast(
+      `Zmiany elementu „${updatedItem.name}” zapisano lokalnie. Kliknij „Zapisz zmiany” przy elemencie, aby wysłać je na serwer.`,
+      'info'
+    );
   };
 
   // Door Order Handlers
