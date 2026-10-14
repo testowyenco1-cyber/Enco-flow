@@ -30,7 +30,7 @@ function writeSnapshot<T>(key: string, values: T[]): void {
   }
 }
 
- // Called by App.tsx only after verifying that the response belongs to the latest refresh.
+// Called by App.tsx only after verifying that the response belongs to the latest refresh.
 export function setServerOrdersSnapshot(orders: Order[]): void {
   writeSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, orders);
 }
@@ -214,7 +214,7 @@ export function sanitizeOrders(parsed: any[]): Order[] {
 }
 
 /**
- * Load initial orders immediately from local storage cache for 0ms initial render
+ * Load this tab's orders from sessionStorage for an immediate initial render
  */
 export function loadOrders(): Order[] {
   try {
@@ -235,7 +235,7 @@ export function loadOrders(): Order[] {
 }
 
 /**
- * Save orders to local storage cache
+ * Save orders to this tab's sessionStorage cache
  */
 export function saveOrders(orders: Order[]): void {
   try {
@@ -320,7 +320,7 @@ export async function saveOrdersToServer(orders: Order[]): Promise<boolean> {
 }
 
 /**
- * Load initial door orders immediately from local storage cache
+ * Load this tab's door orders from sessionStorage
  */
 export function loadDoorOrders(): DoorOrder[] {
   try {
@@ -346,7 +346,7 @@ export function loadDoorOrders(): DoorOrder[] {
 }
 
 /**
- * Save door orders to local storage cache
+ * Save door orders to this tab's sessionStorage cache
  */
 export function saveDoorOrders(doorOrders: DoorOrder[]): void {
   try {
@@ -427,17 +427,6 @@ export async function resetServerAndLocalData(): Promise<{ orders: Order[]; door
     console.warn('Could not reset demo data on the server:', err);
     return { orders: [], doorOrders: [], success: false };
   }
-}
-
-export function resetToDemoOrders(): Order[] {
-  saveOrders(INITIAL_ORDERS);
-  saveDoorOrders(INITIAL_DOOR_ORDERS);
-  return INITIAL_ORDERS;
-}
-
-export function resetToDemoDoorOrders(): DoorOrder[] {
-  saveDoorOrders(INITIAL_DOOR_ORDERS);
-  return INITIAL_DOOR_ORDERS;
 }
 
 export function createNewOrder(params: {
