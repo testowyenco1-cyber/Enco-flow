@@ -64,6 +64,7 @@ async function startServer() {
 
   const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
   const DOORS_FILE = path.join(DATA_DIR, 'door_orders.json');
+  const OBUdOWA_VARIANTS_FILE = path.join(DATA_DIR, 'obudowa_variants.json');
 
   // Seed initial data if files do not exist
   let currentOrders = INITIAL_ORDERS;
@@ -89,6 +90,16 @@ async function startServer() {
       console.log('Seeded initial door orders into data_store/door_orders.json');
     } catch (e) {
       console.error('Failed to seed door orders file:', e);
+    }
+  }
+
+  // Shared custom enclosure sizes are configuration data, not browser-local data.
+  if (!fs.existsSync(OBUdOWA_VARIANTS_FILE)) {
+    try {
+      fs.writeFileSync(OBUdOWA_VARIANTS_FILE, JSON.stringify([], null, 2), 'utf-8');
+      console.log('Initialized shared custom enclosure sizes in data_store/obudowa_variants.json');
+    } catch (e) {
+      console.error('Failed to initialize shared enclosure sizes file:', e);
     }
   }
 
@@ -320,6 +331,68 @@ async function startServer() {
     } catch (err) {
       console.error('Error writing door orders file:', err);
       return res.status(500).json({ success: false, error: 'Błąd zapisu zamówień drzwi na serwerze' });
+    }
+  });
+
+  // Shared custom enclosure-size catalogue. Changes reach other screens only on their next manual refresh.
+  app.get('/api/obudowa-variants', (_req, res) => {
+    try {
+      const raw = fs.readFileSync(OBUdOWA_VARIANTS_FILE, 'utf-8');
+      const variants = JSON.parse(raw);
+      if (!Array.isArray(variants)) {
+        return res.status(500).json({ success: false, error: 'Nieprawidłowy format katalogu rozmiarów obudów' });
+      }
+      return res.json({ success: true, variants, timestamp: Date.now() });
+    } catch (err) {
+      console.error('Error reading shared enclosure sizes:', err);
+      return res.status(500).json({ success: false, error: 'Błąd odczytu katalogu rozmiarów obudów' });
+    }
+  });
+
+  app.post('/api/obudowa-variants', (req, res) => {
+    try {
+      const incoming = req.body?.variant;
+      const type = incoming?.type;
+      const name = typeof incoming?.name === 'string' ? incoming.name.trim() : '';
+      const width = Number(incoming?.width);
+      const depth = Number(incoming?.depth);
+      const height = Number(incoming?.height);
+
+      if (
+        !incoming ||
+        (type !== 'BEK' && type !== 'NZ') ||
+        !name ||
+        !Number.isFinite(width) || width <= 0 ||
+        !Number.isFinite(depth) || depth <= 0 ||
+        !Number.isFinite(height) || height <= 0
+      ) {
+        return res.status(400).json({ success: false, error: 'Nieprawidłowe dane niestandardowego rozmiaru obudowy' });
+      }
+
+      const raw = fs.readFileSync(OBUdOWA_VARIANTS_FILE, 'utf-8');
+      const parsed = JSON.parse(raw);
+      const variants: any[] = Array.isArray(parsed) ? parsed : [];
+      const normalized = {
+        ...incoming,
+        id: String(incoming.id || `custom_${type.toLowerCase()}_${Date.now()}`),
+        type,
+        name,
+        width,
+        depth,
+        height,
+        isCustom: true,
+      };
+      const index = variants.findIndex((variant: any) =>
+        variant.type === type && String(variant.name).toLocaleLowerCase() === name.toLocaleLowerCase()
+      );
+      if (index >= 0) variants[index] = normalized;
+      else variants.push(normalized);
+
+      writeJsonAtomically(OBUdOWA_VARIANTS_FILE, variants);
+      return res.json({ success: true, variants, timestamp: Date.now() });
+    } catch (err) {
+      console.error('Error saving shared enclosure size:', err);
+      return res.status(500).json({ success: false, error: 'Błąd zapisu katalogu rozmiarów obudów' });
     }
   });
 
