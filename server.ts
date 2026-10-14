@@ -275,27 +275,22 @@ async function startServer() {
         return res.status(400).json({ success: false, error: 'Nieprawidłowy format listy zleceń' });
       }
 
-      let ordersToSave: any[];
-      if (merge === true) {
-        // Merge changed records into the latest server state. Never replace the
-        // entire list with a potentially stale snapshot from one browser.
-        let serverOrders: any[] = INITIAL_ORDERS;
-        if (fs.existsSync(ORDERS_FILE)) {
-          const raw = fs.readFileSync(ORDERS_FILE, 'utf-8');
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) serverOrders = parsed;
-        }
-        const deleted = new Set(Array.isArray(deletedIds) ? deletedIds.map((id: any) => String(id)) : []);
-        ordersToSave = serverOrders.filter((ord: any) => !deleted.has(String(ord.id)));
-        orders.forEach((incoming: any) => {
-          const index = ordersToSave.findIndex((existing: any) => String(existing.id) === String(incoming.id));
-          if (index >= 0) ordersToSave[index] = incoming;
-          else ordersToSave.push(incoming);
-        });
-      } else {
-        // Backward compatibility for older deployed clients.
-        ordersToSave = orders;
+      // Always merge into the latest server state, including requests from an
+      // older frontend. Legacy requests can upsert records, but cannot erase
+      // records absent from their stale local snapshot.
+      let serverOrders: any[] = INITIAL_ORDERS;
+      if (fs.existsSync(ORDERS_FILE)) {
+        const raw = fs.readFileSync(ORDERS_FILE, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) serverOrders = parsed;
       }
+      const deleted = new Set(merge === true && Array.isArray(deletedIds) ? deletedIds.map((id: any) => String(id)) : []);
+      const ordersToSave = serverOrders.filter((ord: any) => !deleted.has(String(ord.id)));
+      orders.forEach((incoming: any) => {
+        const index = ordersToSave.findIndex((existing: any) => String(existing.id) === String(incoming.id));
+        if (index >= 0) ordersToSave[index] = incoming;
+        else ordersToSave.push(incoming);
+      });
 
       // Ensure folders exist for changed/new orders.
       orders.forEach((ord: any) => {
@@ -335,26 +330,21 @@ async function startServer() {
         return res.status(400).json({ success: false, error: 'Nieprawidłowy format zamówień drzwi' });
       }
 
-      let doorOrdersToSave: any[];
-      if (merge === true) {
-        // Apply only this browser's changes to the latest server copy.
-        let serverDoorOrders: any[] = INITIAL_DOOR_ORDERS;
-        if (fs.existsSync(DOORS_FILE)) {
-          const raw = fs.readFileSync(DOORS_FILE, 'utf-8');
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) serverDoorOrders = parsed;
-        }
-        const deleted = new Set(Array.isArray(deletedIds) ? deletedIds.map((id: any) => String(id)) : []);
-        doorOrdersToSave = serverDoorOrders.filter((ord: any) => !deleted.has(String(ord.id)));
-        doorOrders.forEach((incoming: any) => {
-          const index = doorOrdersToSave.findIndex((existing: any) => String(existing.id) === String(incoming.id));
-          if (index >= 0) doorOrdersToSave[index] = incoming;
-          else doorOrdersToSave.push(incoming);
-        });
-      } else {
-        // Backward compatibility for older deployed clients.
-        doorOrdersToSave = doorOrders;
+      // Merge into the latest server state so stale clients cannot erase other
+      // users' records merely by posting an older full list.
+      let serverDoorOrders: any[] = INITIAL_DOOR_ORDERS;
+      if (fs.existsSync(DOORS_FILE)) {
+        const raw = fs.readFileSync(DOORS_FILE, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) serverDoorOrders = parsed;
       }
+      const deleted = new Set(merge === true && Array.isArray(deletedIds) ? deletedIds.map((id: any) => String(id)) : []);
+      const doorOrdersToSave = serverDoorOrders.filter((ord: any) => !deleted.has(String(ord.id)));
+      doorOrders.forEach((incoming: any) => {
+        const index = doorOrdersToSave.findIndex((existing: any) => String(existing.id) === String(incoming.id));
+        if (index >= 0) doorOrdersToSave[index] = incoming;
+        else doorOrdersToSave.push(incoming);
+      });
 
       fs.writeFileSync(DOORS_FILE, JSON.stringify(doorOrdersToSave, null, 2), 'utf-8');
       broadcastSSE('doorOrders', doorOrdersToSave, originId);
