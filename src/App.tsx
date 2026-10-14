@@ -208,14 +208,14 @@ export default function App() {
       const queuedRemoteOrders = queuedRemoteOrdersRef.current;
       queuedRemoteOrdersRef.current = null;
       if (queuedRemoteOrders) {
-        const localOrderIds = new Set(latestOrders.map((order) => order.id));
+        const remoteOrderIds = new Set(queuedRemoteOrders.map((order) => order.id));
         const mergedOrders = queuedRemoteOrders.map((remoteOrder) =>
           remoteOrder.id === orderToSave.id
             ? (latestOrders.find((localOrder) => localOrder.id === orderToSave.id) || remoteOrder)
             : remoteOrder
         );
         latestOrders.forEach((localOrder) => {
-          if (!localOrderIds.has(localOrder.id)) mergedOrders.push(localOrder);
+          if (!remoteOrderIds.has(localOrder.id)) mergedOrders.push(localOrder);
         });
         saveOrders(mergedOrders);
         setOrders(mergedOrders);
@@ -243,6 +243,7 @@ export default function App() {
     if (ordersSaved && doorsSaved) {
       pendingOrdersRef.current = false;
       pendingDoorOrdersRef.current = false;
+      queuedRemoteOrdersRef.current = null;
       setHasPendingChanges(false);
       showToast('Zmiany zapisane na serwerze i zsynchronizowane.', 'success');
     } else {
