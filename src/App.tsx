@@ -19,6 +19,8 @@ import {
   saveSingleOrderToServer,
   hasPendingOrderChanges,
   hasPendingDoorOrderChanges,
+  setServerOrdersSnapshot,
+  setServerDoorOrdersSnapshot,
   fetchDoorOrdersFromServer,
   saveDoorOrdersToServer,
   resetServerAndLocalData,
@@ -186,6 +188,10 @@ export default function App() {
 
     // Ignore an older request if a later manual refresh has already started.
     if (requestId !== refreshRequestIdRef.current) return;
+
+    // Only the newest completed refresh may advance the server baseline.
+    if (srvOrders) setServerOrdersSnapshot(srvOrders);
+    if (srvDoors) setServerDoorOrdersSnapshot(srvDoors);
 
     const applyOrders = Boolean(srvOrders) &&
       (options?.discardPending === true || !pendingOrdersRef.current);
