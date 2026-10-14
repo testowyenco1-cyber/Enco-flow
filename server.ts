@@ -214,17 +214,6 @@ async function startServer() {
   // Static route to serve uploaded files directly
   app.use('/uploads', express.static(UPLOADS_DIR));
 
-  // SSE (Server-Sent Events) clients for real-time live synchronization
-  let sseClients: { id: number; res: express.Response }[] = [];
-  let nextClientId = 1;
-
-  // Automatyczne powiadomienia SSE są celowo wyłączone.
-  // Pozostali użytkownicy nie otrzymują zmian ani sygnałów resetowania na żywo.
-  function broadcastSSE(_type: 'orders' | 'doorOrders' | 'reset', _data: any, _originId?: string) {
-    // Celowo brak broadcastu danych: użytkownicy pracują niezależnie.
-    // Zmiany innych osób stają się widoczne po ręcznym odświeżeniu lub własnym zapisie.
-  }
-
   // Zapis atomowy: awaria procesu podczas zapisu nie zostawi uciętego pliku JSON.
   function writeJsonAtomically(filePath: string, data: unknown) {
     const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
@@ -232,36 +221,8 @@ async function startServer() {
     fs.renameSync(tempPath, filePath);
   }
 
-  // 1. SSE Stream for Real-time Synchronization across all connected browsers
-  app.get('/api/realtime/stream', (req, res) => {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache, no-transform');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
-    res.flushHeaders();
-
-    const clientId = nextClientId++;
-    sseClients.push({ id: clientId, res });
-
-    // Send initial handshake ping
-    res.write(`data: ${JSON.stringify({ type: 'connected', clientId, timestamp: Date.now() })}\n\n`);
-
-    // Keepalive heartbeat every 20 seconds
-    const heartbeat = setInterval(() => {
-      try {
-        res.write(': keepalive\n\n');
-      } catch (e) {
-        clearInterval(heartbeat);
-      }
-    }, 20000);
-
-    req.on('close', () => {
-      clearInterval(heartbeat);
-      sseClients = sseClients.filter((c) => c.id !== clientId);
-    });
-  });
-
-  // 2. Orders API
+  // Shared JSON storage API. Clients read on startup or explicit manual refresh only.
+  // 1. Orders API
   app.get('/api/orders', (req, res) => {
     try {
       if (fs.existsSync(ORDERS_FILE)) {
@@ -278,7 +239,7 @@ async function startServer() {
 
   app.post('/api/orders', (req, res) => {
     try {
-      const { orders, originId, merge, deletedIds } = req.body;
+      const { orders, merge, deletedIds } = req.body;
       if (!Array.isArray(orders)) {
         return res.status(400).json({ success: false, error: 'Nieprawidłowy format listy zleceń' });
       }
@@ -307,7 +268,6 @@ async function startServer() {
 
       writeJsonAtomically(ORDERS_FILE, ordersToSave);
       currentOrders = ordersToSave;
-      broadcastSSE('orders', ordersToSave, originId);
 
       return res.json({ success: true, count: ordersToSave.length, orders: ordersToSave, timestamp: Date.now() });
     } catch (err) {
@@ -333,7 +293,7 @@ async function startServer() {
 
   app.post('/api/door-orders', (req, res) => {
     try {
-      const { doorOrders, originId, merge, deletedIds } = req.body;
+      const { doorOrders, merge, deletedIds } = req.body;
       if (!Array.isArray(doorOrders)) {
         return res.status(400).json({ success: false, error: 'Nieprawidłowy format zamówień drzwi' });
       }
@@ -355,7 +315,6 @@ async function startServer() {
       });
 
       writeJsonAtomically(DOORS_FILE, doorOrdersToSave);
-      broadcastSSE('doorOrders', doorOrdersToSave, originId);
 
       return res.json({ success: true, count: doorOrdersToSave.length, doorOrders: doorOrdersToSave, timestamp: Date.now() });
     } catch (err) {
@@ -602,15 +561,12 @@ async function startServer() {
   // 5. Reset to Demo Data
   app.post('/api/reset-data', (req, res) => {
     try {
-      fs.writeFileSync(ORDERS_FILE, JSON.stringify(INITIAL_ORDERS, null, 2), 'utf-8');
-      fs.writeFileSync(DOORS_FILE, JSON.stringify(INITIAL_DOOR_ORDERS, null, 2), 'utf-8');
+      writeJsonAtomically(ORDERS_FILE, INITIAL_ORDERS);
+      writeJsonAtomically(DOORS_FILE, INITIAL_DOOR_ORDERS);
 
       currentOrders = INITIAL_ORDERS;
       initAllFoldersAndSeedFiles();
 
-      broadcastSSE('orders', INITIAL_ORDERS);
-      broadcastSSE('doorOrders', INITIAL_DOOR_ORDERS);
-      broadcastSSE('reset', {});
 
       return res.json({ success: true, orders: INITIAL_ORDERS, doorOrders: INITIAL_DOOR_ORDERS });
     } catch (err) {
@@ -623,7 +579,6 @@ async function startServer() {
   app.get('/api/health', (req, res) => {
     res.json({
       status: 'ok',
-      activeSseConnections: sseClients.length,
       storageUploadsDir: 'data_store/uploads',
       timestamp: Date.now(),
     });
