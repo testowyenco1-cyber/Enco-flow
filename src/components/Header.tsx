@@ -17,7 +17,6 @@ interface HeaderProps {
   currentProfile: UserRoleProfile;
   onSelectProfile: (roleId: UserRoleId) => void;
   onOpenMatrixModal: () => void;
-  isRealtimeConnected?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -34,7 +33,6 @@ export const Header: React.FC<HeaderProps> = ({
   currentProfile,
   onSelectProfile,
   onOpenMatrixModal,
-  isRealtimeConnected = false,
 }) => {
   return (
     <header className="sticky top-0 z-30 bg-slate-900 border-b border-slate-800 text-white">
@@ -54,19 +52,11 @@ export const Header: React.FC<HeaderProps> = ({
                   ENCO FLOW
                 </span>
                 <span
-                  title={
-                    isRealtimeConnected
-                      ? 'Połączenie w czasie rzeczywistym aktywne. Zmiany zapisują się na serwerze i są natychmiast widoczne dla wszystkich użytkowników (oraz po odświeżeniu strony).'
-                      : 'Trwa łączenie z serwerem synchronizacji...'
-                  }
+                  title="Synchronizacja na żywo jest wyłączona. Zmiany zapisane przez innych użytkowników pojawią się po odświeżeniu strony."
                   className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold bg-slate-800 text-slate-300 border border-slate-700/80 cursor-help"
                 >
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      isRealtimeConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
-                    }`}
-                  />
-                  <span>{isRealtimeConnected ? 'LIVE' : 'SYNC'}</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                  <span>ODŚWIEŻ</span>
                 </span>
               </div>
               <span className="text-[10px] text-slate-400 font-mono tracking-wider mt-0.5">
