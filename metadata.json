@@ -1,0 +1,6 @@
+{
+  "name": "ENCO FLOW",
+  "description": "System kontroli kompletności i monitorowania stanu realizacji zleceń stacji transformatorowych dla ENCO.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
