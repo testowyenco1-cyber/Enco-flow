@@ -6,6 +6,45 @@ const STORAGE_KEY = 'enco_flow_orders_v8';
 const PREV_STORAGE_KEY = 'enco_flow_orders_v7';
 const DOOR_STORAGE_KEY = 'enco_flow_door_orders_v2';
 const PREV_DOOR_STORAGE_KEY = 'enco_flow_door_orders_v1';
+const SERVER_ORDERS_SNAPSHOT_KEY = 'enco_flow_server_snapshot_orders_v1';
+const SERVER_DOOR_SNAPSHOT_KEY = 'enco_flow_server_snapshot_doors_v1';
+
+// Keep the last server version locally. It is a baseline for sending only this
+// browser's changed records, instead of replacing the shared server list.
+function readSnapshot<T>(key: string): T[] | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed as T[] : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSnapshot<T>(key: string, values: T[]): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(values));
+  } catch (err) {
+    console.error('Failed to save server snapshot:', err);
+  }
+}
+
+function getPendingChanges<T>(current: T[], snapshot: T[] | null): { changed: T[]; deletedIds: string[] } {
+  // If the initial server read failed, upsert records but never infer deletions
+  // from an incomplete local cache.
+  if (!snapshot) return { changed: current, deletedIds: [] };
+  const previousById = new Map(snapshot.map((entry: any) => [String(entry.id), entry]));
+  const currentIds = new Set(current.map((entry: any) => String(entry.id)));
+  const changed = current.filter((entry: any) => {
+    const previous = previousById.get(String(entry.id));
+    return !previous || JSON.stringify(previous) !== JSON.stringify(entry);
+  });
+  const deletedIds = snapshot
+    .filter((entry: any) => !currentIds.has(String(entry.id)))
+    .map((entry: any) => String((entry as any).id));
+  return { changed, deletedIds };
+}
 
 // Unique client identifier for current browser tab to avoid echo loops
 export const CLIENT_ID =
@@ -190,6 +229,7 @@ export async function fetchOrdersFromServer(): Promise<Order[] | null> {
     if (json.success && Array.isArray(json.orders)) {
       const sanitized = sanitizeOrders(json.orders);
       saveOrders(sanitized);
+      writeSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, sanitized);
       return sanitized;
     }
     return null;
@@ -200,17 +240,21 @@ export async function fetchOrdersFromServer(): Promise<Order[] | null> {
 }
 
 /**
- * Save orders to server API and broadcast to all connected users
+ * Save only this browser's changed records; the server merges them without
+ * replacing records created or updated by other users.
  */
 export async function saveOrdersToServer(orders: Order[]): Promise<boolean> {
-  saveOrders(orders); // Always update local storage first
+  saveOrders(orders);
+  const { changed, deletedIds } = getPendingChanges(orders, readSnapshot<Order>(SERVER_ORDERS_SNAPSHOT_KEY));
   try {
     const res = await fetch('/api/orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orders, originId: CLIENT_ID }),
+      body: JSON.stringify({ orders: changed, deletedIds, merge: true, originId: CLIENT_ID }),
     });
-    return res.ok;
+    if (!res.ok) return false;
+    writeSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, orders);
+    return true;
   } catch (err) {
     console.warn('Could not save orders to server:', err);
     return false;
@@ -263,6 +307,7 @@ export async function fetchDoorOrdersFromServer(): Promise<DoorOrder[] | null> {
     const json = await res.json();
     if (json.success && Array.isArray(json.doorOrders)) {
       saveDoorOrders(json.doorOrders);
+      writeSnapshot(SERVER_DOOR_SNAPSHOT_KEY, json.doorOrders);
       return json.doorOrders;
     }
     return null;
@@ -273,17 +318,20 @@ export async function fetchDoorOrdersFromServer(): Promise<DoorOrder[] | null> {
 }
 
 /**
- * Save door orders to server API and broadcast to all connected users
+ * Save only this browser's changed door records; preserve other users' records.
  */
 export async function saveDoorOrdersToServer(doorOrders: DoorOrder[]): Promise<boolean> {
   saveDoorOrders(doorOrders);
+  const { changed, deletedIds } = getPendingChanges(doorOrders, readSnapshot<DoorOrder>(SERVER_DOOR_SNAPSHOT_KEY));
   try {
     const res = await fetch('/api/door-orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ doorOrders, originId: CLIENT_ID }),
+      body: JSON.stringify({ doorOrders: changed, deletedIds, merge: true, originId: CLIENT_ID }),
     });
-    return res.ok;
+    if (!res.ok) return false;
+    writeSnapshot(SERVER_DOOR_SNAPSHOT_KEY, doorOrders);
+    return true;
   } catch (err) {
     console.warn('Could not save door orders to server:', err);
     return false;
