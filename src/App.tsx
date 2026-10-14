@@ -113,7 +113,8 @@ export default function App() {
 
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const [hasPendingChanges, setHasPendingChanges] = useState(false);
-  const hasPendingChangesRef = useRef(false);
+  const pendingOrdersRef = useRef(false);
+  const pendingDoorOrdersRef = useRef(false);
 
   // Background fetch & real-time SSE listener
   useEffect(() => {
@@ -133,26 +134,32 @@ export default function App() {
     // 2. Setup real-time SSE stream across all users and browsers
     const unsubscribe = setupRealtimeSync({
       onOrdersUpdated: (updatedOrders, isRemote) => {
-        if (hasPendingChangesRef.current && isRemote) {
-          showToast('Otrzymano zmianę z innej sesji. Zapisz lub rozstrzygnij lokalne zmiany przed synchronizacją.', 'warning');
+        if (pendingOrdersRef.current && isRemote) {
+          showToast('Otrzymano zmianę z innej sesji. Najpierw zapisz lub rozstrzygnij lokalne zmiany zleceń.', 'warning');
           return;
         }
+        saveOrders(updatedOrders);
         setOrders(updatedOrders);
         if (isRemote) {
           showToast('Dane zleceń zaktualizowane w czasie rzeczywistym z serwera', 'info');
         }
       },
       onDoorOrdersUpdated: (updatedDoors, isRemote) => {
-        if (hasPendingChangesRef.current && isRemote) {
-          showToast('Otrzymano zmianę zamówień drzwi z innej sesji. Zapisz lub rozstrzygnij lokalne zmiany przed synchronizacją.', 'warning');
+        if (pendingDoorOrdersRef.current && isRemote) {
+          showToast('Otrzymano zmianę zamówień drzwi z innej sesji. Najpierw zapisz lub rozstrzygnij lokalne zmiany drzwi.', 'warning');
           return;
         }
+        saveDoorOrders(updatedDoors);
         setDoorOrders(updatedDoors);
         if (isRemote) {
           showToast('Dane zamówień drzwi zaktualizowane w czasie rzeczywistym z serwera', 'info');
         }
       },
       onReset: () => {
+        if (pendingOrdersRef.current || pendingDoorOrdersRef.current) {
+          showToast('Serwer zgłosił reset danych, ale masz niezapisane zmiany. Zapisz je lub odśwież aplikację po rozstrzygnięciu konfliktu.', 'warning');
+          return;
+        }
         setOrders(loadOrders());
         setDoorOrders(loadDoorOrders());
         setSelectedOrderId(null);
@@ -167,31 +174,31 @@ export default function App() {
   }, []);
 
   // Keep edits local until the user explicitly saves them.
-  const markChangesPending = () => {
-    hasPendingChangesRef.current = true;
-    setHasPendingChanges(true);
-  };
+  const markChangesPending = () => setHasPendingChanges(true);
 
   const updateOrdersState = (newOrders: Order[]) => {
     setOrders(newOrders);
     saveOrders(newOrders);
+    pendingOrdersRef.current = true;
     markChangesPending();
   };
 
   const updateDoorOrdersState = (newDoorOrders: DoorOrder[]) => {
     setDoorOrders(newDoorOrders);
     saveDoorOrders(newDoorOrders);
+    pendingDoorOrdersRef.current = true;
     markChangesPending();
   };
 
   const handleSaveAllChanges = async () => {
     const [ordersSaved, doorsSaved] = await Promise.all([
-      saveOrdersToServer(orders),
-      saveDoorOrdersToServer(doorOrders),
+      pendingOrdersRef.current ? saveOrdersToServer(orders) : Promise.resolve(true),
+      pendingDoorOrdersRef.current ? saveDoorOrdersToServer(doorOrders) : Promise.resolve(true),
     ]);
 
     if (ordersSaved && doorsSaved) {
-      hasPendingChangesRef.current = false;
+      pendingOrdersRef.current = false;
+      pendingDoorOrdersRef.current = false;
       setHasPendingChanges(false);
       showToast('Zmiany zapisane na serwerze i zsynchronizowane.', 'success');
     } else {
