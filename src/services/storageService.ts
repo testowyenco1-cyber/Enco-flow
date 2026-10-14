@@ -348,10 +348,8 @@ export function setupRealtimeSync(options: {
 
           if (payload.type === 'orders' && Array.isArray(payload.data)) {
             const sanitized = sanitizeOrders(payload.data);
-            saveOrders(sanitized);
             options.onOrdersUpdated(sanitized, isRemote);
           } else if (payload.type === 'doorOrders' && Array.isArray(payload.data)) {
-            saveDoorOrders(payload.data);
             options.onDoorOrdersUpdated(payload.data, isRemote);
           } else if (payload.type === 'reset') {
             options.onReset();
