@@ -160,7 +160,7 @@ export default function App() {
         }
       },
       onReset: () => {
-        if (pendingOrdersRef.current || pendingDoorOrdersRef.current) {
+        if (pendingOrdersRef.current || pendingDoorOrdersRef.current || editingItemRef.current) {
           showToast('Serwer zgłosił reset danych, ale masz niezapisane zmiany. Zapisz je lub odśwież aplikację po rozstrzygnięciu konfliktu.', 'warning');
           return;
         }
