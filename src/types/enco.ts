@@ -221,26 +221,53 @@ export const DEFAULT_OBUDOWA_VARIANTS: ObudowaSizeVariant[] = [
   },
 ];
 
-export const CUSTOM_OBUDOWA_STORAGE_KEY = 'enco_flow_obudowa_variants_v1';
+export const CUSTOM_OBUDOWA_VARIANTS_UPDATED_EVENT = 'enco:custom-obudowa-variants-updated';
 
-export function getCustomObudowaVariants(): ObudowaSizeVariant[] {
-  try {
-    const raw = localStorage.getItem(CUSTOM_OBUDOWA_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
+// This in-memory cache is refreshed only at app startup or by the explicit ODŚWIEŻ action.
+let customObudowaVariantsCache: ObudowaSizeVariant[] = [];
+
+export function setCustomObudowaVariants(variants: ObudowaSizeVariant[]): void {
+  customObudowaVariantsCache = Array.isArray(variants)
+    ? variants.map((variant) => ({ ...variant, isCustom: true }))
+    : [];
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(CUSTOM_OBUDOWA_VARIANTS_UPDATED_EVENT));
   }
 }
 
-export function saveCustomObudowaVariant(variant: ObudowaSizeVariant): void {
+export function getCustomObudowaVariants(): ObudowaSizeVariant[] {
+  return [...customObudowaVariantsCache];
+}
+
+export async function fetchCustomObudowaVariantsFromServer(): Promise<ObudowaSizeVariant[] | null> {
   try {
-    const existing = getCustomObudowaVariants().filter((v) => v.name !== variant.name);
-    const updated = [...existing, { ...variant, isCustom: true }];
-    localStorage.setItem(CUSTOM_OBUDOWA_STORAGE_KEY, JSON.stringify(updated));
+    const res = await fetch('/api/obudowa-variants');
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.success && Array.isArray(json.variants) ? json.variants : null;
   } catch (err) {
-    console.error('Failed to save custom variant:', err);
+    console.warn('Could not fetch custom enclosure sizes from server:', err);
+    return null;
+  }
+}
+
+export async function saveCustomObudowaVariant(variant: ObudowaSizeVariant): Promise<boolean> {
+  try {
+    const res = await fetch('/api/obudowa-variants', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ variant }),
+    });
+    if (!res.ok) return false;
+
+    const json = await res.json();
+    if (!json.success || !Array.isArray(json.variants)) return false;
+    setCustomObudowaVariants(json.variants);
+    return true;
+  } catch (err) {
+    console.error('Failed to save custom enclosure size to the server:', err);
+    return false;
   }
 }
 
