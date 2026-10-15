@@ -77,6 +77,7 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
   const [activeDoorView, setActiveDoorView] = useState<'orders' | 'catalog'>('orders');
   const [draftsById, setDraftsById] = useState<Record<string, DoorOrder>>({});
   const [dirtyDoorOrderIds, setDirtyDoorOrderIds] = useState<string[]>([]);
+  const [zlSearchQuery, setZlSearchQuery] = useState('');
   const [showExtraTools, setShowExtraTools] = useState(false);
 
   // Obliczenia statystyk KPI
@@ -503,6 +504,13 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                   const overdueInfo = checkDoorOrderOverdue(doorOrd.terminZamowienia, doorOrd.terminDostawy);
                   const isDelivered = Boolean(doorOrd.terminDostawy && doorOrd.terminDostawy.trim());
                   const row = draftsById[doorOrd.id] || doorOrd;
+                  const zlSearch = zlSearchQuery.trim().toLowerCase();
+                  const filteredZlOrders = orders.filter((availableOrder) =>
+                    !zlSearch ||
+                    availableOrder.orderNumber.toLowerCase().includes(zlSearch) ||
+                    (availableOrder.client || '').toLowerCase().includes(zlSearch) ||
+                    (availableOrder.projectName || '').toLowerCase().includes(zlSearch)
+                  );
                   const cellInput = "w-full min-w-[90px] rounded border border-blue-300 bg-white px-1.5 py-1 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-blue-200";
                   const patch = (key: keyof DoorOrder, value: any) => patchDoorOrder(doorOrd, key, value);
                   return (
@@ -527,9 +535,19 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                               <summary className="cursor-pointer list-none rounded border border-blue-300 bg-white px-2 py-1.5 text-xs font-semibold text-slate-800 hover:bg-blue-50">
                                 {row.numeryZl.length ? `Wybrano: ${row.numeryZl.length} ZL ▾` : 'Wybierz zlecenia ZL ▾'}
                               </summary>
-                              <div className="absolute left-0 top-full z-30 mt-1 max-h-64 w-80 max-w-[80vw] overflow-y-auto rounded-lg border border-slate-300 bg-white p-2 shadow-xl">
+                              <div className="absolute left-0 top-full z-30 mt-1 w-80 max-w-[80vw] rounded-lg border border-slate-300 bg-white p-2 shadow-xl">
                                 <div className="mb-1 px-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">Zaznacz powiązane zlecenia</div>
-                                {orders.length ? orders.map((availableOrder) => {
+                                <input
+                                  type="text"
+                                  value={zlSearchQuery}
+                                  onChange={(e) => setZlSearchQuery(e.target.value)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  placeholder="Wpisz numer ZL, klienta lub projekt..."
+                                  aria-label="Szukaj zlecenia ZL"
+                                  className="mb-2 w-full rounded-md border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                />
+                                <div className="max-h-52 overflow-y-auto">
+                                {filteredZlOrders.length ? filteredZlOrders.map((availableOrder) => {
                                   const checked = row.numeryZl.some((zl) => isSameOrderNumber(zl, availableOrder.orderNumber));
                                   return (
                                     <label key={availableOrder.id} className="flex cursor-pointer items-start gap-2 rounded px-2 py-1.5 hover:bg-blue-50">
@@ -553,7 +571,8 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                                       </span>
                                     </label>
                                   );
-                                }) : <p className="px-2 py-2 text-xs text-slate-500">Brak zleceń w aplikacji.</p>}
+                                }) : <p className="px-2 py-2 text-xs text-slate-500">{orders.length ? 'Brak wyników wyszukiwania.' : 'Brak zleceń w aplikacji.'}</p>}
+                                </div>
                                 {row.numeryZl.some((zl) => !orders.some((o) => isSameOrderNumber(o.orderNumber, zl))) && (
                                   <p className="mt-1 border-t border-slate-200 px-2 pt-2 text-[10px] text-amber-700">Zachowano również wcześniej wpisane numery ZL, których nie ma na liście zleceń.</p>
                                 )}
