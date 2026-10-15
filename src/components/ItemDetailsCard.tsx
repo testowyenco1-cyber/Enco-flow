@@ -388,7 +388,6 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
                     : displayValue(d.wymiary)
                 }
               />
-              <Field label="Planowana data gotowości" value={formatDate(d.dataGotowosci || item.plannedDate)} />
             </div>
           </Section>
 
