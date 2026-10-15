@@ -492,7 +492,7 @@ export default function App() {
         }}
         problemCount={problemOrdersCount}
         activeModule={activeModule}
-        onSelectModule={(mod) => navigate(mod === 'doors' ? '/drzwi' : '/zlecenia')}
+        onSelectModule={(mod) => navigate(mod === 'doors' ? '/drzwi' : mod === 'sn' ? '/rozdzielnice-sn' : '/zlecenia')}
         doorOrdersCount={doorOrders.length}
         doorOverdueCount={doorOverdueCount}
         currentProfile={currentProfile}
