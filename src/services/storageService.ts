@@ -1,5 +1,6 @@
 import { Order, OrderItem, calculateOrderStatus, Attachment, DoorOrder } from '../types/enco';
 import { INITIAL_ORDERS, createDefaultItemsForOrder } from '../data/mockData';
+import { normalizeOrderNumber } from '../utils/orderNumberUtils';
 import { INITIAL_DOOR_ORDERS } from '../data/mockDoorOrders';
 
 const STORAGE_KEY = 'enco_flow_orders_v8';
@@ -204,8 +205,13 @@ export function sanitizeOrders(parsed: any[]): Order[] {
       return baseItem;
     });
 
+    const createdYear = ord.createdAt ? new Date(ord.createdAt).getFullYear() : new Date().getFullYear();
+    const existingYear = String(ord.orderNumber || '').match(/\/(\d{4})$/)?.[1];
+    const migratedOrderNumber = normalizeOrderNumber(ord.orderNumber || '', Number(existingYear || createdYear));
+
     return {
       ...ord,
+      orderNumber: migratedOrderNumber,
       items: sanitizedItems,
       status: calculateOrderStatus(sanitizedItems),
       attachments: Array.isArray(ord.attachments) ? ord.attachments : [],
@@ -223,8 +229,9 @@ export function loadOrders(): Order[] {
       raw = sessionStorage.getItem(PREV_STORAGE_KEY);
     }
     if (!raw) {
-      saveOrders(INITIAL_ORDERS);
-      return INITIAL_ORDERS;
+      const migratedInitialOrders = sanitizeOrders(INITIAL_ORDERS);
+      saveOrders(migratedInitialOrders);
+      return migratedInitialOrders;
     }
     const parsed: Order[] = JSON.parse(raw);
     return sanitizeOrders(parsed);
