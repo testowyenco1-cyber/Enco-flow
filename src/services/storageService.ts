@@ -1,4 +1,4 @@
-import { Order, OrderItem, calculateOrderStatus, Attachment, DoorOrder } from '../types/enco';
+import { Order, OrderItem, calculateOrderStatus, Attachment, DoorOrder, SN_MODELS_BY_PRODUCER } from '../types/enco';
 import { INITIAL_ORDERS, createDefaultItemsForOrder } from '../data/mockData';
 import { INITIAL_DOOR_ORDERS } from '../data/mockDoorOrders';
 
@@ -128,8 +128,10 @@ export function sanitizeOrders(parsed: any[]): Order[] {
         }
 
         let snModel = it.details?.model || it.details?.typRozdzielnicy;
-        if (snProducer === 'Schneider Electric') snModel = 'AirSeT';
-        else if (snProducer === 'EATON') snModel = 'Xiria';
+        if (snProducer === 'Schneider Electric') {
+          const allowedSchneiderModels = SN_MODELS_BY_PRODUCER['Schneider Electric'];
+          if (!allowedSchneiderModels.includes(snModel)) snModel = 'AirSeT';
+        } else if (snProducer === 'EATON') snModel = 'Xiria';
         else if (snProducer === 'Siemens') snModel = '8DJH 24 Blue GIS';
 
         const polCount = it.details?.liczbaPol ?? it.details?.iloscPol ?? 3;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, RotateCcw, RefreshCw, Zap, Layers, AlertTriangle, Lock } from 'lucide-react';
+import { Plus, RotateCcw, RefreshCw, Zap, Layers, AlertTriangle, Lock, CircuitBoard } from 'lucide-react';
 import { UserRoleProfile, UserRoleId } from '../types/userRole';
 import { UserRoleSelector } from './UserRoleSelector';
 
@@ -11,8 +11,8 @@ interface HeaderProps {
   activeTab?: string;
   onSelectTab?: (tab: string) => void;
   problemCount?: number;
-  activeModule?: 'orders' | 'doors';
-  onSelectModule?: (module: 'orders' | 'doors') => void;
+  activeModule?: 'orders' | 'doors' | 'sn';
+  onSelectModule?: (module: 'orders' | 'doors' | 'sn') => void;
   doorOrdersCount?: number;
   doorOverdueCount?: number;
   currentProfile: UserRoleProfile;
@@ -85,6 +85,19 @@ export const Header: React.FC<HeaderProps> = ({
               {problemCount > 0 && (
                 <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
               )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onSelectModule && onSelectModule('sn')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeModule === 'sn'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+              }`}
+            >
+              <CircuitBoard className="w-3.5 h-3.5" />
+              <span>Rozdzielnice SN</span>
             </button>
 
             <button
@@ -164,7 +177,7 @@ export const Header: React.FC<HeaderProps> = ({
               Gotowe
             </button>
           </nav>
-        ) : (
+        ) : activeModule === 'doors' ? (
           <div className="hidden lg:flex items-center gap-3 text-xs text-slate-400">
             <span className="flex items-center gap-1.5 text-amber-300">
               <Layers className="w-4 h-4" />
@@ -177,6 +190,8 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             )}
           </div>
+        ) : (
+          <div className="hidden lg:flex items-center gap-2 text-xs text-slate-400"><CircuitBoard className="h-4 w-4 text-blue-400" /><span>Zestawienie i terminy dostaw SN</span></div>
         )}
 
         {/* Zone 3: User Profile Switcher & Actions */}
@@ -220,6 +235,8 @@ export const Header: React.FC<HeaderProps> = ({
                 <span>Drzwi: Podgląd</span>
               </div>
             )
+          ) : activeModule === 'sn' ? (
+            <div className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-300 bg-slate-800/80 border border-slate-700 rounded-lg"><CircuitBoard className="h-3 w-3" /><span>Rozdzielnice SN</span></div>
           ) : (
             currentProfile.canCreateOrders ? (
               <button

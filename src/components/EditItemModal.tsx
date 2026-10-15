@@ -386,7 +386,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                       ))}
                     </select>
                     <p className="text-[11px] text-slate-500 mt-1">
-                      Wybierz: Schneider Electric, EATON lub Siemens
+                      Typy: SIEMENS, XIRIA, RM AirSeT, RM AirSeT - STOEN
                     </p>
                   </div>
 
@@ -419,7 +419,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                       )}
                     </select>
                     <p className="text-[11px] text-slate-500 mt-1">
-                      {details.producent === 'Schneider Electric' && 'Schneider Electric → AirSeT'}
+                      {details.producent === 'Schneider Electric' && 'Schneider Electric → AirSeT / RM AirSeT - STOEN'}
                       {details.producent === 'EATON' && 'EATON → Xiria'}
                       {details.producent === 'Siemens' && 'Siemens → 8DJH 24 Blue GIS'}
                       {!details.producent && 'Lista modeli zależna od producenta'}
