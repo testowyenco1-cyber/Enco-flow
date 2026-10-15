@@ -72,7 +72,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const valResult = validateOrderNumber(effectiveOrderNumber, existingOrders, undefined, selectedYear);
+    const valResult = validateOrderNumber(effectiveOrderNumber, existingOrders, undefined, new Date().getFullYear());
     if (!valResult.isValid) {
       setError(valResult.error || 'Numer zlecenia jest nieprawidłowy lub zajęty.');
       return;
