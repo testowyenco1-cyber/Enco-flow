@@ -61,6 +61,14 @@ const SIEMENS_RODZAJE = [
   '8DJH blue GIS RRR + NAPĘDY, OSŁONY POGŁĘBIONE',
   '8DJH blue GIS RRRR + NAPĘDY, OSŁONY POGŁĘBIONE',
 ];
+const XIRIA_RODZAJE = [
+  'XIRIA xGear KKT',
+  'XIRIA xGear KKT + NAPĘDY',
+  'XIRIA xGear KKK + NAPĘDY',
+  'XIRIA xGear KKKT',
+  'XIRIA xGear KKKT + NAPĘDY',
+  'XIRIA xGear KKKKT + NAPĘDY',
+];
 type SortKey = 'rodzaj' | 'ilosc' | 'terminDostawy' | 'nrZamowienia' | 'projekt' | 'lokalizacja';
 const makeId = () => `sn_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
@@ -140,6 +148,7 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
     return {
       RM_AIRSET: buildDictionary('RM_AIRSET', AIRSET_RODZAJE),
       SIEMENS: buildDictionary('SIEMENS', SIEMENS_RODZAJE),
+      XIRIA: buildDictionary('XIRIA', XIRIA_RODZAJE),
     };
   }, [records]);
 
@@ -147,7 +156,9 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
     ? rodzajDictionaries.RM_AIRSET
     : selectedType === 'SIEMENS'
       ? rodzajDictionaries.SIEMENS
-      : [];
+      : selectedType === 'XIRIA'
+        ? rodzajDictionaries.XIRIA
+        : [];
 
   const addRodzajOption = (recordId: string) => {
     const value = newRodzaj.trim();
@@ -275,7 +286,7 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
               return <tr key={record.id} className="align-top hover:bg-blue-50/30">
                 <td className="px-2 py-1.5 text-[11px] text-slate-400">{visibleRecords.findIndex(item => item.id === record.id) + 1}</td>
                 <td className="min-w-0 px-1 py-1">
-                  {(record.type === 'RM_AIRSET' || record.type === 'SIEMENS') && canEdit ? <div className="min-w-0 space-y-1">
+                  {(record.type === 'RM_AIRSET' || record.type === 'SIEMENS' || record.type === 'XIRIA') && canEdit ? <div className="min-w-0 space-y-1">
                     <select aria-label="Rodzaj rozdzielnicy" value={addingRodzajFor === record.id ? '__add_new__' : record.rodzaj} onChange={event => {
                       if (event.target.value === '__add_new__') { setAddingRodzajFor(record.id); setNewRodzaj(''); }
                       else { setAddingRodzajFor(null); patchRecord(record.id, { rodzaj: event.target.value }); }
