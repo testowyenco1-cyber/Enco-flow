@@ -75,7 +75,7 @@ export const SN_PRODUCERS = [
 export type SNProducer = (typeof SN_PRODUCERS)[number];
 
 export const SN_MODELS_BY_PRODUCER: Record<SNProducer, string[]> = {
-  'Schneider Electric': ['AirSeT'],
+  'Schneider Electric': ['AirSeT', 'RM AirSeT - STOEN'],
   'EATON': ['Xiria'],
   'Siemens': ['8DJH 24 Blue GIS'],
 };
