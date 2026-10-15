@@ -966,7 +966,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
               <div className="flex flex-wrap items-center gap-2">
               <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <span className="text-slate-500">
-                {item.type === 'OBUDOWA' ? 'Data gotowości obudowy:' : 'Planowany termin:'}
+                'Planowana data gotowości:'
               </span>
               {isEditingDate ? (
                 <input
