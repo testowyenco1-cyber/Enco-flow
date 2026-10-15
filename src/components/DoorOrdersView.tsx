@@ -30,6 +30,7 @@ import {
   Info,
   Lock,
   FolderOpen,
+  Download,
 } from 'lucide-react';
 import { isSameOrderNumber } from '../utils/orderNumberUtils';
 import { UserRoleProfile, USER_PROFILES } from '../types/userRole';
@@ -182,6 +183,45 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
     setExpandedRowId((prev) => (prev === id ? null : id));
   };
 
+  const exportDoorOrdersToExcel = () => {
+    const columns = [
+      ['Numer dokumentu', (order: DoorOrder) => order.numerDokumentu],
+      ['Data zamówienia', (order: DoorOrder) => order.dataZamowienia || ''],
+      ['Termin z zamówienia', (order: DoorOrder) => order.terminZamowienia || ''],
+      ['Kategoria', (order: DoorOrder) => order.kategoria || ''],
+      ['Netto', (order: DoorOrder) => order.wartoscNetto ?? ''],
+      ['Brutto', (order: DoorOrder) => order.wartoscBrutto ?? ''],
+      ['Numery ZL', (order: DoorOrder) => (order.numeryZl || []).join(', ')],
+      ['Kontrahent / realizacje', (order: DoorOrder) => {
+        const linked = (order.numeryZl || []).map((zl) => orders.find((o) => isSameOrderNumber(o.orderNumber, zl))).filter((o): o is Order => Boolean(o));
+        return linked.length ? linked.map((o) => `${o.orderNumber} — ${o.client?.trim() || 'kontrahent nieuzupełniony'}`).join(' | ') : (order.kontrahentRealizacje || '').replace(/\n/g, ' | ');
+      }],
+      ['Termin dostawy', (order: DoorOrder) => order.terminDostawy || ''],
+      ['Uwagi', (order: DoorOrder) => order.uwagi || ''],
+    ] as const;
+    const escapeCell = (value: unknown) => {
+      const text = String(value ?? '');
+      return /[;"\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    };
+    const rows = [
+      columns.map(([header]) => escapeCell(header)).join(';'),
+      ...filteredOrders.map((order) => {
+        const current = draftsById[order.id] || order;
+        return columns.map(([, getValue]) => escapeCell(getValue(current))).join(';');
+      }),
+    ];
+    const blob = new Blob(['\uFEFFsep=;\r\n' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ENCO_Drzwi_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+
   return (
     <div className="space-y-6 pb-24">
       {/* 1. NAGŁÓWEK MODUŁU DRZWI Z PRZYCISKIEM DODAWANIA */}
@@ -208,7 +248,16 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
         <div className="flex items-center gap-2.5 self-start md:self-auto shrink-0">
           <button
             type="button"
-            onClick={() => setIsDoorFilesModalOpen(true)}
+            onClick={exportDoorOrdersToExcel}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+            title="Eksportuj widoczne zamówienia drzwi do pliku otwieranego w Excelu"
+          >
+            <Download className="w-4 h-4" />
+            <span>Eksport Excel</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsDoorFilesModalOpen(true)
             className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs border border-slate-700 transition-colors cursor-pointer"
             title="Przeglądaj folder i lokalizacje plików technicznych modułu Drzwi"
           >
