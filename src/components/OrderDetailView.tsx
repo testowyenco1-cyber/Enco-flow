@@ -230,6 +230,38 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
     });
   };
 
+  const handleAddSwitchgear = (type: 'ROZDZIELNICA_SN' | 'ROZDZIELNICA_NN') => {
+    const now = new Date().toISOString();
+    const matchingItems = order.items.filter((item) => item.type === type);
+    const number = matchingItems.length + 1;
+    const isSN = type === 'ROZDZIELNICA_SN';
+    const newItem: OrderItem = {
+      id: `item-${type.toLowerCase()}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      orderId: order.id,
+      type,
+      name: `${isSN ? 'ROZDZIELNICA SN' : 'ROZDZIELNICA NN'} ${number}`,
+      shortName: `${isSN ? 'SN' : 'NN'} ${number}`,
+      status: 'NOT_ORDERED',
+      details: isSN
+        ? { producent: '', model: '', typRozdzielnicy: '', konfiguracjaPol: 'L-L-L-T', liczbaPol: '' }
+        : { typRozdzielnicy: '', iloscPol: '', planowanaGotowoscTransportu: '' },
+      attachments: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+    const updatedItems = [...order.items];
+    const lastMatchingIndex = updatedItems.reduce(
+      (lastIndex, item, index) => item.type === type ? index : lastIndex,
+      -1
+    );
+    updatedItems.splice(lastMatchingIndex + 1, 0, newItem);
+    onUpdateOrderStatus(order.id, {
+      ...order,
+      items: updatedItems,
+      updatedAt: now,
+    });
+  };
+
   const handleAddOrderAttachment = (attachment: Attachment) => {
     onUpdateOrderStatus(order.id, {
       ...order,
@@ -669,8 +701,12 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
 
         {/* List of full item cards */}
         <div className="space-y-4">
-          {order.items.map((item) => (
-            <div key={item.id} id={`item-section-${item.type}`} className="space-y-2">
+          {order.items.map((item) => {
+            const isLastSNItem = item.type === 'ROZDZIELNICA_SN' && !order.items.slice(order.items.findIndex((entry) => entry.id === item.id) + 1).some((entry) => entry.type === 'ROZDZIELNICA_SN');
+            const isLastNNItem = item.type === 'ROZDZIELNICA_NN' && !order.items.slice(order.items.findIndex((entry) => entry.id === item.id) + 1).some((entry) => entry.type === 'ROZDZIELNICA_NN');
+            const itemIndex = order.items.findIndex((entry) => entry.id === item.id);
+            return (
+            <div key={item.id} id={itemIndex === order.items.findIndex((entry) => entry.type === item.type) ? `item-section-${item.type}` : `item-section-${item.type}-${item.id}`} className="space-y-2">
             <ItemDetailsCard
               item={item}
               orderItems={order.items}
@@ -747,8 +783,24 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 </button>
               </div>
             )}
+            {(isLastSNItem || isLastNNItem) && canEditItemType(profile, item.type) && (
+              <div className={`rounded-xl border border-dashed ${isLastSNItem ? 'border-amber-300 bg-amber-50/50' : 'border-blue-300 bg-blue-50/50'} p-3`}>
+                <button
+                  type="button"
+                  onClick={() => handleAddSwitchgear(item.type as 'ROZDZIELNICA_SN' | 'ROZDZIELNICA_NN')}
+                  className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors cursor-pointer ${isLastSNItem ? 'border-amber-300 bg-white text-amber-900 hover:bg-amber-100' : 'border-blue-300 bg-white text-blue-900 hover:bg-blue-100'}`}
+                >
+                  <span className="text-base leading-none">+</span>
+                  Dodaj rozdzielnicę {isLastSNItem ? 'SN' : 'NN'}
+                </button>
+                <p className="mt-1 text-[10px] text-slate-500">
+                  Nowa rozdzielnica zostanie dodana jako osobna, wyraźnie oddzielona karta w tej sekcji.
+                </p>
+              </div>
+            )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
