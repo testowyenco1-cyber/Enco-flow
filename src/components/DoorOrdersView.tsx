@@ -165,9 +165,22 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
   }, [doorOrders, dirtyDoorOrderIds]);
 
   const patchDoorOrder = (order: DoorOrder, key: keyof DoorOrder, value: any) => {
-    setDraftsById((current) => ({ ...current, [order.id]: { ...(current[order.id] || order), [key]: value } }));
+    setDraftsById((current) => {
+      const existing = current[order.id] || order;
+      const updated: DoorOrder = { ...existing, [key]: value };
+      // Przy zmianie netto automatycznie przelicz brutto według stawki VAT 23%.
+      if (key === 'wartoscNetto') {
+        updated.wartoscBrutto = value == null || value === ''
+          ? null
+          : Math.round((Number(value) * 1.23 + Number.EPSILON) * 100) / 100;
+      }
+      return { ...current, [order.id]: updated };
+    });
     setDirtyDoorOrderIds((current) => current.includes(order.id) ? current : [...current, order.id]);
   };
+
+  const formatAmountInput = (value: number | null | undefined) =>
+    value == null || !Number.isFinite(Number(value)) ? '' : Number(value).toFixed(2);
 
   const saveDirtyDoorOrders = () => {
     const changed = dirtyDoorOrderIds.map((id) => draftsById[id]).filter((order): order is DoorOrder => Boolean(order))
@@ -576,8 +589,8 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                       <td className="min-w-0 border-r border-slate-100 px-1.5 py-2 font-mono">{canManageDoors ? <input aria-label="Data zamówienia" type="date" className={cellInput} value={row.dataZamowienia || ''} onChange={(e) => patch('dataZamowienia', e.target.value)} /> : formatDatePL(doorOrd.dataZamowienia)}</td>
                       <td className={`min-w-0 border-r border-slate-100 px-1.5 py-2 font-mono font-semibold ${overdueInfo.isOverdue ? 'text-rose-700' : ''}`}>{canManageDoors ? <input aria-label="Termin z zamówienia" type="date" className={cellInput} value={row.terminZamowienia || ''} onChange={(e) => patch('terminZamowienia', e.target.value)} /> : formatDatePL(doorOrd.terminZamowienia)}</td>
                       <td className="border-r border-slate-100 px-2 py-2 font-mono">{canManageDoors ? <input aria-label="Kategoria" className={cellInput} value={row.kategoria || ''} onChange={(e) => patch('kategoria', e.target.value)} /> : doorOrd.kategoria || '—'}</td>
-                      <td className="min-w-0 border-r border-slate-100 px-1.5 py-2 text-right font-mono tabular-nums">{canManageDoors ? <input aria-label="Netto" type="number" step="0.01" className={cellInput + ' text-right'} value={row.wartoscNetto ?? ''} onChange={(e) => patch('wartoscNetto', e.target.value === '' ? null : Number(e.target.value))} /> : formatPLN(doorOrd.wartoscNetto)}</td>
-                      <td className="min-w-0 border-r border-slate-100 px-1.5 py-2 text-right font-mono font-semibold tabular-nums">{canManageDoors ? <input aria-label="Brutto" type="number" step="0.01" className={cellInput + ' text-right'} value={row.wartoscBrutto ?? ''} onChange={(e) => patch('wartoscBrutto', e.target.value === '' ? null : Number(e.target.value))} /> : formatPLN(doorOrd.wartoscBrutto)}</td>
+                      <td className="min-w-0 border-r border-slate-100 px-1.5 py-2 text-right font-mono tabular-nums">{canManageDoors ? <input aria-label="Netto" type="number" step="0.01" className={cellInput + ' text-right'} value={formatAmountInput(row.wartoscNetto)} onChange={(e) => patch('wartoscNetto', e.target.value === '' ? null : Number(e.target.value))} /> : formatPLN(doorOrd.wartoscNetto)}</td>
+                      <td className="min-w-0 border-r border-slate-100 px-1.5 py-2 text-right font-mono font-semibold tabular-nums">{canManageDoors ? <input aria-label="Brutto" type="number" step="0.01" className={cellInput + ' text-right'} value={formatAmountInput(row.wartoscBrutto)} onChange={(e) => patch('wartoscBrutto', e.target.value === '' ? null : Number(e.target.value))} /> : formatPLN(doorOrd.wartoscBrutto)}</td>
                       <td className="min-w-0 border-r border-slate-100 px-1.5 py-2 break-words">
                         <div className="flex flex-wrap gap-1">
                           {canManageDoors ? (
