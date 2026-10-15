@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ItemStatus, STATUS_META } from '../types/enco';
 import { Check, ChevronDown, Lock } from 'lucide-react';
 
@@ -21,16 +22,44 @@ export const StatusSwitcher: React.FC<StatusSwitcherProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
+          !menuRef.current?.contains(event.target as Node)) {
         setIsOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Render the menu outside cards and overflow containers, anchored to its button.
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const updatePosition = () => {
+      const rect = dropdownRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const menuWidth = 192;
+      const menuHeight = 216;
+      const left = Math.max(8, Math.min(rect.left, window.innerWidth - menuWidth - 8));
+      const openAbove = rect.bottom + menuHeight + 8 > window.innerHeight &&
+        rect.top > menuHeight + 8;
+      setMenuPosition({
+        top: openAbove ? Math.max(8, rect.top - menuHeight - 6) : rect.bottom + 6,
+        left,
+      });
+    };
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isOpen]);
 
   const statuses: ItemStatus[] = ['NOT_ORDERED', 'ORDERED', 'IN_PROGRESS', 'READY', 'PROBLEM'];
   const currentMeta = (currentStatus && STATUS_META[currentStatus]) || STATUS_META.NOT_ORDERED;
@@ -145,9 +174,11 @@ export const StatusSwitcher: React.FC<StatusSwitcherProps> = ({
         />
       </button>
 
-      {isOpen && (
+      {isOpen && createPortal(
         <div
-          className="absolute right-0 sm:left-0 mt-1.5 w-48 rounded-lg bg-white border border-slate-300 shadow-xl z-50 py-1"
+          ref={menuRef}
+          className="fixed w-48 max-h-[min(70vh,320px)] overflow-y-auto rounded-lg bg-white border border-slate-300 shadow-xl z-[9999] py-1"
+          style={{ top: menuPosition.top, left: menuPosition.left }}
           role="menu"
         >
           {statuses.map((st) => {
@@ -191,7 +222,8 @@ export const StatusSwitcher: React.FC<StatusSwitcherProps> = ({
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
