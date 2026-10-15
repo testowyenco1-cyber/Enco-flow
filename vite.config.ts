@@ -16,7 +16,16 @@ export default defineConfig(() => {
       // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      // Shared business records and uploads are runtime data, not application source.
+      // Never hot-reload any browser when orders.json, door_orders.json, uploads, etc. change.
+      watch: process.env.DISABLE_HMR === 'true'
+        ? null
+        : {
+            ignored: [
+              '**/data_store/**',
+              '**/uploads/**',
+            ],
+          },
     },
   };
 });
