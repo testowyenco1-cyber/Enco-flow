@@ -67,7 +67,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
   // Walidacja w czasie rzeczywistym
   const validation = useMemo(() => {
     return validateOrderNumber(effectiveOrderNumber, existingOrders, undefined, selectedYear);
-  }, [effectiveOrderNumber, existingOrders]);
+  }, [effectiveOrderNumber, existingOrders, selectedYear]);
 
   if (!isOpen) return null;
 
