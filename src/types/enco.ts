@@ -3,7 +3,7 @@
  * System Kontroli Kompletności i Stanu Realizacji Stacji Transformatorowych
  */
 
-export type ItemStatus = 'NOT_ORDERED' | 'ORDERED' | 'IN_PROGRESS' | 'READY' | 'PROBLEM';
+export type ItemStatus = 'NOT_ORDERED' | 'ORDERED' | 'IN_PROGRESS' | 'READY' | 'PROBLEM' | 'NOT_APPLICABLE';
 
 export type OrderStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'READY' | 'PROBLEM';
 
@@ -316,7 +316,7 @@ export function checkReadinessOverdue(
   const formattedDate = parts.length === 3 ? `${parts[2]}.${parts[1]}.${parts[0]}` : deadlineDate;
 
   // If item is already marked as READY, it is not overdue
-  if (isReady === true || isReady === 'READY') {
+  if (isReady === true || isReady === 'READY' || isReady === 'NOT_APPLICABLE') {
     return { isOverdue: false, daysOverdue: 0, formattedDate };
   }
 
@@ -533,6 +533,20 @@ export const STATUS_META: Record<
     cardBg: 'bg-emerald-50/70',
     accentBorder: 'border-l-emerald-600',
   },
+  NOT_APPLICABLE: {
+    label: 'BRAK / niepotrzebne',
+    shortLabel: 'BRAK',
+    icon: '⚪',
+    color: 'text-slate-500',
+    bgBadge: 'bg-slate-100',
+    textBadge: 'text-slate-600 font-bold',
+    borderBadge: 'border-slate-300 border-dashed',
+    dotColor: 'bg-slate-300 ring-2 ring-slate-100',
+    nextStatus: 'NOT_ORDERED',
+    cardBorder: 'border-slate-300',
+    cardBg: 'bg-slate-50',
+    accentBorder: 'border-l-slate-300',
+  },
   PROBLEM: {
     label: 'Problem',
     shortLabel: 'Problem',
@@ -597,7 +611,7 @@ export const ORDER_STATUS_META: Record<
 /**
  * Automatyczne wyliczanie ogólnego statusu zlecenia:
  * 1. Dowolny element 'PROBLEM' -> 'PROBLEM'
- * 2. Wszystkie elementy 'READY' -> 'READY'
+ * 2. Wszystkie elementy 'READY' lub 'NOT_APPLICABLE' -> 'READY'
  * 3. Jakikolwiek element 'ORDERED' lub część 'READY' -> 'IN_PROGRESS'
  * 4. Wszystkie 'NOT_ORDERED' -> 'NOT_STARTED'
  */
@@ -606,7 +620,7 @@ export function calculateOrderStatus(items: OrderItem[]): OrderStatus {
   if (items.some((item) => item.status === 'PROBLEM')) {
     return 'PROBLEM';
   }
-  if (items.every((item) => item.status === 'READY')) {
+  if (items.every((item) => item.status === 'READY' || item.status === 'NOT_APPLICABLE')) {
     return 'READY';
   }
   if (items.some((item) => item.status === 'ORDERED' || item.status === 'IN_PROGRESS' || item.status === 'READY')) {
