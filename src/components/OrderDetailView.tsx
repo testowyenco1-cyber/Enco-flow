@@ -463,7 +463,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
           </div>
 
           {/* Elements Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 [&>*]:min-w-0">
             {order.items
               .filter((it) => {
                 if (itemsFilter === 'my_scope' && !profile.canEditAll) {
@@ -495,13 +495,13 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                         : 'bg-white border-slate-200 border-l-4 border-l-slate-400'
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-mono text-[11px] font-bold text-slate-400">
                             {String(index + 1).padStart(2, '0')}.
                           </span>
-                          <h3 className="text-xs font-bold text-slate-900 truncate" title={item.name}>
+                          <h3 className="text-xs font-bold text-slate-900 break-words min-w-0" title={item.name}>
                             {item.name}
                           </h3>
                           {canEditItem ? (
