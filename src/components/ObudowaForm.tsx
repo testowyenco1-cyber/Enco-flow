@@ -104,11 +104,12 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
 
   // Custom dimensions state
   const [customName, setCustomName] = useState<string>('');
+  const initialVariant = getObudowaVariantsForType(initialType).find((v) => v.name === (initialData?.rozmiar || (initialType === 'NZ' ? 'NZ 210/290' : 'BEK 250/350')));
   const [customWidth, setCustomWidth] = useState<string>(
-    initialData?.szerokosc !== undefined ? String(initialData.szerokosc) : ''
+    initialData?.szerokosc !== undefined ? String(initialData.szerokosc) : String(initialVariant?.width ?? (initialType === 'NZ' ? 2.1 : 2.5))
   );
   const [customDepth, setCustomDepth] = useState<string>(
-    initialData?.glebokosc !== undefined ? String(initialData.glebokosc) : ''
+    initialData?.glebokosc !== undefined ? String(initialData.glebokosc) : String(initialVariant?.depth ?? (initialType === 'NZ' ? 2.9 : 3.5))
   );
   const [customHeight, setCustomHeight] = useState<string>(
     initialData?.wysokosc !== undefined
@@ -167,9 +168,10 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
       } else if (orderPlannedDate && !dataGotowosci) {
         setDataGotowosci(orderPlannedDate);
       }
-      if (initialData.szerokosc !== undefined) setCustomWidth(String(initialData.szerokosc));
-      if (initialData.glebokosc !== undefined) setCustomDepth(String(initialData.glebokosc));
-      if (initialData.wysokosc !== undefined) setCustomHeight(String(initialData.wysokosc));
+      const typeDefaultVariant = getObudowaVariantsForType(type).find((v) => v.name === (initialData.rozmiar || (type === 'NZ' ? 'NZ 210/290' : 'BEK 250/350')));
+      setCustomWidth(String(initialData.szerokosc ?? typeDefaultVariant?.width ?? (type === 'NZ' ? 2.1 : 2.5)));
+      setCustomDepth(String(initialData.glebokosc ?? typeDefaultVariant?.depth ?? (type === 'NZ' ? 2.9 : 3.5)));
+      setCustomHeight(String(initialData.wysokosc ?? (type === 'NZ' ? 2.66 : 2.4)));
     }
   }, [initialData, orderPlannedDate]);
 
@@ -218,7 +220,7 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
 
     onChange({
       typObudowy: newType,
-      rozmiar: isCustom ? (customName.trim() || 'Inny rozmiar') : newSize,
+      rozmiar: isCustom ? (customName.trim() || newSize) : newSize,
       dataGotowosci: newDate,
       szerokosc: widthVal,
       glebokosc: depthVal,
@@ -244,13 +246,17 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
       nextSize = variantsForNewType[0]?.name || '';
     }
 
-    // Default height for new type
+    // Po zmianie typu ustaw wymiary domyślnego wariantu oraz wysokość właściwą dla typu.
     const defaultH = newType === 'NZ' ? '2.66' : '2.40';
-    if (!customHeight || customHeight === '2.66' || customHeight === '2.40') {
-      setCustomHeight(defaultH);
-    }
-
-    notifyChange(newType, nextSize, dataGotowosci, nextIsCustom, customWidth, customDepth, defaultH);
+    const defaultVariant = variantsForNewType.find((v) => v.name === (newType === 'NZ' ? 'NZ 210/290' : 'BEK 250/350')) || variantsForNewType[0];
+    const nextWidth = String(defaultVariant?.width ?? (newType === 'NZ' ? 2.1 : 2.5));
+    const nextDepth = String(defaultVariant?.depth ?? (newType === 'NZ' ? 2.9 : 3.5));
+    setCustomWidth(nextWidth);
+    setCustomDepth(nextDepth);
+    setCustomHeight(defaultH);
+    setRozmiar(nextSize);
+    setIsCustomMode(true);
+    notifyChange(newType, `${newType} ${Math.round(Number(nextWidth) * 100)}/${Math.round(Number(nextDepth) * 100)}`, dataGotowosci, true, nextWidth, nextDepth, defaultH);
   };
 
   // 2. Handle Size Variant Change
@@ -567,136 +573,46 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
             </form>
           )}
 
-          {/* Variant Selector Dropdown */}
-          <select
-            value={isCustomMode ? '__CUSTOM__' : rozmiar}
-            disabled={isReadOnly}
-            onChange={(e) => handleSizeChange(e.target.value)}
-            className="w-full text-xs font-semibold px-3 py-2.5 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-          >
-            <optgroup label={`Gotowe warianty ${typeInfo.label}`}>
-              {availableVariants.map((v) => (
-                <option key={v.id} value={v.name}>
-                  {v.name}
-                  {v.width && v.depth
-                    ? ` (${formatDimensionM(v.width)} × ${formatDimensionM(v.depth)})`
-                    : ''}
-                  {v.isCustom ? ' [Własny]' : ''}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="Niestandardowe">
-              <option value="__CUSTOM__">Inny rozmiar (wprowadź ręcznie wymiary)</option>
-            </optgroup>
-          </select>
-
-          {/* Custom Size Manual Input */}
-          {isCustomMode && (
-            <div className="mt-2 p-3 bg-amber-50/70 border border-amber-200 rounded-lg space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-950">
-                <Ruler className="w-3.5 h-3.5 text-amber-600" />
-                <span>Ręczne wprowadzanie niestandardowego rozmiaru:</span>
+          {/* Wymiary obudowy – edytowalne bezpośrednio, niezależnie od wariantu */}
+          <div className="mt-2 rounded-lg border border-slate-200 bg-white p-3 space-y-3">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+              <Ruler className="w-3.5 h-3.5 text-blue-600" />
+              <span>Wymiary obudowy [m]</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Szerokość [m]</label>
+                <input type="number" min="0" step="0.01" value={customWidth} disabled={isReadOnly}
+                  onChange={(e) => {
+                    const value = e.target.value; setCustomWidth(value); setIsCustomMode(true);
+                    const widthLabel = value && customDepth ? `${typObudowy} ${Math.round(Number(value.replace(',', '.')) * 100)}/${Math.round(Number(customDepth.replace(',', '.')) * 100)}` : 'Wymiary własne';
+                    notifyChange(typObudowy, widthLabel, dataGotowosci, true, value, customDepth, customHeight);
+                  }}
+                  className="w-full min-w-0 text-sm px-3 py-2 border border-slate-300 rounded-lg bg-white disabled:bg-slate-100" />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs">
-                <div>
-                  <label className="block text-[10px] text-slate-600 font-medium mb-0.5">
-                    Oznaczenie / Nazwa
-                  </label>
-                  <input
-                    type="text"
-                    value={customName}
-                    disabled={isReadOnly}
-                    onChange={(e) => {
-                      setCustomName(e.target.value);
-                      notifyChange(
-                        typObudowy,
-                        e.target.value || 'Inny rozmiar',
-                        dataGotowosci,
-                        true,
-                        customWidth,
-                        customDepth,
-                        customHeight
-                      );
-                    }}
-                    placeholder={`np. ${typeInfo.label} spec.`}
-                    className="w-full text-xs px-2 py-1.5 border border-slate-300 rounded bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-600 font-medium mb-0.5">
-                    Szerokość [m]
-                  </label>
-                  <input
-                    type="text"
-                    value={customWidth}
-                    disabled={isReadOnly}
-                    onChange={(e) => {
-                      setCustomWidth(e.target.value);
-                      notifyChange(
-                        typObudowy,
-                        customName || 'Inny rozmiar',
-                        dataGotowosci,
-                        true,
-                        e.target.value,
-                        customDepth,
-                        customHeight
-                      );
-                    }}
-                    placeholder="np. 2.40"
-                    className="w-full text-xs px-2 py-1.5 border border-slate-300 rounded font-mono bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-600 font-medium mb-0.5">
-                    Głębokość [m]
-                  </label>
-                  <input
-                    type="text"
-                    value={customDepth}
-                    disabled={isReadOnly}
-                    onChange={(e) => {
-                      setCustomDepth(e.target.value);
-                      notifyChange(
-                        typObudowy,
-                        customName || 'Inny rozmiar',
-                        dataGotowosci,
-                        true,
-                        customWidth,
-                        e.target.value,
-                        customHeight
-                      );
-                    }}
-                    placeholder="np. 3.20"
-                    className="w-full text-xs px-2 py-1.5 border border-slate-300 rounded font-mono bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-600 font-medium mb-0.5">
-                    {typeInfo.heightTypeLabel} [m]
-                  </label>
-                  <input
-                    type="text"
-                    value={customHeight}
-                    disabled={isReadOnly}
-                    onChange={(e) => {
-                      setCustomHeight(e.target.value);
-                      notifyChange(
-                        typObudowy,
-                        customName || 'Inny rozmiar',
-                        dataGotowosci,
-                        true,
-                        customWidth,
-                        customDepth,
-                        e.target.value
-                      );
-                    }}
-                    placeholder={typeInfo.defaultHeightFormatted.replace(' m', '')}
-                    className="w-full text-xs px-2 py-1.5 border border-slate-300 rounded font-mono bg-white"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Głębokość [m]</label>
+                <input type="number" min="0" step="0.01" value={customDepth} disabled={isReadOnly}
+                  onChange={(e) => {
+                    const value = e.target.value; setCustomDepth(value); setIsCustomMode(true);
+                    const depthLabel = customWidth && value ? `${typObudowy} ${Math.round(Number(customWidth.replace(',', '.')) * 100)}/${Math.round(Number(value.replace(',', '.')) * 100)}` : 'Wymiary własne';
+                    notifyChange(typObudowy, depthLabel, dataGotowosci, true, customWidth, value, customHeight);
+                  }}
+                  className="w-full min-w-0 text-sm px-3 py-2 border border-slate-300 rounded-lg bg-white disabled:bg-slate-100" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">{typeInfo.heightTypeLabel} [m]</label>
+                <input type="number" min="0" step="0.01" value={customHeight} disabled={isReadOnly}
+                  onChange={(e) => {
+                    const value = e.target.value; setCustomHeight(value); setIsCustomMode(true);
+                    const sizeLabel = customWidth && customDepth ? `${typObudowy} ${Math.round(Number(customWidth.replace(',', '.')) * 100)}/${Math.round(Number(customDepth.replace(',', '.')) * 100)}` : 'Wymiary własne';
+                    notifyChange(typObudowy, sizeLabel, dataGotowosci, true, customWidth, customDepth, value);
+                  }}
+                  className="w-full min-w-0 text-sm px-3 py-2 border border-slate-300 rounded-lg bg-white disabled:bg-slate-100" />
               </div>
             </div>
-          )}
+            <p className="text-[11px] text-slate-500">Domyślna szerokość i głębokość wynikają z typowego wariantu obudowy. Wysokość domyślna: BEK – 2,40 m (wewnętrzna), NZ – 2,66 m (zewnętrzna). Wszystkie trzy wartości można edytować.</p>
+          </div>
 
           {/* Dimensions preview in details (without occupying main screen) */}
           <div className="mt-2 p-2.5 bg-white rounded-lg border border-slate-200/90 shadow-2xs">
