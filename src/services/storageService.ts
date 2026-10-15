@@ -103,6 +103,7 @@ export function sanitizeOrders(parsed: any[]): Order[] {
     'IN_PROGRESS',
     'READY',
     'PROBLEM',
+    'NOT_APPLICABLE',
   ]);
 
   return parsed.map((ord) => {
