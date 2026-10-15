@@ -141,6 +141,20 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
   }, [doorOrders, filterTab, searchQuery]);
 
   useEffect(() => {
+    const closeZlDropdownOnOutsideClick = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element) || target.closest('[data-zl-dropdown]')) return;
+      document.querySelectorAll<HTMLDetailsElement>('details[data-zl-dropdown][open]').forEach((dropdown) => {
+        dropdown.open = false;
+      });
+      setZlDropdownPosition(null);
+    };
+
+    document.addEventListener('mousedown', closeZlDropdownOnOutsideClick);
+    return () => document.removeEventListener('mousedown', closeZlDropdownOnOutsideClick);
+  }, []);
+
+  useEffect(() => {
     setDraftsById((current) => {
       const next = { ...current };
       doorOrders.forEach((order) => { if (!dirtyDoorOrderIds.includes(order.id)) next[order.id] = order; });
@@ -518,7 +532,7 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                       <td className="min-w-0 border-r border-slate-100 px-1.5 py-2 break-words">
                         <div className="flex flex-wrap gap-1">
                           {canManageDoors ? (
-                            <details className="relative min-w-0">
+                            <details data-zl-dropdown className="relative min-w-0">
                               <summary onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); setZlDropdownPosition({ top: rect.bottom + 4, left: rect.left }); }} className="max-w-full cursor-pointer list-none whitespace-normal break-words rounded border border-blue-300 bg-white px-1.5 py-1.5 text-[11px] font-semibold text-slate-800 hover:bg-blue-50">
                                 {row.numeryZl.length ? `Wybrano: ${row.numeryZl.length} ZL ▾` : 'Wybierz zlecenia ZL ▾'}
                               </summary>
