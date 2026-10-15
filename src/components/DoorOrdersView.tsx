@@ -483,20 +483,20 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1450px] border-collapse text-left text-xs">
+            <table className="w-full min-w-[1250px] table-fixed border-collapse text-left text-[11px]">
               <thead className="sticky top-0 z-10 bg-slate-100 text-[11px] font-bold text-slate-800">
-                <tr className="[&>th]:border-b [&>th]:border-r [&>th]:border-slate-300 [&>th]:px-3 [&>th]:py-2.5">
-                  <th className="w-[145px]">Numer dokumentu</th>
-                  <th className="w-[115px]">Data zamówienia</th>
-                  <th className="w-[125px]">Termin z zamówienia</th>
-                  <th className="w-[165px]">Kategoria</th>
-                  <th className="w-[120px] text-right">Netto</th>
-                  <th className="w-[120px] text-right">Brutto</th>
-                  <th className="w-[175px]">Numer ZL</th>
-                  <th className="min-w-[300px]">Kontrahent</th>
-                  <th className="w-[125px]">Termin dostawy</th>
-                  <th className="min-w-[180px]">Uwagi</th>
-                  <th className="w-[100px] text-center">Akcje</th>
+                <tr className="[&>th]:border-b [&>th]:border-r [&>th]:border-slate-300 [&>th]:px-2 [&>th]:py-2">
+                  <th className="w-[115px]">Numer dokumentu</th>
+                  <th className="w-[105px]">Data zamówienia</th>
+                  <th className="w-[105px]">Termin z zamówienia</th>
+                  <th className="w-[125px]">Kategoria</th>
+                  <th className="w-[90px] text-right">Netto</th>
+                  <th className="w-[90px] text-right">Brutto</th>
+                  <th className="w-[135px]">Numer ZL</th>
+                  <th className="w-[190px]">Kontrahent</th>
+                  <th className="w-[105px]">Termin dostawy</th>
+                  <th className="w-[150px]">Uwagi</th>
+                  <th className="w-[75px] text-center">Akcje</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 text-slate-800">
@@ -511,27 +511,27 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                     (availableOrder.client || '').toLowerCase().includes(zlSearch) ||
                     (availableOrder.projectName || '').toLowerCase().includes(zlSearch)
                   );
-                  const cellInput = "w-full min-w-[90px] rounded border border-blue-300 bg-white px-1.5 py-1 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-blue-200";
+                  const cellInput = "w-full min-w-0 max-w-full rounded border border-blue-300 bg-white px-1 py-1 text-[11px] text-slate-900 outline-none focus:ring-2 focus:ring-blue-200";
                   const patch = (key: keyof DoorOrder, value: any) => patchDoorOrder(doorOrd, key, value);
                   return (
                     <tr
                       key={doorOrd.id}
                       className={`group align-top transition-colors hover:bg-blue-50/70 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'} ${overdueInfo.isOverdue ? '!bg-rose-50' : ''} ${isDelivered ? 'text-slate-600' : ''}`}
                     >
-                      <td className="border-r border-slate-100 px-3 py-2.5">
+                      <td className="border-r border-slate-100 px-2 py-2">
                         {canManageDoors ? <input aria-label="Numer dokumentu" className={cellInput + " font-mono font-bold"} value={row.numerDokumentu} onChange={(e) => patch('numerDokumentu', e.target.value)} /> : <button type="button" onClick={() => onOpenDoorOrder ? onOpenDoorOrder(doorOrd) : toggleExpand(doorOrd.id)} className="font-mono font-bold text-blue-700 hover:text-blue-900 hover:underline text-left">{doorOrd.numerDokumentu}</button>}
                         {overdueInfo.isOverdue && <div className="mt-1 text-[10px] font-bold text-rose-700">Po terminie</div>}
                         {isDelivered && <div className="mt-1 text-[10px] font-semibold text-emerald-700">Dostarczono</div>}
                       </td>
-                      <td className="whitespace-nowrap border-r border-slate-100 px-3 py-2.5 font-mono">{canManageDoors ? <input aria-label="Data zamówienia" type="date" className={cellInput} value={row.dataZamowienia || ''} onChange={(e) => patch('dataZamowienia', e.target.value)} /> : formatDatePL(doorOrd.dataZamowienia)}</td>
-                      <td className={`whitespace-nowrap border-r border-slate-100 px-3 py-2.5 font-mono font-semibold ${overdueInfo.isOverdue ? 'text-rose-700' : ''}`}>{canManageDoors ? <input aria-label="Termin z zamówienia" type="date" className={cellInput} value={row.terminZamowienia || ''} onChange={(e) => patch('terminZamowienia', e.target.value)} /> : formatDatePL(doorOrd.terminZamowienia)}</td>
-                      <td className="border-r border-slate-100 px-3 py-2.5 font-mono">{canManageDoors ? <input aria-label="Kategoria" className={cellInput} value={row.kategoria || ''} onChange={(e) => patch('kategoria', e.target.value)} /> : doorOrd.kategoria || '—'}</td>
-                      <td className="whitespace-nowrap border-r border-slate-100 px-3 py-2.5 text-right font-mono tabular-nums">{canManageDoors ? <input aria-label="Netto" type="number" step="0.01" className={cellInput + ' text-right'} value={row.wartoscNetto ?? ''} onChange={(e) => patch('wartoscNetto', e.target.value === '' ? null : Number(e.target.value))} /> : formatPLN(doorOrd.wartoscNetto)}</td>
-                      <td className="whitespace-nowrap border-r border-slate-100 px-3 py-2.5 text-right font-mono font-semibold tabular-nums">{canManageDoors ? <input aria-label="Brutto" type="number" step="0.01" className={cellInput + ' text-right'} value={row.wartoscBrutto ?? ''} onChange={(e) => patch('wartoscBrutto', e.target.value === '' ? null : Number(e.target.value))} /> : formatPLN(doorOrd.wartoscBrutto)}</td>
+                      <td className="border-r border-slate-100 px-2 py-2 font-mono">{canManageDoors ? <input aria-label="Data zamówienia" type="date" className={cellInput} value={row.dataZamowienia || ''} onChange={(e) => patch('dataZamowienia', e.target.value)} /> : formatDatePL(doorOrd.dataZamowienia)}</td>
+                      <td className={`border-r border-slate-100 px-2 py-2 font-mono font-semibold ${overdueInfo.isOverdue ? 'text-rose-700' : ''}`}>{canManageDoors ? <input aria-label="Termin z zamówienia" type="date" className={cellInput} value={row.terminZamowienia || ''} onChange={(e) => patch('terminZamowienia', e.target.value)} /> : formatDatePL(doorOrd.terminZamowienia)}</td>
+                      <td className="border-r border-slate-100 px-2 py-2 font-mono">{canManageDoors ? <input aria-label="Kategoria" className={cellInput} value={row.kategoria || ''} onChange={(e) => patch('kategoria', e.target.value)} /> : doorOrd.kategoria || '—'}</td>
+                      <td className="border-r border-slate-100 px-2 py-2 text-right font-mono tabular-nums">{canManageDoors ? <input aria-label="Netto" type="number" step="0.01" className={cellInput + ' text-right'} value={row.wartoscNetto ?? ''} onChange={(e) => patch('wartoscNetto', e.target.value === '' ? null : Number(e.target.value))} /> : formatPLN(doorOrd.wartoscNetto)}</td>
+                      <td className="border-r border-slate-100 px-2 py-2 text-right font-mono font-semibold tabular-nums">{canManageDoors ? <input aria-label="Brutto" type="number" step="0.01" className={cellInput + ' text-right'} value={row.wartoscBrutto ?? ''} onChange={(e) => patch('wartoscBrutto', e.target.value === '' ? null : Number(e.target.value))} /> : formatPLN(doorOrd.wartoscBrutto)}</td>
                       <td className="border-r border-slate-100 px-3 py-2.5">
                         <div className="flex flex-wrap gap-1">
                           {canManageDoors ? (
-                            <details className="relative min-w-[170px]">
+                            <details className="relative min-w-0">
                               <summary className="cursor-pointer list-none rounded border border-blue-300 bg-white px-2 py-1.5 text-xs font-semibold text-slate-800 hover:bg-blue-50">
                                 {row.numeryZl.length ? `Wybrano: ${row.numeryZl.length} ZL ▾` : 'Wybierz zlecenia ZL ▾'}
                               </summary>
@@ -584,15 +584,15 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                           }) : '—'}
                         </div>
                       </td>
-                      <td className="border-r border-slate-100 px-3 py-2.5 leading-relaxed">
+                      <td className="border-r border-slate-100 px-2 py-2 leading-snug break-words">
                         <div className="whitespace-pre-line break-words">{(() => {
                            const linkedOrders = row.numeryZl.map((zl) => orders.find((o) => isSameOrderNumber(o.orderNumber, zl))).filter((o): o is Order => Boolean(o));
                            if (linkedOrders.length) return linkedOrders.map((o) => `${o.orderNumber} — ${o.client?.trim() || 'kontrahent nieuzupełniony'}`).join('\n');
                            return row.kontrahentRealizacje || '—';
                          })()}</div>
                       </td>
-                      <td className={`whitespace-nowrap border-r border-slate-100 px-3 py-2.5 font-mono ${isDelivered ? 'text-emerald-700' : 'text-slate-500'}`}>{canManageDoors ? <input aria-label="Termin dostawy" type="date" className={cellInput} value={row.terminDostawy || ''} onChange={(e) => patch('terminDostawy', e.target.value)} /> : doorOrd.terminDostawy ? formatDatePL(doorOrd.terminDostawy) : '—'}</td>
-                      <td className="border-r border-slate-100 px-3 py-2.5 leading-relaxed"><div className="whitespace-pre-wrap break-words">{canManageDoors ? <textarea aria-label="Uwagi" className={cellInput} rows={2} value={row.uwagi || ''} onChange={(e) => patch('uwagi', e.target.value)} /> : doorOrd.uwagi || '—'}</div></td>
+                      <td className={`border-r border-slate-100 px-2 py-2 font-mono ${isDelivered ? 'text-emerald-700' : 'text-slate-500'}`}>{canManageDoors ? <input aria-label="Termin dostawy" type="date" className={cellInput} value={row.terminDostawy || ''} onChange={(e) => patch('terminDostawy', e.target.value)} /> : doorOrd.terminDostawy ? formatDatePL(doorOrd.terminDostawy) : '—'}</td>
+                      <td className="border-r border-slate-100 px-2 py-2 leading-snug break-words"><div className="whitespace-pre-wrap break-words">{canManageDoors ? <textarea aria-label="Uwagi" className={cellInput} rows={2} value={row.uwagi || ''} onChange={(e) => patch('uwagi', e.target.value)} /> : doorOrd.uwagi || '—'}</div></td>
                       <td className="px-2 py-2 text-center">
                         <div className="flex items-center justify-center gap-1">
                           {!canManageDoors ? <span className="text-[10px] text-slate-500">Podgląd</span> : <>
