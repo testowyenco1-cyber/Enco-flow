@@ -202,8 +202,8 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
       ['Data zamówienia', (order: DoorOrder) => order.dataZamowienia || ''],
       ['Termin z zamówienia', (order: DoorOrder) => order.terminZamowienia || ''],
       ['Kategoria', (order: DoorOrder) => order.kategoria || ''],
-      ['Netto', (order: DoorOrder) => order.wartoscNetto ?? ''],
-      ['Brutto', (order: DoorOrder) => order.wartoscBrutto ?? ''],
+      ['Netto', (order: DoorOrder) => order.wartoscNetto == null ? '' : Number(order.wartoscNetto).toFixed(2)],
+      ['Brutto', (order: DoorOrder) => order.wartoscBrutto == null ? '' : Number(order.wartoscBrutto).toFixed(2)],
       ['Numery ZL', (order: DoorOrder) => (order.numeryZl || []).join(', ')],
       ['Kontrahent / realizacje', (order: DoorOrder) => {
         const linked = (order.numeryZl || []).map((zl) => orders.find((o) => isSameOrderNumber(o.orderNumber, zl))).filter((o): o is Order => Boolean(o));
