@@ -263,9 +263,9 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                   <span className="font-medium text-white">{order.client}</span>
                 </div>
                 <span className="text-slate-500">·</span>
-                <div>
-                  <span className="text-slate-400">Typ stacji: </span>
-                  <span className="font-mono font-semibold text-white">{order.stationSize}</span>
+                <div className="inline-flex flex-wrap items-center gap-2 rounded-lg border border-blue-400/50 bg-blue-950/70 px-3 py-1.5 shadow-sm">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-200">Rozmiar stacji</span>
+                  <span className="font-mono text-sm font-black text-white">{order.stationSize || 'Nie określono'}</span>
                 </div>
                 {order.additionalInfo && (
                   <>
