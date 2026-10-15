@@ -14,6 +14,7 @@ interface SNRecord {
   terminDostawy: string;
   nrZamowienia: string;
   projekt: string;
+  linkedOrderId?: string;
   lokalizacja: string;
 }
 interface Props {
@@ -95,7 +96,7 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
     const record: SNRecord = {
       id: makeId(), type: selectedType, category: selectedCategory, rodzaj: '', ilosc: 1,
       terminDostawy: selectedCategory === 'DELIVERED' ? 'dostarczono' : '',
-      nrZamowienia: '', projekt: '', lokalizacja: '',
+      nrZamowienia: '', projekt: '', linkedOrderId: undefined, lokalizacja: '',
     };
     setRecords(current => [...current, record]);
     setNotice('');
@@ -131,10 +132,31 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
     }
   };
 
-  const matchingOrder = (record: SNRecord) => orders.find(order =>
-    order.orderNumber.trim().toLowerCase() === record.nrZamowienia.trim().toLowerCase() ||
-    (!!record.projekt.trim() && order.projectName.trim().toLowerCase() === record.projekt.trim().toLowerCase())
-  );
+  const orderLabel = (order: Order) => `${order.orderNumber} ${order.projectName}`.trim();
+
+  const matchingOrder = (record: SNRecord) => {
+    if (record.linkedOrderId) {
+      const linked = orders.find(order => order.id === record.linkedOrderId);
+      if (linked) return linked;
+    }
+    const project = record.projekt.trim().toLowerCase();
+    return orders.find(order =>
+      (!!project && (
+        order.projectName.trim().toLowerCase() === project ||
+        orderLabel(order).toLowerCase() === project ||
+        project.startsWith(`${order.orderNumber.trim().toLowerCase()} `)
+      ))
+    );
+  };
+
+  const selectProject = (record: SNRecord, value: string) => {
+    if (value === '__custom__') {
+      patchRecord(record.id, { linkedOrderId: undefined });
+      return;
+    }
+    const order = orders.find(item => item.id === value);
+    if (order) patchRecord(record.id, { linkedOrderId: order.id, projekt: orderLabel(order) });
+  };
 
   return <section className="space-y-4">
     <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 lg:flex-row lg:items-center lg:justify-between">
@@ -181,7 +203,7 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
                 <td className="px-3 py-3"><input aria-label="Ilość" type="number" min="0" disabled={!canEdit} value={record.ilosc} onChange={event => patchRecord(record.id,{ilosc:Math.max(0,Number(event.target.value)||0)})} className={`${inputClass} min-w-[70px]`}/></td>
                 <td className="px-3 py-3"><input aria-label="Termin dostawy" disabled={!canEdit} value={record.terminDostawy} onChange={event => patchRecord(record.id,{terminDostawy:event.target.value})} placeholder="Data lub „dostarczono”" className={`${inputClass} min-w-[160px]`}/></td>
                 <td className="px-3 py-3"><input aria-label="Numer zamówienia" disabled={!canEdit} value={record.nrZamowienia} onChange={event => patchRecord(record.id,{nrZamowienia:event.target.value})} placeholder="Nr zamówienia" className={inputClass}/></td>
-                <td className="px-3 py-3"><div className="flex items-start gap-1"><input aria-label="Projekt" disabled={!canEdit} value={record.projekt} onChange={event => patchRecord(record.id,{projekt:event.target.value})} placeholder="Projekt" className={`${inputClass} min-w-[250px]`}/>{order && <button type="button" title={`Otwórz zlecenie ${order.orderNumber}`} onClick={() => onNavigateToOrder(order.id)} className="rounded p-1.5 text-blue-700 hover:bg-blue-50"><ExternalLink className="h-4 w-4"/></button>}</div></td>
+                <td className="px-3 py-3"><div className="flex min-w-[260px] items-start gap-1"><div className="min-w-0 flex-1">{canEdit && <select aria-label="Powiązane zlecenie ZL" value={order?.id || '__custom__'} onChange={event => selectProject(record,event.target.value)} className={`${inputClass} min-w-[250px]`}><option value="__custom__">Projekt własny / bez powiązania z ZL</option>{orders.map(item => <option key={item.id} value={item.id}>{orderLabel(item)}</option>)}</select>}{(!order || !record.linkedOrderId) && <input aria-label="Projekt / opis" disabled={!canEdit} value={record.projekt} onChange={event => patchRecord(record.id,{projekt:event.target.value,linkedOrderId:undefined})} placeholder="Projekt lub opis lokalizacji" className={`${inputClass} mt-1 min-w-[250px]`}/>}<p className="mt-1 text-[10px] text-slate-500">{order ? `Powiązano: ${order.orderNumber} — ${order.projectName}` : 'Wybierz zlecenie, aby powiązać projekt z numerem ZL.'}</p></div>{order && <button type="button" title={`Otwórz zlecenie ${order.orderNumber}`} onClick={() => onNavigateToOrder(order.id)} className="rounded p-1.5 text-blue-700 hover:bg-blue-50"><ExternalLink className="h-4 w-4"/></button>}</div></td>
                 <td className="px-3 py-3"><input aria-label="Lokalizacja" disabled={!canEdit} value={record.lokalizacja} onChange={event => patchRecord(record.id,{lokalizacja:event.target.value})} placeholder="Lokalizacja" className={inputClass}/></td>
                 <td className="px-3 py-3"><div className="flex min-w-[150px] flex-col gap-1.5">{canEdit && <><select aria-label="Typ główny rozdzielnicy" value={record.type} onChange={event => patchRecord(record.id,{type:event.target.value as SNType})} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[10px] text-slate-700">{TYPES.map(type => <option key={type.key} value={type.key}>{type.label}</option>)}</select><select aria-label="Przenieś do sekcji" value={record.category} onChange={event => patchRecord(record.id,{category:event.target.value as SNCategory})} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[10px] text-slate-700">{CATEGORIES.map(category => <option key={category.key} value={category.key}>{category.label}</option>)}</select><button type="button" title="Usuń pozycję" onClick={() => removeRecord(record.id)} className="self-start rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 className="h-4 w-4"/></button></>}</div></td>
               </tr>;
