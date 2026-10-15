@@ -34,6 +34,7 @@ import {
 import { isSameOrderNumber } from '../utils/orderNumberUtils';
 import { UserRoleProfile, USER_PROFILES } from '../types/userRole';
 import { OrderFilesModal } from './OrderFilesModal';
+import { DoorCatalogView } from './DoorCatalogView';
 
 interface DoorOrdersViewProps {
   doorOrders: DoorOrder[];
@@ -69,6 +70,7 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const [orderToDelete, setOrderToDelete] = useState<DoorOrder | null>(null);
   const [isDoorFilesModalOpen, setIsDoorFilesModalOpen] = useState(false);
+  const [activeDoorView, setActiveDoorView] = useState<'orders' | 'catalog'>('orders');
 
   // Obliczenia statystyk KPI
   const stats = useMemo(() => {
@@ -135,8 +137,20 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
     setExpandedRowId((prev) => (prev === id ? null : id));
   };
 
+  if (activeDoorView === 'catalog') {
+    return <DoorCatalogView onBackToOrders={() => setActiveDoorView('orders')} currentProfile={profile} />;
+  }
+
   return (
     <div className="space-y-6">
+      <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1.5">
+        <button type="button" onClick={() => setActiveDoorView('orders')} className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white shadow-sm">
+          <FileText className="h-4 w-4" /> Rejestr zamówień PZD
+        </button>
+        <button type="button" onClick={() => setActiveDoorView('catalog')} className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700">
+          <Layers className="h-4 w-4" /> Katalog kombinacji ślusarki
+        </button>
+      </div>
       {/* 1. NAGŁÓWEK MODUŁU DRZWI Z PRZYCISKIEM DODAWANIA */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-start sm:items-center gap-3.5">
