@@ -66,8 +66,8 @@ export const DoorCatalogView: React.FC<DoorCatalogViewProps> = ({ onBackToOrders
     });
   }, [variants, search, groupFilter, sort]);
 
-  const saveCatalog = async (next: DoorVariant[]) => {
-    if (!canEdit) return;
+  const saveCatalog = async (next: DoorVariant[]): Promise<boolean> => {
+    if (!canEdit) return false;
     setSaving(true);
     try {
       const response = await fetch('/api/door-catalog', {
@@ -79,20 +79,26 @@ export const DoorCatalogView: React.FC<DoorCatalogViewProps> = ({ onBackToOrders
       if (!response.ok || !json.success || !Array.isArray(json.variants)) throw new Error('Błąd zapisu');
       setVariants(json.variants);
       setNotice('Katalog zapisany na serwerze.');
+      return true;
     } catch {
       setNotice('Nie udało się zapisać katalogu. Zmiany nie zostały potwierdzone przez serwer.');
+      return false;
     } finally {
       setSaving(false);
     }
   };
 
   const startEdit = (variant: DoorVariant) => { setEditingId(variant.id); setDraft({ ...variant }); };
-  const cancelEdit = () => { setEditingId(null); setDraft(null); };
+  const cancelEdit = () => {
+    if (draft?.id.startsWith('door_variant_')) setVariants((current) => current.filter((v) => v.id !== draft.id));
+    setEditingId(null);
+    setDraft(null);
+  };
   const commitDraft = async () => {
     if (!draft || !canEdit) return;
     const next = variants.map((v) => v.id === draft.id ? draft : v);
-    await saveCatalog(next);
-    cancelEdit();
+    const saved = await saveCatalog(next);
+    if (saved) cancelEdit();
   };
   const duplicate = async (variant: DoorVariant) => {
     if (!canEdit) return;
