@@ -290,6 +290,14 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
           const fDate = parts.length === 3 ? `${parts[2]}.${parts[1]}.${parts[0]}` : d.dataGotowosci;
           entries.push({ label: 'Data gotowości', value: fDate });
         }
+        if (d.przepustyNN) entries.push({ label: 'Przepusty NN', value: d.przepustyNN });
+        if (d.przepustySN) entries.push({ label: 'Przepusty SN', value: d.przepustySN });
+        if (d.pokrywyNN) entries.push({ label: 'Pokrywy NN', value: d.pokrywyNN });
+        if (d.pokrywyNNSaWPyskowicach !== undefined) entries.push({ label: 'Pokrywy NN w Pyskowicach', value: d.pokrywyNNSaWPyskowicach ? 'Tak' : 'Nie' });
+        if (d.pokrywySN) entries.push({ label: 'Pokrywy SN', value: d.pokrywySN });
+        if (d.pokrywySNSaWPyskowicach !== undefined) entries.push({ label: 'Pokrywy SN w Pyskowicach', value: d.pokrywySNSaWPyskowicach ? 'Tak' : 'Nie' });
+        if (d.wkladkiSN) entries.push({ label: 'Wkładki SN', value: d.wkladkiSN });
+        if (d.wkladkiSNSaWPyskowicach !== undefined) entries.push({ label: 'Wkładki SN w Pyskowicach', value: d.wkladkiSNSaWPyskowicach ? 'Tak' : 'Nie' });
         break;
       }
 
@@ -878,7 +886,9 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
             >
               <Edit2 className="w-3 h-3" />
               {canEdit
-                ? item.type === 'ROZDZIELNICA_SN' || item.type === 'ROZDZIELNICA_NN' || item.type === 'OBUDOWA' || item.type === 'DRZWI'
+                ? item.type === 'OBUDOWA'
+                  ? 'Edytuj'
+                  : item.type === 'ROZDZIELNICA_SN' || item.type === 'ROZDZIELNICA_NN' || item.type === 'DRZWI'
                   ? 'Otwórz w oknie'
                   : 'Edytuj parametry'
                 : 'Podgląd w oknie'}
@@ -901,7 +911,9 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
             ) : item.type === 'ROZDZIELNICA_NN' ? (
               renderNNForm()
             ) : item.type === 'OBUDOWA' ? (
-              renderObudowaForm()
+              <div className="bg-slate-50/80 rounded-lg p-3 border border-slate-100">
+                {renderDetailsSummary()}
+              </div>
             ) : item.type === 'DRZWI' ? (
               renderDoorForm()
             ) : (
