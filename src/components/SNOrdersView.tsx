@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CircuitBoard, Search, Plus, Save, Trash2, RefreshCw, ExternalLink, PackageCheck, Truck, Warehouse, ArrowUpDown, ChevronUp, ChevronDown, Copy } from 'lucide-react';
+import { CircuitBoard, Search, Plus, Save, Trash2, RefreshCw, ExternalLink, PackageCheck, Truck, Warehouse, ArrowUpDown, ChevronUp, ChevronDown, Copy, Download } from 'lucide-react';
 import { Order } from '../types/enco';
 import { UserRoleProfile, USER_PROFILES, canEditItemType } from '../types/userRole';
 
@@ -237,6 +237,32 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
     }
   };
 
+  const exportSNToExcel = () => {
+    const categoryLabel = CATEGORIES.find(category => category.key === selectedCategory)?.label || selectedCategory;
+    const typeLabel = TYPES.find(type => type.key === selectedType)?.label || selectedType;
+    const headers = ['Typ rozdzielnicy', 'Sekcja', 'Lp.', 'Rodzaj', 'Ilość', 'Termin dostawy', 'Nr zamówienia', 'Projekt / ZL', 'Lokalizacja'];
+    const escapeCell = (value: unknown) => {
+      const text = String(value ?? '');
+      return /[;"\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    };
+    const rows = [
+      headers.map(escapeCell).join(';'),
+      ...visibleRecords.map((record, index) => [
+        typeLabel, categoryLabel, index + 1, record.rodzaj, record.ilosc,
+        record.terminDostawy, record.nrZamowienia, record.projekt, record.lokalizacja,
+      ].map(escapeCell).join(';')),
+    ];
+    const blob = new Blob(['\uFEFFsep=;\r\n' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ENCO_Zestawienie_SN_${selectedType}_${selectedCategory}_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const orderLabel = (order: Order) => `${order.orderNumber} ${order.projectName}`.trim();
 
   const matchingOrder = (record: SNRecord) => {
@@ -271,7 +297,8 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
       </div>
       <div className="flex flex-wrap gap-2">
         <div className="relative min-w-[220px] flex-1"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Szukaj rodzaju, zamówienia, projektu..." className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-xs" /></div>
-        <button type="button" onClick={() => void loadRecords()} disabled={loading || saving} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><RefreshCw className="h-3.5 w-3.5" /> Odśwież</button>
+        <button type="button" onClick={exportSNToExcel} disabled={loading} title="Eksportuj widoczne pozycje do pliku otwieranego w Excelu" className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"><Download className="h-3.5 w-3.5" /> Eksport Excel</button>
+         <button type="button" onClick={() => void loadRecords()} disabled={loading || saving} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><RefreshCw className="h-3.5 w-3.5" /> Odśwież</button>
         {canEdit && <button type="button" onClick={() => void saveRecords()} disabled={saving || loading} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50"><Save className="h-3.5 w-3.5" />{saving ? 'Zapisywanie…' : 'Zapisz zestawienie'}</button>}
       </div>
     </div>
