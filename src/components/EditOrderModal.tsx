@@ -57,7 +57,8 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
 
   const validation = useMemo(() => {
     if (!order) return { isValid: false, error: 'Nie wybrano zlecenia', normalized: orderNumber };
-    return validateOrderNumber(orderNumber, existingOrders, order.id);
+    const year = Number(order.orderNumber.match(/\/(\d{4})$/)?.[1] || (order.createdAt ? new Date(order.createdAt).getFullYear() : new Date().getFullYear()));
+    return validateOrderNumber(orderNumber, existingOrders, order.id, year);
   }, [orderNumber, existingOrders, order?.id]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -179,7 +180,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
               />
               {orderNumber.trim() && canEditMainMeta && (
                 <p className="text-[10px] text-slate-500 mt-1">
-                  Format znormalizowany: <strong className="font-mono text-slate-800">{normalizeOrderNumber(orderNumber)}</strong>
+                  Format znormalizowany: <strong className="font-mono text-slate-800">{normalizeOrderNumber(orderNumber, Number(order.orderNumber.match(/\/(\d{4})$/)?.[1] || (order.createdAt ? new Date(order.createdAt).getFullYear() : new Date().getFullYear())))}</strong>
                 </p>
               )}
               {validation.error && canEditMainMeta && (
