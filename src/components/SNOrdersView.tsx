@@ -33,7 +33,7 @@ const CATEGORIES: { key: SNCategory; label: string; icon: React.ReactNode }[] = 
   { key: 'TO_DELIVER', label: 'Do dostarczenia', icon: <Truck className="h-4 w-4" /> },
   { key: 'WAREHOUSE', label: 'Wolne na magazynie', icon: <Warehouse className="h-4 w-4" /> },
 ];
-const inputClass = 'w-full min-w-[120px] rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-800 focus:border-blue-500 focus:outline-none disabled:bg-slate-100';
+const inputClass = 'w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-800 focus:border-blue-500 focus:outline-none disabled:bg-slate-100';
 const makeId = () => `sn_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
 export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNavigateToOrder }) => {
