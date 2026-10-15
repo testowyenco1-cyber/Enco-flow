@@ -35,7 +35,7 @@ const CATEGORIES: { key: SNCategory; label: string; icon: React.ReactNode }[] = 
 const inputClass = 'w-full min-w-[120px] rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-800 focus:border-blue-500 focus:outline-none disabled:bg-slate-100';
 const makeId = () => `sn_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile }) => {
+export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNavigateToOrder }) => {
   const [records, setRecords] = useState<SNRecord[]>([]);
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
   const [selectedType, setSelectedType] = useState<SNType>('SIEMENS');
@@ -181,7 +181,7 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile }) => {
                 <td className="px-3 py-3"><input aria-label="Ilość" type="number" min="0" disabled={!canEdit} value={record.ilosc} onChange={event => patchRecord(record.id,{ilosc:Math.max(0,Number(event.target.value)||0)})} className={`${inputClass} min-w-[70px]`}/></td>
                 <td className="px-3 py-3"><input aria-label="Termin dostawy" disabled={!canEdit} value={record.terminDostawy} onChange={event => patchRecord(record.id,{terminDostawy:event.target.value})} placeholder="Data lub „dostarczono”" className={`${inputClass} min-w-[160px]`}/></td>
                 <td className="px-3 py-3"><input aria-label="Numer zamówienia" disabled={!canEdit} value={record.nrZamowienia} onChange={event => patchRecord(record.id,{nrZamowienia:event.target.value})} placeholder="Nr zamówienia" className={inputClass}/></td>
-                <td className="px-3 py-3"><div className="flex items-start gap-1"><input aria-label="Projekt" disabled={!canEdit} value={record.projekt} onChange={event => patchRecord(record.id,{projekt:event.target.value})} placeholder="Projekt" className={`${inputClass} min-w-[250px]`}/>{order && <button type="button" title={`Otwórz zlecenie ${order.orderNumber}`} onClick={() => window.location.assign(`/zlecenia/${encodeURIComponent(order.id)}`)} className="rounded p-1.5 text-blue-700 hover:bg-blue-50"><ExternalLink className="h-4 w-4"/></button>}</div></td>
+                <td className="px-3 py-3"><div className="flex items-start gap-1"><input aria-label="Projekt" disabled={!canEdit} value={record.projekt} onChange={event => patchRecord(record.id,{projekt:event.target.value})} placeholder="Projekt" className={`${inputClass} min-w-[250px]`}/>{order && <button type="button" title={`Otwórz zlecenie ${order.orderNumber}`} onClick={() => onNavigateToOrder(order.id)} className="rounded p-1.5 text-blue-700 hover:bg-blue-50"><ExternalLink className="h-4 w-4"/></button>}</div></td>
                 <td className="px-3 py-3"><input aria-label="Lokalizacja" disabled={!canEdit} value={record.lokalizacja} onChange={event => patchRecord(record.id,{lokalizacja:event.target.value})} placeholder="Lokalizacja" className={inputClass}/></td>
                 <td className="px-3 py-3">{canEdit && <button type="button" title="Usuń pozycję" onClick={() => removeRecord(record.id)} className="rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 className="h-4 w-4"/></button>}</td>
               </tr>;
