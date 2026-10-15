@@ -31,6 +31,7 @@ import { EditItemModal } from './components/EditItemModal';
 import { RoleMatrixModal } from './components/RoleMatrixModal';
 import { PasswordAuthModal } from './components/PasswordAuthModal';
 import { DoorOrderDetailView } from './components/DoorOrderDetailView';
+import { SNOrdersView } from './components/SNOrdersView';
 import { CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 import { validateOrderNumber } from './utils/orderNumberUtils';
 import {
@@ -43,8 +44,9 @@ import {
 
 export default function App() {
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
-  const [activeModule, setActiveModule] = useState<'orders' | 'doors'>(() => {
+  const [activeModule, setActiveModule] = useState<'orders' | 'doors' | 'sn'>(() => {
     const path = window.location.pathname;
+    if (path === '/rozdzielnice-sn' || path.startsWith('/rozdzielnice-sn/')) return 'sn';
     return path === '/drzwi' || path.startsWith('/drzwi/') ? 'doors' : 'orders';
   });
   const [orders, setOrders] = useState<Order[]>(() => loadOrders());
@@ -61,7 +63,12 @@ export default function App() {
   const navigate = (path: string) => {
     if (window.location.pathname !== path) window.history.pushState({}, '', path);
     setCurrentPath(path);
-    if (path === '/drzwi' || path.startsWith('/drzwi/')) {
+    if (path === '/rozdzielnice-sn' || path.startsWith('/rozdzielnice-sn/')) {
+      setActiveModule('sn');
+      setSelectedOrderId(null);
+      sessionStorage.setItem('enco_active_module', 'sn');
+      sessionStorage.removeItem('enco_selected_order_id');
+    } else if (path === '/drzwi' || path.startsWith('/drzwi/')) {
       setActiveModule('doors');
       setSelectedOrderId(null);
       sessionStorage.setItem('enco_active_module', 'doors');
@@ -81,7 +88,10 @@ export default function App() {
     const handlePopState = () => {
       const path = window.location.pathname;
       setCurrentPath(path);
-      if (path === '/drzwi' || path.startsWith('/drzwi/')) {
+      if (path === '/rozdzielnice-sn' || path.startsWith('/rozdzielnice-sn/')) {
+        setActiveModule('sn');
+        setSelectedOrderId(null);
+      } else if (path === '/drzwi' || path.startsWith('/drzwi/')) {
         setActiveModule('doors');
         setSelectedOrderId(null);
       } else {
@@ -492,7 +502,7 @@ export default function App() {
 
       {/* Main Viewport */}
       <main className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 ${
-        activeModule === 'doors' ? 'max-w-full xl:max-w-[1600px]' : 'max-w-7xl'
+        activeModule === 'doors' || activeModule === 'sn' ? 'max-w-full xl:max-w-[1800px]' : 'max-w-7xl'
       }`}>
         <div className="flex items-center justify-between gap-3 mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-2xs">
           <div className="text-xs text-slate-600">
@@ -512,7 +522,21 @@ export default function App() {
             Zapisz zmiany
           </button>
         </div>
-        {activeModule === 'doors' ? (
+        {activeModule === 'sn' ? (
+          <SNOrdersView
+            orders={orders}
+            currentProfile={currentProfile}
+            onUpdateItem={(orderId, updatedItem) => {
+              const updatedOrders = orders.map((order) => {
+                if (order.id !== orderId) return order;
+                const updatedItems = order.items.map((item) => item.id === updatedItem.id ? updatedItem : item);
+                return { ...order, items: updatedItems, status: calculateOrderStatus(updatedItems), updatedAt: new Date().toISOString() };
+              });
+              updateOrdersState(updatedOrders);
+            }}
+            onNavigateToOrder={(orderId) => navigate(`/zlecenia/${encodeURIComponent(orderId)}`)}
+          />
+        ) : activeModule === 'doors' ? (
           selectedDoorOrderId ? (
             (() => {
               const doorOrder = doorOrders.find((item) => item.id === selectedDoorOrderId);
