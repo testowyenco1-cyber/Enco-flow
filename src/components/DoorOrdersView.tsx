@@ -602,7 +602,7 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                         </div>
                       </td>
                       <td className={`min-w-0 border-r border-slate-100 px-1.5 py-2 font-mono ${isDelivered ? 'text-emerald-700' : 'text-slate-500'}`}>{canManageDoors ? <input aria-label="Termin dostawy" type="date" className={cellInput} value={row.terminDostawy || ''} onChange={(e) => patch('terminDostawy', e.target.value)} /> : doorOrd.terminDostawy ? formatDatePL(doorOrd.terminDostawy) : '—'}</td>
-                      <td className="border-r border-slate-100 px-2 py-2 leading-snug break-words"><div className="whitespace-pre-wrap break-words">{canManageDoors ? <textarea aria-label="Uwagi" className={cellInput + " resize-y whitespace-pre-wrap break-words"} rows={2} value={row.uwagi || ''} onChange={(e) => patch('uwagi', e.target.value)} /> : doorOrd.uwagi || '—'}</div></td>
+                      <td className="border-r border-slate-100 px-2 py-2 leading-snug break-words"><div className="whitespace-pre-wrap break-words">{canManageDoors ? <textarea aria-label="Uwagi" className={cellInput + " resize-none overflow-hidden whitespace-pre-wrap break-words"} rows={2} ref={(element) => { if (element) { element.style.height = 'auto'; element.style.height = `${element.scrollHeight}px`; } }} value={row.uwagi || ''} onChange={(e) => patch('uwagi', e.target.value)} /> : doorOrd.uwagi || '—'}</div></td>
                       <td className="min-w-0 px-1 py-2 text-center">
                         <div className="flex items-center justify-center gap-1">
                           {!canManageDoors ? <span className="text-[10px] text-slate-500">Podgląd</span> : <>
