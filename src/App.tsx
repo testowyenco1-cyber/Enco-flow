@@ -345,7 +345,7 @@ export default function App() {
       showToast(`Profil „${currentProfile.name}” nie ma uprawnień do tworzenia zleceń`, 'warning');
       return;
     }
-    const val = validateOrderNumber(params.orderNumber, orders);
+    const val = validateOrderNumber(params.orderNumber, orders, undefined, new Date().getFullYear());
     if (!val.isValid) {
       showToast(val.error || 'Numer zlecenia jest zajęty', 'warning');
       return;
