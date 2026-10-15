@@ -707,32 +707,6 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
             const itemIndex = order.items.findIndex((entry) => entry.id === item.id);
             return (
             <div key={item.id} id={itemIndex === order.items.findIndex((entry) => entry.type === item.type) ? `item-section-${item.type}` : `item-section-${item.type}-${item.id}`} className="space-y-2">
-            <ItemDetailsCard
-              item={item}
-              orderItems={order.items}
-              orderNumber={order.orderNumber}
-              doorOrders={doorOrders}
-              onStatusChange={(newStatus) => handleItemStatusChange(item.id, newStatus)}
-              onUpdateNotes={(notes) => handleUpdateItemNotes(item.id, notes)}
-              onUpdateDates={(orderDate, plannedDate, completedDate) =>
-                handleUpdateItemDates(item.id, orderDate, plannedDate, completedDate)
-              }
-              onUpdateDetails={(newDetails) => handleUpdateItemDetails(item.id, newDetails)}
-              onOpenEditModal={() => onOpenEditItemModal(item)}
-              onAddAttachment={(attachment) => handleAddItemAttachment(item.id, attachment)}
-              onDeleteAttachment={(attachmentId) =>
-                handleDeleteItemAttachment(item.id, attachmentId)
-              }
-              onNavigateToDoorModule={onNavigateToDoorModule}
-              onCreateDoorOrderForStation={() =>
-                onCreateDoorOrder && onCreateDoorOrder(order.orderNumber, `${order.stationSize} ${order.projectName}`)
-              }
-              currentProfile={profile}
-              onOpenFolderManager={(fKey) => {
-                setSelectedFolderForModal(fKey || '01_Dokumentacja_Glowna');
-                setIsOrderFilesModalOpen(true);
-              }}
-            />
             {item.type === 'ROZDZIELNICA_SN' && order.items.find((entry) => entry.type === 'ROZDZIELNICA_SN')?.id === item.id && linkedSNRecordsForOrder.length > 0 && (
               <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -770,6 +744,32 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 </div>
               </div>
             )}
+            <ItemDetailsCard
+              item={item}
+              orderItems={order.items}
+              orderNumber={order.orderNumber}
+              doorOrders={doorOrders}
+              onStatusChange={(newStatus) => handleItemStatusChange(item.id, newStatus)}
+              onUpdateNotes={(notes) => handleUpdateItemNotes(item.id, notes)}
+              onUpdateDates={(orderDate, plannedDate, completedDate) =>
+                handleUpdateItemDates(item.id, orderDate, plannedDate, completedDate)
+              }
+              onUpdateDetails={(newDetails) => handleUpdateItemDetails(item.id, newDetails)}
+              onOpenEditModal={() => onOpenEditItemModal(item)}
+              onAddAttachment={(attachment) => handleAddItemAttachment(item.id, attachment)}
+              onDeleteAttachment={(attachmentId) =>
+                handleDeleteItemAttachment(item.id, attachmentId)
+              }
+              onNavigateToDoorModule={onNavigateToDoorModule}
+              onCreateDoorOrderForStation={() =>
+                onCreateDoorOrder && onCreateDoorOrder(order.orderNumber, `${order.stationSize} ${order.projectName}`)
+              }
+              currentProfile={profile}
+              onOpenFolderManager={(fKey) => {
+                setSelectedFolderForModal(fKey || '01_Dokumentacja_Glowna');
+                setIsOrderFilesModalOpen(true);
+              }}
+            />
             {canEditItemType(profile, item.type) && (
               <div className="flex justify-end">
                 <button
