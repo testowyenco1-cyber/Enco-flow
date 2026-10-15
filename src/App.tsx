@@ -674,6 +674,7 @@ export default function App() {
 
       <EditItemModal
         item={editingItem}
+        orderItems={selectedOrder?.items || []}
         doorOrders={doorOrders}
         isOpen={Boolean(editingItem)}
         onClose={() => {
