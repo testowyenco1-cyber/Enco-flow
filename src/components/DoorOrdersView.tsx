@@ -499,14 +499,55 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                       <td className="whitespace-nowrap border-r border-slate-100 px-3 py-2.5 text-right font-mono font-semibold tabular-nums">{editing ? <input aria-label="Brutto" type="number" step="0.01" className={cellInput + ' text-right'} value={row.wartoscBrutto ?? ''} onChange={(e) => patch('wartoscBrutto', e.target.value === '' ? null : Number(e.target.value))} /> : formatPLN(doorOrd.wartoscBrutto)}</td>
                       <td className="border-r border-slate-100 px-3 py-2.5">
                         <div className="flex flex-wrap gap-1">
-                          {editing ? <input aria-label="Numery ZL" className={cellInput} value={row.numeryZl.join(', ')} onChange={(e) => patch('numeryZl', e.target.value.split(',').map((v) => v.trim()).filter(Boolean))} /> : doorOrd.numeryZl.length ? doorOrd.numeryZl.map((zl) => {
+                          {editing ? (
+                            <details className="relative min-w-[170px]">
+                              <summary className="cursor-pointer list-none rounded border border-blue-300 bg-white px-2 py-1.5 text-xs font-semibold text-slate-800 hover:bg-blue-50">
+                                {row.numeryZl.length ? `Wybrano: ${row.numeryZl.length} ZL ▾` : 'Wybierz zlecenia ZL ▾'}
+                              </summary>
+                              <div className="absolute left-0 top-full z-30 mt-1 max-h-64 w-80 max-w-[80vw] overflow-y-auto rounded-lg border border-slate-300 bg-white p-2 shadow-xl">
+                                <div className="mb-1 px-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">Zaznacz powiązane zlecenia</div>
+                                {orders.length ? orders.map((availableOrder) => {
+                                  const checked = row.numeryZl.some((zl) => isSameOrderNumber(zl, availableOrder.orderNumber));
+                                  return (
+                                    <label key={availableOrder.id} className="flex cursor-pointer items-start gap-2 rounded px-2 py-1.5 hover:bg-blue-50">
+                                      <input
+                                        type="checkbox"
+                                        className="mt-0.5 accent-blue-600"
+                                        checked={checked}
+                                        onChange={(e) => {
+                                          const unmatched = row.numeryZl.filter((zl) => !orders.some((existing) => isSameOrderNumber(existing.orderNumber, zl)));
+                                          const selected = row.numeryZl.filter((zl) => orders.some((existing) => isSameOrderNumber(existing.orderNumber, zl)) && !isSameOrderNumber(availableOrder.orderNumber, zl));
+                                          const nextNumbers = e.target.checked ? [...selected, availableOrder.orderNumber, ...unmatched] : [...selected, ...unmatched];
+                                          const uniqueNumbers = Array.from(new Set(nextNumbers));
+                                          const linked = orders.filter((o) => uniqueNumbers.some((zl) => isSameOrderNumber(o.orderNumber, zl)));
+                                          patch('numeryZl', uniqueNumbers);
+                                          patch('kontrahentRealizacje', linked.map((o) => `${o.orderNumber} — ${o.client?.trim() || 'kontrahent nieuzupełniony'}`).join('\\n'));
+                                        }}
+                                      />
+                                      <span className="min-w-0 flex-1">
+                                        <span className="block font-mono text-[11px] font-bold text-blue-800">{availableOrder.orderNumber}</span>
+                                        <span className="block break-words text-[11px] text-slate-600">{availableOrder.client || 'Brak kontrahenta'}{availableOrder.projectName ? ` · ${availableOrder.projectName}` : ''}</span>
+                                      </span>
+                                    </label>
+                                  );
+                                }) : <p className="px-2 py-2 text-xs text-slate-500">Brak zleceń w aplikacji.</p>}
+                                {row.numeryZl.some((zl) => !orders.some((o) => isSameOrderNumber(o.orderNumber, zl))) && (
+                                  <p className="mt-1 border-t border-slate-200 px-2 pt-2 text-[10px] text-amber-700">Zachowano również wcześniej wpisane numery ZL, których nie ma na liście zleceń.</p>
+                                )}
+                              </div>
+                            </details>
+                          ) : doorOrd.numeryZl.length ? doorOrd.numeryZl.map((zl) => {
                             const matchingOrder = orders.find((o) => isSameOrderNumber(o.orderNumber, zl));
                             return <button key={zl} type="button" onClick={() => matchingOrder && onNavigateToOrder?.(matchingOrder.id)} title={matchingOrder ? `Otwórz zlecenie ${matchingOrder.projectName}` : `Brak aktywnego zlecenia ${zl}`} className={`rounded border px-1.5 py-0.5 font-mono text-[11px] ${matchingOrder ? 'border-blue-200 bg-blue-50 font-semibold text-blue-800 hover:bg-blue-100' : 'border-slate-200 bg-slate-100 text-slate-700'}`}>{zl}</button>;
                           }) : '—'}
                         </div>
                       </td>
                       <td className="border-r border-slate-100 px-3 py-2.5 leading-relaxed">
-                        <div className="whitespace-normal break-words">{editing ? <textarea aria-label="Kontrahent" className={cellInput} rows={2} value={row.kontrahentRealizacje || ''} onChange={(e) => patch('kontrahentRealizacje', e.target.value)} /> : doorOrd.kontrahentRealizacje || '—'}</div>
+                        <div className="whitespace-pre-line break-words">{(() => {
+                           const linkedOrders = row.numeryZl.map((zl) => orders.find((o) => isSameOrderNumber(o.orderNumber, zl))).filter((o): o is Order => Boolean(o));
+                           if (linkedOrders.length) return linkedOrders.map((o) => `${o.orderNumber} — ${o.client?.trim() || 'kontrahent nieuzupełniony'}`).join('\\n');
+                           return row.kontrahentRealizacje || '—';
+                         })()}</div>
                       </td>
                       <td className={`whitespace-nowrap border-r border-slate-100 px-3 py-2.5 font-mono ${isDelivered ? 'text-emerald-700' : 'text-slate-500'}`}>{editing ? <input aria-label="Termin dostawy" type="date" className={cellInput} value={row.terminDostawy || ''} onChange={(e) => patch('terminDostawy', e.target.value)} /> : doorOrd.terminDostawy ? formatDatePL(doorOrd.terminDostawy) : '—'}</td>
                       <td className="border-r border-slate-100 px-3 py-2.5 leading-relaxed"><div className="whitespace-pre-wrap break-words">{editing ? <textarea aria-label="Uwagi" className={cellInput} rows={2} value={row.uwagi || ''} onChange={(e) => patch('uwagi', e.target.value)} /> : doorOrd.uwagi || '—'}</div></td>
