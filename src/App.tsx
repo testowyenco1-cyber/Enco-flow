@@ -566,24 +566,26 @@ export default function App() {
       <main className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 ${
         activeModule === 'doors' ? 'max-w-full xl:max-w-[1600px]' : 'max-w-7xl'
       }`}>
-        <div className="flex items-center justify-between gap-3 mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-2xs">
-          <div className="text-xs text-slate-600">
-            {hasPendingChanges ? 'Masz niezapisane zmiany.' : 'Wszystkie zmiany są zapisane.'}
+        {activeModule !== 'sn' && (
+          <div className="flex items-center justify-between gap-3 mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-2xs">
+            <div className="text-xs text-slate-600">
+              {hasPendingChanges ? 'Masz niezapisane zmiany.' : 'Wszystkie zmiany są zapisane.'}
+            </div>
+            <button
+              type="button"
+              onClick={handleSaveAllChanges}
+              disabled={!hasPendingChanges}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-colors ${
+                hasPendingChanges
+                  ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
+                  : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+              }`}
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              Zapisz zmiany
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={handleSaveAllChanges}
-            disabled={!hasPendingChanges}
-            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-colors ${
-              hasPendingChanges
-                ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
-                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-            }`}
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            Zapisz zmiany
-          </button>
-        </div>
+        )}
         {activeModule === 'sn' ? (
           <SNOrdersView orders={orders} currentProfile={currentProfile} onNavigateToOrder={handleSelectOrder} />
         ) : activeModule === 'doors' ? (
