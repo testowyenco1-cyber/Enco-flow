@@ -69,6 +69,13 @@ const XIRIA_RODZAJE = [
   'XIRIA xGear KKKT + NAPĘDY',
   'XIRIA xGear KKKKT + NAPĘDY',
 ];
+const AIRSET_STOEN_RODZAJE = [
+  'Pole potrzeb własnych LE-Q',
+  'RM AirSet RE-IIB 24kV 20kA; wys. 1,625',
+  'Napęd do AirSet do pól liniowych',
+  'RM AirSet RE-IIIB 24kV 20kA; wys. 1,625',
+  'Pole LE-Q (pod TPW)',
+];
 type SortKey = 'rodzaj' | 'ilosc' | 'terminDostawy' | 'nrZamowienia' | 'projekt' | 'lokalizacja';
 const makeId = () => `sn_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
@@ -147,6 +154,7 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
     };
     return {
       RM_AIRSET: buildDictionary('RM_AIRSET', AIRSET_RODZAJE),
+      RM_AIRSET_STOEN: buildDictionary('RM_AIRSET_STOEN', AIRSET_STOEN_RODZAJE),
       SIEMENS: buildDictionary('SIEMENS', SIEMENS_RODZAJE),
       XIRIA: buildDictionary('XIRIA', XIRIA_RODZAJE),
     };
@@ -154,11 +162,13 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
 
   const rodzajOptions = selectedType === 'RM_AIRSET'
     ? rodzajDictionaries.RM_AIRSET
-    : selectedType === 'SIEMENS'
-      ? rodzajDictionaries.SIEMENS
-      : selectedType === 'XIRIA'
-        ? rodzajDictionaries.XIRIA
-        : [];
+    : selectedType === 'RM_AIRSET_STOEN'
+      ? rodzajDictionaries.RM_AIRSET_STOEN
+      : selectedType === 'SIEMENS'
+        ? rodzajDictionaries.SIEMENS
+        : selectedType === 'XIRIA'
+          ? rodzajDictionaries.XIRIA
+          : [];
 
   const addRodzajOption = (recordId: string) => {
     const value = newRodzaj.trim();
@@ -286,7 +296,7 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
               return <tr key={record.id} className="align-top hover:bg-blue-50/30">
                 <td className="px-2 py-1.5 text-[11px] text-slate-400">{visibleRecords.findIndex(item => item.id === record.id) + 1}</td>
                 <td className="min-w-0 px-1 py-1">
-                  {(record.type === 'RM_AIRSET' || record.type === 'SIEMENS' || record.type === 'XIRIA') && canEdit ? <div className="min-w-0 space-y-1">
+                  {(record.type === 'RM_AIRSET' || record.type === 'RM_AIRSET_STOEN' || record.type === 'SIEMENS' || record.type === 'XIRIA') && canEdit ? <div className="min-w-0 space-y-1">
                     <select aria-label="Rodzaj rozdzielnicy" value={addingRodzajFor === record.id ? '__add_new__' : record.rodzaj} onChange={event => {
                       if (event.target.value === '__add_new__') { setAddingRodzajFor(record.id); setNewRodzaj(''); }
                       else { setAddingRodzajFor(null); patchRecord(record.id, { rodzaj: event.target.value }); }
