@@ -476,6 +476,17 @@ export default function App() {
     updateDoorOrdersState(updated);
   };
 
+  const handleSaveDoorOrdersBulk = (savedDoorOrders: DoorOrder[]) => {
+    if (!currentProfile.canManageDoors) {
+      showToast(`Profil „${currentProfile.name}” nie posiada uprawnień do edycji drzwi`, 'warning');
+      return;
+    }
+    const updates = new Map(savedDoorOrders.map((order) => [order.id, order]));
+    const updated = doorOrders.map((order) => updates.get(order.id) || order);
+    updateDoorOrdersState(updated);
+    showToast(`Zapisano zmiany w ${savedDoorOrders.length} zamówieniach drzwi`, 'success');
+  };
+
   const handleDeleteDoorOrder = (doorOrderId: string) => {
     if (!currentProfile.canManageDoors) {
       showToast(`Profil „${currentProfile.name}” nie posiada uprawnień do usuwania drzwi`, 'warning');
@@ -609,6 +620,7 @@ export default function App() {
               setIsDoorOrderModalOpen(true);
             }}
             onSaveDoorOrderDirect={handleSaveDoorOrder}
+            onSaveDoorOrdersBulk={handleSaveDoorOrdersBulk}
             onDeleteDoorOrder={handleDeleteDoorOrder}
             onQuickConfirmDelivery={handleQuickConfirmDelivery}
             onNavigateToOrder={(ordId) => navigate(`/zlecenia/${encodeURIComponent(ordId)}`)}
