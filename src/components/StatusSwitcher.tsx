@@ -43,7 +43,7 @@ export const StatusSwitcher: React.FC<StatusSwitcherProps> = ({
       const rect = dropdownRef.current?.getBoundingClientRect();
       if (!rect) return;
       const menuWidth = 192;
-      const menuHeight = 216;
+      const menuHeight = 260;
       const left = Math.max(8, Math.min(rect.left, window.innerWidth - menuWidth - 8));
       const openAbove = rect.bottom + menuHeight + 8 > window.innerHeight &&
         rect.top > menuHeight + 8;
@@ -61,7 +61,7 @@ export const StatusSwitcher: React.FC<StatusSwitcherProps> = ({
     };
   }, [isOpen]);
 
-  const statuses: ItemStatus[] = ['NOT_ORDERED', 'ORDERED', 'IN_PROGRESS', 'READY', 'PROBLEM'];
+  const statuses: ItemStatus[] = ['NOT_ORDERED', 'ORDERED', 'IN_PROGRESS', 'READY', 'PROBLEM', 'NOT_APPLICABLE'];
   const currentMeta = (currentStatus && STATUS_META[currentStatus]) || STATUS_META.NOT_ORDERED;
 
   // READ-ONLY MODE
@@ -97,19 +97,21 @@ export const StatusSwitcher: React.FC<StatusSwitcherProps> = ({
 
   if (variant === 'segmented') {
     return (
-      <div className="inline-flex items-center p-1 bg-slate-200/80 rounded-lg border border-slate-300 shadow-2xs gap-0.5">
+      <div className="inline-flex flex-wrap items-center p-1 bg-slate-200/80 rounded-lg border border-slate-300 shadow-2xs gap-0.5">
         {statuses.map((st) => {
           const meta = STATUS_META[st];
           const isActive = currentStatus === st;
 
           let activeClass = 'bg-slate-700 text-white shadow-xs font-bold';
-          if (st === 'PROBLEM') activeClass = 'bg-rose-600 text-white shadow-xs font-black ring-1 ring-rose-500';
+          if (st === 'NOT_APPLICABLE') activeClass = 'bg-slate-500 text-white shadow-xs font-bold ring-1 ring-slate-400';
+          else if (st === 'PROBLEM') activeClass = 'bg-rose-600 text-white shadow-xs font-black ring-1 ring-rose-500';
           else if (st === 'READY') activeClass = 'bg-emerald-600 text-white shadow-xs font-black ring-1 ring-emerald-500';
           else if (st === 'IN_PROGRESS') activeClass = 'bg-amber-500 text-slate-950 shadow-xs font-black ring-1 ring-amber-400';
           else if (st === 'ORDERED') activeClass = 'bg-blue-600 text-white shadow-xs font-black ring-1 ring-blue-500';
 
           let inactiveClass = 'text-slate-600 hover:bg-slate-300/60 font-semibold';
-          if (st === 'PROBLEM') inactiveClass = 'text-rose-800 hover:bg-rose-100 font-bold';
+          if (st === 'NOT_APPLICABLE') inactiveClass = 'text-slate-600 hover:bg-slate-100 font-bold';
+          else if (st === 'PROBLEM') inactiveClass = 'text-rose-800 hover:bg-rose-100 font-bold';
           else if (st === 'READY') inactiveClass = 'text-emerald-800 hover:bg-emerald-100 font-bold';
           else if (st === 'IN_PROGRESS') inactiveClass = 'text-amber-900 hover:bg-amber-100 font-bold';
           else if (st === 'ORDERED') inactiveClass = 'text-blue-800 hover:bg-blue-100 font-bold';
@@ -139,6 +141,8 @@ export const StatusSwitcher: React.FC<StatusSwitcherProps> = ({
                     ? 'bg-amber-500'
                     : st === 'ORDERED'
                     ? 'bg-blue-600'
+                    : st === 'NOT_APPLICABLE'
+                    ? 'bg-slate-300'
                     : st === 'PROBLEM'
                     ? 'bg-rose-600'
                     : 'bg-slate-400'
@@ -196,6 +200,9 @@ export const StatusSwitcher: React.FC<StatusSwitcherProps> = ({
             } else if (st === 'ORDERED') {
               dotColor = 'bg-blue-600';
               textColor = 'text-blue-800 font-bold';
+            } else if (st === 'NOT_APPLICABLE') {
+              dotColor = 'bg-slate-300';
+              textColor = 'text-slate-600 font-bold';
             } else if (st === 'PROBLEM') {
               dotColor = 'bg-rose-600';
               textColor = 'text-rose-800 font-bold';
