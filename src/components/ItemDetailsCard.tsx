@@ -338,6 +338,111 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         });
     }
 
+    if (item.type === 'OBUDOWA') {
+      const d = item.details || {};
+      const koloryItem = orderItems.find((related) => related.type === 'KOLORY');
+      const opisyItem = orderItems.find((related) => related.type === 'OPISY');
+      const kolory = koloryItem?.details || {};
+      const opisy = opisyItem?.details || {};
+      const typName =
+        d.typObudowy === 'NZ'
+          ? 'NZ — obudowa zewnętrzna'
+          : d.typObudowy === 'BEK'
+          ? 'BEK — obudowa wewnętrzna'
+          : (d.typObudowy || 'BEK');
+      const displayValue = (value: unknown) =>
+        value === undefined || value === null || value === '' ? '—' : String(value);
+      const yesNo = (value: unknown) =>
+        value === undefined || value === null ? '—' : value ? 'Tak' : 'Nie';
+      const formatDate = (value: unknown) => {
+        if (typeof value !== 'string' || !value) return '—';
+        const parts = value.split('-');
+        return parts.length === 3 ? `${parts[2]}.${parts[1]}.${parts[0]}` : value;
+      };
+      const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+        <div className="pt-3 first:pt-0">
+          <h5 className="mb-2 border-b border-slate-200 pb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+            {title}
+          </h5>
+          {children}
+        </div>
+      );
+      const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
+        <div className="min-w-0">
+          <span className="block text-[11px] font-medium text-slate-500">{label}</span>
+          <span className="block break-words text-xs font-semibold text-slate-900">{value}</span>
+        </div>
+      );
+
+      return (
+        <div className="divide-y divide-slate-200 text-xs">
+          <Section title="1. Rodzaj i rozmiar">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Rodzaj obudowy" value={typName} />
+              <Field label="Rozmiar obudowy" value={displayValue(d.rozmiar)} />
+              <Field
+                label="Wymiary rzeczywiste"
+                value={
+                  d.szerokosc !== undefined && d.glebokosc !== undefined
+                    ? `${formatDimensionM(d.szerokosc)} × ${formatDimensionM(d.glebokosc)} × ${formatDimensionM(d.wysokosc)} (${d.typWysokosci || (d.typObudowy === 'NZ' ? 'wysokość zewnętrzna' : 'wysokość wewnętrzna pomieszczeń')})`
+                    : displayValue(d.wymiary)
+                }
+              />
+              <Field label="Planowana data gotowości" value={formatDate(d.dataGotowosci || item.plannedDate)} />
+            </div>
+          </Section>
+
+          <Section title="2. Przepusty i pokrywy">
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-3 rounded-md border border-blue-200 bg-blue-50/60 p-3 sm:grid-cols-[72px_minmax(0,1fr)]">
+                <div className="flex items-center">
+                  <span className="rounded bg-blue-100 px-2 py-1 text-[11px] font-extrabold text-blue-900">NN</span>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Field label="Przepusty NN" value={displayValue(d.przepustyNN)} />
+                  <Field label="Pokrywy NN" value={displayValue(d.pokrywyNN)} />
+                  <Field label="Pokrywy NN w Pyskowicach" value={yesNo(d.pokrywyNNSaWPyskowicach)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 rounded-md border border-amber-200 bg-amber-50/60 p-3 sm:grid-cols-[72px_minmax(0,1fr)]">
+                <div className="flex items-center">
+                  <span className="rounded bg-amber-100 px-2 py-1 text-[11px] font-extrabold text-amber-900">SN</span>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Field label="Przepusty SN" value={displayValue(d.przepustySN)} />
+                  <Field label="Pokrywy SN" value={displayValue(d.pokrywySN)} />
+                  <Field label="Pokrywy SN w Pyskowicach" value={yesNo(d.pokrywySNSaWPyskowicach)} />
+                </div>
+              </div>
+            </div>
+          </Section>
+
+          <Section title="3. Wkładki SN">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Wkładki SN" value={displayValue(d.wkladkiSN)} />
+              <Field label="Wkładki SN w Pyskowicach" value={yesNo(d.wkladkiSNSaWPyskowicach)} />
+            </div>
+          </Section>
+
+          <Section title="4. Kolory">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Field label="Kolor obudowy" value={displayValue(kolory.kolorObudowy)} />
+              <Field label="Kolor drzwi" value={displayValue(kolory.kolorDrzwi)} />
+              <Field label="Kolory dodatkowe" value={displayValue(kolory.koloryDodatkowe)} />
+              <Field label="Numery RAL" value={displayValue(kolory.numeryRal)} />
+            </div>
+          </Section>
+
+          <Section title="5. Opisy">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Wymagane opisy" value={displayValue(opisy.wymaganeOpisy)} />
+              <Field label="Sposób wykonania opisów" value={displayValue(opisy.sposobWykonania)} />
+            </div>
+          </Section>
+        </div>
+      );
+    }
+
     if (entries.length === 0) {
       return (
         <div className="text-xs text-slate-400 italic">
