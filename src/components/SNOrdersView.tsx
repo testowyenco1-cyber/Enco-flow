@@ -129,14 +129,25 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
   };
   const sortHeader = (label: string, key: SortKey) => <button type="button" onClick={() => toggleSort(key)} className="inline-flex items-center gap-1 text-left hover:text-blue-700" title={'Sortuj według: ' + label}>{label}{sortKey === key ? (sortDirection === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-40" />}</button>;
 
-  const rodzajOptions = useMemo(() => {
-    const seedOptions = selectedType === 'RM_AIRSET' ? AIRSET_RODZAJE : selectedType === 'SIEMENS' ? SIEMENS_RODZAJE : [];
-    const existing = records
-      .filter(record => record.type === selectedType)
-      .map(record => record.rodzaj.trim())
-      .filter(Boolean);
-    return Array.from(new Set([...seedOptions, ...existing])).sort((a, b) => a.localeCompare(b, 'pl', { numeric: true, sensitivity: 'base' }));
-  }, [records, selectedType]);
+  const rodzajDictionaries = useMemo(() => {
+    const buildDictionary = (type: SNType, defaults: string[]) => {
+      const stored = records
+        .filter(record => record.type === type)
+        .map(record => record.rodzaj.trim())
+        .filter(Boolean);
+      return Array.from(new Set([...defaults, ...stored])).sort((a, b) => a.localeCompare(b, 'pl', { numeric: true, sensitivity: 'base' }));
+    };
+    return {
+      RM_AIRSET: buildDictionary('RM_AIRSET', AIRSET_RODZAJE),
+      SIEMENS: buildDictionary('SIEMENS', SIEMENS_RODZAJE),
+    };
+  }, [records]);
+
+  const rodzajOptions = selectedType === 'RM_AIRSET'
+    ? rodzajDictionaries.RM_AIRSET
+    : selectedType === 'SIEMENS'
+      ? rodzajDictionaries.SIEMENS
+      : [];
 
   const addRodzajOption = (recordId: string) => {
     const value = newRodzaj.trim();
