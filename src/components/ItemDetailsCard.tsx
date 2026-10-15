@@ -937,10 +937,11 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         </div>
 
         {/* Dates Section */}
-        <div className="flex flex-wrap items-center justify-between gap-4 py-3 border-y border-slate-100 text-xs">
-          <div className="flex flex-wrap items-center gap-6">
+        <div className="space-y-3 py-4 border-y border-slate-200 text-xs">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* 1. Data wystawienia zlecenia / kiedy zamówiono */}
-            <div className="flex items-center gap-2">
+            <div className="min-w-0 flex flex-col items-start gap-1.5 rounded-lg border border-blue-200 bg-blue-50/60 p-3">
+              <div className="flex items-center gap-2">
               <Send className="w-3.5 h-3.5 text-blue-600 shrink-0" />
               <span className="text-slate-600 font-semibold">Data zlecenia / zamówienia:</span>
               {isEditingDate ? (
@@ -957,10 +958,12 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
               ) : (
                 <span className="font-mono text-slate-400 italic">Brak daty</span>
               )}
+              </div>
             </div>
 
             {/* 2. Planowany termin / Data gotowości */}
-            <div className="flex items-center gap-2">
+            <div className="min-w-0 flex flex-col items-start gap-1.5 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <div className="flex items-center gap-2">
               <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <span className="text-slate-500">
                 {item.type === 'OBUDOWA' ? 'Data gotowości obudowy:' : 'Planowany termin:'}
@@ -991,10 +994,12 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
                     Przekroczono termin gotowości!
                   </span>
                 )}
+              </div>
             </div>
 
             {/* 3. Rzeczywista data zakończenia */}
-            <div className="flex items-center gap-2">
+            <div className="min-w-0 flex flex-col items-start gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
+              <div className="flex items-center gap-2">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <span className="text-slate-500">Rzeczywista data zakończenia:</span>
               {isEditingDate ? (
@@ -1011,10 +1016,11 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
                     : '—'}
                 </span>
               )}
+              </div>
             </div>
           </div>
 
-          <div>
+          <div className="flex justify-end">
             {canEdit ? (
               isEditingDate ? (
                 <div className="flex items-center gap-2">
