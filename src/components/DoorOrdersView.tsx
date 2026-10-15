@@ -570,12 +570,21 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                           }) : '—'}
                         </div>
                       </td>
-                      <td className="min-w-0 border-r border-slate-100 px-1.5 py-2 leading-snug whitespace-pre-line break-words">
-                        <div className="whitespace-pre-line break-words">{(() => {
-                           const linkedOrders = row.numeryZl.map((zl) => orders.find((o) => isSameOrderNumber(o.orderNumber, zl))).filter((o): o is Order => Boolean(o));
-                           if (linkedOrders.length) return linkedOrders.map((o) => `${o.orderNumber} — ${o.client?.trim() || 'kontrahent nieuzupełniony'}`).join('\n');
-                           return row.kontrahentRealizacje || '—';
-                         })()}</div>
+                      <td className="min-w-0 border-r border-slate-100 px-2 py-2 align-top">
+                        <div className="space-y-1.5 text-[11px] leading-snug">
+                          {(() => {
+                            const linkedOrders = row.numeryZl.map((zl) => orders.find((o) => isSameOrderNumber(o.orderNumber, zl))).filter((o): o is Order => Boolean(o));
+                            const entries = linkedOrders.length
+                              ? linkedOrders.map((o) => `${o.orderNumber} — ${o.client?.trim() || 'kontrahent nieuzupełniony'}`)
+                              : (row.kontrahentRealizacje || '').split('\n').map((entry) => entry.trim()).filter(Boolean);
+                            return entries.length ? entries.map((entry, entryIndex) => (
+                              <div key={`${doorOrd.id}-kontrahent-${entryIndex}`} className="flex min-w-0 items-start gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-1">
+                                <span className="shrink-0 font-black text-blue-700">•</span>
+                                <span className="min-w-0 break-words text-slate-800">{entry}</span>
+                              </div>
+                            )) : <span className="text-slate-400">—</span>;
+                          })()}
+                        </div>
                       </td>
                       <td className={`min-w-0 border-r border-slate-100 px-1.5 py-2 font-mono ${isDelivered ? 'text-emerald-700' : 'text-slate-500'}`}>{canManageDoors ? <input aria-label="Termin dostawy" type="date" className={cellInput} value={row.terminDostawy || ''} onChange={(e) => patch('terminDostawy', e.target.value)} /> : doorOrd.terminDostawy ? formatDatePL(doorOrd.terminDostawy) : '—'}</td>
                       <td className="border-r border-slate-100 px-2 py-2 leading-snug break-words"><div className="whitespace-pre-wrap break-words">{canManageDoors ? <textarea aria-label="Uwagi" className={cellInput + " resize-y whitespace-pre-wrap break-words"} rows={2} value={row.uwagi || ''} onChange={(e) => patch('uwagi', e.target.value)} /> : doorOrd.uwagi || '—'}</div></td>
