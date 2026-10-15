@@ -697,7 +697,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 setIsOrderFilesModalOpen(true);
               }}
             />
-            {item.type === 'ROZDZIELNICA_SN' && linkedSNRecordsForOrder.length > 0 && (
+            {item.type === 'ROZDZIELNICA_SN' && order.items.find((entry) => entry.type === 'ROZDZIELNICA_SN')?.id === item.id && linkedSNRecordsForOrder.length > 0 && (
               <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-xs font-bold uppercase tracking-wide text-blue-900">
