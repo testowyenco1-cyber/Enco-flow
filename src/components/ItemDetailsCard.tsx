@@ -156,6 +156,13 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
           label: 'Konfiguracja pól',
           value: `${snConfig} (L: liniowe, T: transformatorowe)`,
         });
+        if (d.numerSeryjny) entries.push({ label: 'Numer seryjny', value: String(d.numerSeryjny) });
+        const formatSNDate = (value: unknown) =>
+          typeof value === 'string' && value ? value.split('-').reverse().join('.') : '';
+        if (d.dataDostawyPlan) entries.push({ label: 'Data dostawy plan.', value: formatSNDate(d.dataDostawyPlan) });
+        if (d.dataDostawyFakt) entries.push({ label: 'Data dostawy fakt.', value: formatSNDate(d.dataDostawyFakt) });
+        if (d.dataPlDostawyPyskowice) entries.push({ label: 'Data pl. dos. do Pyskowic', value: formatSNDate(d.dataPlDostawyPyskowice) });
+        entries.push({ label: 'SN w Pyskowicach', value: d.snWPyskowicach ? 'Tak' : 'Nie' });
         if (d.parametryTechniczne) {
           entries.push({ label: 'Parametry techniczne', value: d.parametryTechniczne });
         }
@@ -585,6 +592,58 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
               </div>
               <span className="text-[10px] text-blue-700 italic">Swobodna edycja ręczna</span>
             </div>
+          </div>
+        </div>
+
+        {/* Dane logistyczne rozdzielnicy SN */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-200">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Numer seryjny</label>
+            <input
+              type="text"
+              value={d.numerSeryjny || ''}
+              onChange={(e) => handleUpdateSNField('numerSeryjny', e.target.value)}
+              placeholder="Numer seryjny producenta"
+              className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Data dostawy plan.</label>
+            <input
+              type="date"
+              value={d.dataDostawyPlan || ''}
+              onChange={(e) => handleUpdateSNField('dataDostawyPlan', e.target.value)}
+              className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Data dostawy fakt.</label>
+            <input
+              type="date"
+              value={d.dataDostawyFakt || ''}
+              onChange={(e) => handleUpdateSNField('dataDostawyFakt', e.target.value)}
+              className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Data pl. dos. do Pyskowic</label>
+            <input
+              type="date"
+              value={d.dataPlDostawyPyskowice || ''}
+              onChange={(e) => handleUpdateSNField('dataPlDostawyPyskowice', e.target.value)}
+              className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">SN w Pyskowicach</label>
+            <select
+              value={String(Boolean(d.snWPyskowicach))}
+              onChange={(e) => handleUpdateSNField('snWPyskowicach', e.target.value === 'true')}
+              className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden font-semibold"
+            >
+              <option value="false">Nie</option>
+              <option value="true">Tak</option>
+            </select>
           </div>
         </div>
 
