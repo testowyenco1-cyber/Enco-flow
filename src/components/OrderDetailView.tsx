@@ -629,6 +629,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
             <div key={item.id} id={`item-section-${item.type}`} className="space-y-2">
             <ItemDetailsCard
               item={item}
+              orderItems={order.items}
               orderNumber={order.orderNumber}
               doorOrders={doorOrders}
               onStatusChange={(newStatus) => handleItemStatusChange(item.id, newStatus)}
