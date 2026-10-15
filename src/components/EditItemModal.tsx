@@ -19,6 +19,7 @@ import { UserRoleProfile, USER_PROFILES, canEditItemType, getItemPermissionHint 
 
 interface EditItemModalProps {
   item: OrderItem | null;
+  orderItems?: OrderItem[];
   doorOrders?: DoorOrder[];
   isOpen: boolean;
   onClose: () => void;
@@ -29,6 +30,7 @@ interface EditItemModalProps {
 
 export const EditItemModal: React.FC<EditItemModalProps> = ({
   item,
+  orderItems = [],
   doorOrders = [],
   isOpen,
   onClose,
@@ -273,6 +275,8 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
             <div className="space-y-4 pt-1">
               <ObudowaForm
                 initialData={details}
+                relatedItems={orderItems}
+                onAuxiliaryChange={handleDetailChange}
                 itemStatus={status}
                 orderPlannedDate={plannedDate}
                 onChange={(formData) => {
