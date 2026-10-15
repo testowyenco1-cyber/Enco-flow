@@ -30,6 +30,7 @@ export const DoorCatalogView: React.FC<DoorCatalogViewProps> = ({ onBackToOrders
   const [groupFilter, setGroupFilter] = useState('all');
   const [sort, setSort] = useState<{ key: keyof DoorVariant; asc: boolean }>({ key: 'grupa', asc: true });
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [newVariantId, setNewVariantId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DoorVariant | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -90,7 +91,8 @@ export const DoorCatalogView: React.FC<DoorCatalogViewProps> = ({ onBackToOrders
 
   const startEdit = (variant: DoorVariant) => { setEditingId(variant.id); setDraft({ ...variant }); };
   const cancelEdit = () => {
-    if (draft?.id.startsWith('door_variant_')) setVariants((current) => current.filter((v) => v.id !== draft.id));
+    if (draft && draft.id === newVariantId) setVariants((current) => current.filter((v) => v.id !== draft.id));
+    setNewVariantId(null);
     setEditingId(null);
     setDraft(null);
   };
@@ -98,7 +100,7 @@ export const DoorCatalogView: React.FC<DoorCatalogViewProps> = ({ onBackToOrders
     if (!draft || !canEdit) return;
     const next = variants.map((v) => v.id === draft.id ? draft : v);
     const saved = await saveCatalog(next);
-    if (saved) cancelEdit();
+    if (saved) { setNewVariantId(null); setEditingId(null); setDraft(null); }
   };
   const duplicate = async (variant: DoorVariant) => {
     if (!canEdit) return;
@@ -116,6 +118,7 @@ export const DoorCatalogView: React.FC<DoorCatalogViewProps> = ({ onBackToOrders
     setGroupFilter('all');
     setSort({ key: 'grupa', asc: true });
     setEditingId(variant.id);
+    setNewVariantId(variant.id);
     setDraft(variant);
   };
   const deleteVariant = async (variant: DoorVariant) => {
