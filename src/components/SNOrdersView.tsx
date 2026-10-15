@@ -187,7 +187,7 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
     if (!canEdit) return;
     const record: SNRecord = {
       id: makeId(), type: selectedType, category: selectedCategory, rodzaj: '', ilosc: 1,
-      terminDostawy: selectedCategory === 'DELIVERED' ? 'dostarczono' : '',
+      terminDostawy: '',
       nrZamowienia: '', projekt: '', linkedOrderId: undefined, lokalizacja: '',
     };
     setRecords(current => [...current, record]);
@@ -312,7 +312,15 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
                   </div> : <input aria-label="Rodzaj rozdzielnicy" disabled={!canEdit} value={record.rodzaj} onChange={event => patchRecord(record.id,{rodzaj:event.target.value})} placeholder="Typ / konfiguracja" className={`${inputClass} min-w-0`}/>}
                 </td>
                 <td className="min-w-0 px-2 py-3"><input aria-label="Ilość" type="number" min="0" disabled={!canEdit} value={record.ilosc} onChange={event => patchRecord(record.id,{ilosc:Math.max(0,Number(event.target.value)||0)})} className={`${inputClass} min-w-0`}/></td>
-                <td className="min-w-0 px-2 py-3"><input aria-label="Termin dostawy" disabled={!canEdit} value={record.terminDostawy} onChange={event => patchRecord(record.id,{terminDostawy:event.target.value})} placeholder="Data lub „dostarczono”" className={`${inputClass} min-w-0`}/></td>
+                <td className="min-w-0 px-2 py-2">
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <input aria-label="Termin dostawy" type="date" disabled={!canEdit || record.terminDostawy.trim().toLocaleLowerCase('pl') === 'dostarczono'} value={/^\d{4}-\d{2}-\d{2}$/.test(record.terminDostawy) ? record.terminDostawy : ''} onChange={event => patchRecord(record.id,{terminDostawy:event.target.value})} className={`${inputClass} min-w-0`}/>
+                    <label className="flex items-center gap-1 text-[10px] text-slate-600">
+                      <input aria-label="Dostarczono" type="checkbox" disabled={!canEdit} checked={record.terminDostawy.trim().toLocaleLowerCase('pl') === 'dostarczono'} onChange={event => patchRecord(record.id,{terminDostawy:event.target.checked ? 'dostarczono' : ''})} className="h-3 w-3 rounded border-slate-300"/>
+                      Dostarczono
+                    </label>
+                  </div>
+                </td>
                 <td className="min-w-0 px-2 py-3"><input aria-label="Numer zamówienia" disabled={!canEdit} value={record.nrZamowienia} onChange={event => patchRecord(record.id,{nrZamowienia:event.target.value})} placeholder="Nr zamówienia" className={inputClass}/></td>
                 <td className="min-w-0 px-2 py-3"><div className="flex min-w-0 items-center gap-1"><div className="min-w-0 flex-1">{canEdit && <select aria-label="Powiązane zlecenie ZL" value={order?.id || '__custom__'} onChange={event => selectProject(record,event.target.value)} className={`${inputClass} min-w-0`}><option value="__custom__">Projekt własny / bez powiązania z ZL</option>{orders.map(item => <option key={item.id} value={item.id}>{orderLabel(item)}</option>)}</select>}{(!order || !record.linkedOrderId) && <input aria-label="Projekt / opis" disabled={!canEdit} value={record.projekt} onChange={event => patchRecord(record.id,{projekt:event.target.value,linkedOrderId:undefined})} placeholder="Projekt lub opis lokalizacji" className={`${inputClass} mt-1 min-w-0`}/>}<p className="mt-0.5 truncate text-[9px] text-slate-500">{order ? `Powiązano: ${order.orderNumber} — ${order.projectName}` : 'Wybierz zlecenie, aby powiązać projekt z numerem ZL.'}</p></div>{order && <button type="button" title={`Otwórz zlecenie ${order.orderNumber}`} onClick={() => onNavigateToOrder(order.id)} className="rounded p-1.5 text-blue-700 hover:bg-blue-50"><ExternalLink className="h-4 w-4"/></button>}</div></td>
                 <td className="min-w-0 px-2 py-3"><input aria-label="Lokalizacja" disabled={!canEdit} value={record.lokalizacja} onChange={event => patchRecord(record.id,{lokalizacja:event.target.value})} placeholder="Lokalizacja" className={inputClass}/></td>
