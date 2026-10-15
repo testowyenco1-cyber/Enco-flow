@@ -393,21 +393,17 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
 
           <Section title="2. Przepusty i pokrywy">
             <div className="space-y-3">
-              <div className="grid grid-cols-1 gap-3 rounded-md border border-blue-200 bg-blue-50/60 p-3 sm:grid-cols-[72px_minmax(0,1fr)]">
-                <div className="flex items-center">
-                  <span className="rounded bg-blue-100 px-2 py-1 text-[11px] font-extrabold text-blue-900">NN</span>
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <div className="mb-2 text-[11px] font-extrabold uppercase tracking-wider text-blue-800">NN</div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <Field label="Przepusty NN" value={displayValue(d.przepustyNN)} />
                   <Field label="Pokrywy NN" value={displayValue(d.pokrywyNN)} />
                   <Field label="Pokrywy NN w Pyskowicach" value={yesNo(d.pokrywyNNSaWPyskowicach)} />
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-3 rounded-md border border-amber-200 bg-amber-50/60 p-3 sm:grid-cols-[72px_minmax(0,1fr)]">
-                <div className="flex items-center">
-                  <span className="rounded bg-amber-100 px-2 py-1 text-[11px] font-extrabold text-amber-900">SN</span>
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="border-t border-slate-200 pt-3">
+                <div className="mb-2 text-[11px] font-extrabold uppercase tracking-wider text-amber-800">SN</div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <Field label="Przepusty SN" value={displayValue(d.przepustySN)} />
                   <Field label="Pokrywy SN" value={displayValue(d.pokrywySN)} />
                   <Field label="Pokrywy SN w Pyskowicach" value={yesNo(d.pokrywySNSaWPyskowicach)} />
