@@ -711,7 +711,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                   {linkedSNRecordsForOrder.map((record, index) => (
                     <div key={record.id} className="rounded-lg border border-blue-100 bg-white p-3">
                       <div className="mb-2 text-xs font-bold text-slate-800">
-                        {index === 0 ? 'Rozdzielnica SN' : `Rozdzielnica SN do ZL ${index + 1}`}
+                        {index === 0 ? 'Rozdzielnica SN do ZL' : `Rozdzielnica SN do ZL ${index + 1}`}
                       </div>
                       <dl className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
                         {[
