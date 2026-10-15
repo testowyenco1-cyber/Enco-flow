@@ -29,7 +29,6 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
   existingOrders = [],
 }) => {
   const [mode, setMode] = useState<'list' | 'custom'>('list');
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedListNumber, setSelectedListNumber] = useState('');
   const [customNumber, setCustomNumber] = useState('');
   const [client, setClient] = useState('');
@@ -42,8 +41,8 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
 
   // Wyliczanie listy uporządkowanych numerów i kolejnego wolnego numeru
   const { items: orderListItems, nextAvailable } = useMemo(() => {
-    return getOrderNumbersList(existingOrders, 30, selectedYear);
-  }, [existingOrders, selectedYear]);
+    return getOrderNumbersList(existingOrders, 30, new Date().getFullYear());
+  }, [existingOrders]);
 
   // 3 kolejne wolne numery dla szybkiego wyboru 1 kliknięciem
   const quickPills = useMemo(() => {
@@ -54,7 +53,6 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setMode('list');
-      setSelectedYear(new Date().getFullYear());
       setSelectedListNumber(nextAvailable);
       setCustomNumber('');
       setError('');
@@ -66,8 +64,8 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
 
   // Walidacja w czasie rzeczywistym
   const validation = useMemo(() => {
-    return validateOrderNumber(effectiveOrderNumber, existingOrders, undefined, selectedYear);
-  }, [effectiveOrderNumber, existingOrders, selectedYear]);
+    return validateOrderNumber(effectiveOrderNumber, existingOrders, undefined, new Date().getFullYear());
+  }, [effectiveOrderNumber, existingOrders]);
 
   if (!isOpen) return null;
 
@@ -180,12 +178,6 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
 
               {mode === 'list' ? (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <label className="shrink-0 text-xs font-semibold text-slate-700" htmlFor="order-year">Rok zlecenia</label>
-                    <select id="order-year" value={selectedYear} onChange={(e) => { const year = Number(e.target.value); setSelectedYear(year); setSelectedListNumber(''); setCustomNumber(''); }} className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs font-bold text-slate-900">
-                      {Array.from({ length: 7 }, (_, i) => new Date().getFullYear() - 2 + i).map((year) => <option key={year} value={year}>{year}</option>)}
-                    </select>
-                  </div>
                   <select
                     value={selectedListNumber}
                     onChange={(e) => {
@@ -261,7 +253,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
                     required
                     value={customNumber}
                     onChange={(e) => setCustomNumber(e.target.value)}
-                    placeholder={`np. ZL7/${selectedYear} lub ZL7 (rok ${selectedYear})`}
+                    placeholder={`np. ZL7 (rok ${new Date().getFullYear()} zostanie dodany automatycznie)`}
                     className={`w-full text-xs px-3 py-2 border rounded-lg font-mono font-bold focus:ring-1 focus:outline-hidden ${
                       validation.error
                         ? 'border-rose-400 bg-rose-50/60 text-rose-900 focus:border-rose-500 focus:ring-rose-500'
@@ -274,7 +266,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
                       <span className="text-slate-500">
                         Format systemowy:{' '}
                         <strong className="font-mono text-slate-900 bg-slate-100 px-1 py-0.5 rounded">
-                          {normalizeOrderNumber(customNumber, selectedYear)}
+                          {normalizeOrderNumber(customNumber, new Date().getFullYear())}
                         </strong>
                       </span>
                       {validation.isValid && (
