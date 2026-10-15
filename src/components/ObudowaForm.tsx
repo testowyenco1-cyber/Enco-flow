@@ -9,6 +9,7 @@ import {
   formatDimensionM,
   checkReadinessOverdue,
   ItemStatus,
+  OrderItem,
 } from '../types/enco';
 import {
   Calendar,
@@ -33,6 +34,14 @@ export interface ObudowaFormData {
   typWysokosci: string;
   wymiary?: string;
   isCustomSize?: boolean;
+  przepustyNN?: string;
+  przepustySN?: string;
+  pokrywyNN?: string;
+  pokrywyNNSaWPyskowicach?: boolean;
+  pokrywySN?: string;
+  pokrywySNSaWPyskowicach?: boolean;
+  wkladkiSN?: string;
+  wkladkiSNSaWPyskowicach?: boolean;
 }
 
 interface ObudowaFormProps {
@@ -45,7 +54,17 @@ interface ObudowaFormProps {
     wysokosc?: number | string;
     typWysokosci?: string;
     wymiary?: string;
+    przepustyNN?: string;
+    przepustySN?: string;
+    pokrywyNN?: string;
+    pokrywyNNSaWPyskowicach?: boolean;
+    pokrywySN?: string;
+    pokrywySNSaWPyskowicach?: boolean;
+    wkladkiSN?: string;
+    wkladkiSNSaWPyskowicach?: boolean;
   };
+  relatedItems?: OrderItem[];
+  onAuxiliaryChange?: (key: string, value: string | boolean) => void;
   itemStatus?: ItemStatus;
   orderPlannedDate?: string;
   onChange: (data: ObudowaFormData) => void;
@@ -54,6 +73,8 @@ interface ObudowaFormProps {
 
 export const ObudowaForm: React.FC<ObudowaFormProps> = ({
   initialData,
+  relatedItems = [],
+  onAuxiliaryChange,
   itemStatus,
   orderPlannedDate,
   onChange,
@@ -364,6 +385,20 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
     : activeMatchedVariant?.height !== undefined
     ? activeMatchedVariant.height
     : typeInfo.defaultHeight;
+
+  // Automatycznie pobieraj kolorystykę i opisy z pozostałych elementów tego samego zlecenia.
+  const colorsItem = relatedItems.find((related) => related.type === 'KOLORY');
+  const descriptionsItem = relatedItems.find((related) => related.type === 'OPISY');
+  const colorsDetails = colorsItem?.details || {};
+  const descriptionsDetails = descriptionsItem?.details || {};
+  const colorsSummary = [
+    colorsDetails.kolorObudowy && `Obudowa: ${colorsDetails.kolorObudowy}`,
+    colorsDetails.kolorDrzwi && `Drzwi: ${colorsDetails.kolorDrzwi}`,
+    colorsDetails.koloryDodatkowe && `Dodatkowe: ${colorsDetails.koloryDodatkowe}`,
+    colorsDetails.numeryRal && `RAL: ${colorsDetails.numeryRal}`,
+  ].filter(Boolean).join(' • ');
+  const descriptionsSummary = [descriptionsDetails.wymaganeOpisy, descriptionsDetails.sposobWykonania]
+    .filter(Boolean).join(' • ');
 
   // Deadline check
   const overdueInfo = checkReadinessOverdue(dataGotowosci, itemStatus);
@@ -751,6 +786,35 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
               </span>
             </div>
           )}
+        </div>
+        <div className="pt-3 border-t border-slate-200 space-y-3">
+          <div className="flex items-center gap-2"><Layers className="w-4 h-4 text-blue-600" /><h4 className="text-xs font-bold uppercase tracking-wide text-slate-800">Wyposażenie i kompletacja obudowy</h4></div>
+          <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
+            <div><span className="block text-xs font-semibold text-slate-700">Kolory</span><p className="text-xs text-slate-600 break-words">{colorsSummary || 'Brak uzupełnionych danych w punkcie KOLORY.'}</p></div>
+            <div className="border-t border-slate-100 pt-2"><span className="block text-xs font-semibold text-slate-700">Opisy</span><p className="text-xs text-slate-600 break-words">{descriptionsSummary || 'Brak uzupełnionych danych w punkcie OPISY.'}</p></div>
+            <p className="text-[10px] text-slate-500">Dane pobierane automatycznie z punktów KOLORY i OPISY tego zlecenia.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {([
+              ['przepustyNN', 'Przepusty NN', 'np. typ / liczba / uwagi'],
+              ['przepustySN', 'Przepusty SN', 'np. typ / liczba / uwagi'],
+              ['pokrywyNN', 'Pokrywy NN', 'np. typ / liczba / uwagi'],
+              ['pokrywySN', 'Pokrywy SN', 'np. typ / liczba / uwagi'],
+              ['wkladkiSN', 'Wkładki SN', 'np. typ / liczba / uwagi'],
+            ] as const).map(([key, label, placeholder]) => <div key={key}>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">{label}</label>
+              <input type="text" value={String(initialData?.[key] || '')} disabled={isReadOnly} onChange={(e) => onAuxiliaryChange?.(key, e.target.value)} placeholder={placeholder} className="w-full min-w-0 text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white disabled:bg-slate-100" />
+            </div>)}
+          </div>
+          <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3">
+            {([
+              ['pokrywyNNSaWPyskowicach', 'Pokrywy NN są w Pyskowicach'],
+              ['pokrywySNSaWPyskowicach', 'Pokrywy SN są w Pyskowicach'],
+              ['wkladkiSNSaWPyskowicach', 'Wkładki SN są w Pyskowicach'],
+            ] as const).map(([key, label]) => <label key={key} className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+              <input type="checkbox" checked={Boolean(initialData?.[key])} disabled={isReadOnly} onChange={(e) => onAuxiliaryChange?.(key, e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" /><span>{label}</span>
+            </label>)}
+          </div>
         </div>
       </div>
     </div>
