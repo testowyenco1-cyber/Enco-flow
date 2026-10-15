@@ -191,26 +191,26 @@ export default function App() {
     // Ignore an older request if a later manual refresh has already started.
     if (requestId !== refreshRequestIdRef.current) return;
 
-    // Only the newest completed refresh may advance the server baseline.
-    if (srvOrders) setServerOrdersSnapshot(srvOrders);
-    if (srvDoors) setServerDoorOrdersSnapshot(srvDoors);
-    if (srvCustomObudowaVariants) setCustomObudowaVariants(srvCustomObudowaVariants);
-
+    // Do not advance the baseline for a module with unsaved local edits.
+    // Otherwise a navigation refresh could silently lose track of those edits.
     const applyOrders = Boolean(srvOrders) &&
       (options?.discardPending === true || !pendingOrdersRef.current);
     const applyDoors = Boolean(srvDoors) &&
       (options?.discardPending === true || !pendingDoorOrdersRef.current);
 
     if (srvOrders && applyOrders) {
+      setServerOrdersSnapshot(srvOrders);
       setOrders(srvOrders);
       ordersRef.current = srvOrders;
       saveOrders(srvOrders);
     }
     if (srvDoors && applyDoors) {
+      setServerDoorOrdersSnapshot(srvDoors);
       setDoorOrders(srvDoors);
       doorOrdersRef.current = srvDoors;
       saveDoorOrders(srvDoors);
     }
+    if (srvCustomObudowaVariants) setCustomObudowaVariants(srvCustomObudowaVariants);
 
     // A failed refresh must not clear the unsaved indicator or discard local work.
     if (options?.discardPending) {
@@ -228,9 +228,12 @@ export default function App() {
     }
   };
 
+  // Re-fetch only for this browser tab on first load and on actual URL changes.
+  // This also covers browser Back/Forward, because popstate updates currentPath.
+  // A save or a change elsewhere on the server never changes currentPath.
   useEffect(() => {
     void refreshDataFromServer();
-  }, []);
+  }, [currentPath]);
 
   // Keep edits local until the user explicitly saves them.
   const markChangesPending = () => setHasPendingChanges(true);
