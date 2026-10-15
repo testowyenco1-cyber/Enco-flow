@@ -535,6 +535,58 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                   </div>
                 </div>
 
+                {/* Dane logistyczne rozdzielnicy SN */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-200">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Numer seryjny</label>
+                    <input
+                      type="text"
+                      value={details.numerSeryjny || ''}
+                      onChange={(e) => handleDetailChange('numerSeryjny', e.target.value)}
+                      placeholder="Numer seryjny producenta"
+                      className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Data dostawy plan.</label>
+                    <input
+                      type="date"
+                      value={details.dataDostawyPlan || ''}
+                      onChange={(e) => handleDetailChange('dataDostawyPlan', e.target.value)}
+                      className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Data dostawy fakt.</label>
+                    <input
+                      type="date"
+                      value={details.dataDostawyFakt || ''}
+                      onChange={(e) => handleDetailChange('dataDostawyFakt', e.target.value)}
+                      className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Data pl. dos. do Pyskowic</label>
+                    <input
+                      type="date"
+                      value={details.dataPlDostawyPyskowice || ''}
+                      onChange={(e) => handleDetailChange('dataPlDostawyPyskowice', e.target.value)}
+                      className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">SN w Pyskowicach</label>
+                    <select
+                      value={String(Boolean(details.snWPyskowicach))}
+                      onChange={(e) => handleDetailChange('snWPyskowicach', e.target.value === 'true')}
+                      className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden font-semibold"
+                    >
+                      <option value="false">Nie</option>
+                      <option value="true">Tak</option>
+                    </select>
+                  </div>
+                </div>
+
                 {/* Parametry techniczne / wyposażenie (zachowaj istniejące dane) */}
                 <div className="pt-2 border-t border-slate-200">
                   <label className="block text-xs font-medium text-slate-700 mb-1">
