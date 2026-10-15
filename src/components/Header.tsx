@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, RotateCcw, RefreshCw, Zap, Layers, AlertTriangle, Lock } from 'lucide-react';
+import { Plus, RotateCcw, RefreshCw, Zap, Layers, AlertTriangle, Lock, CircuitBoard } from 'lucide-react';
 import { UserRoleProfile, UserRoleId } from '../types/userRole';
 import { UserRoleSelector } from './UserRoleSelector';
 
@@ -11,8 +11,8 @@ interface HeaderProps {
   activeTab?: string;
   onSelectTab?: (tab: string) => void;
   problemCount?: number;
-  activeModule?: 'orders' | 'doors';
-  onSelectModule?: (module: 'orders' | 'doors') => void;
+  activeModule?: 'orders' | 'doors' | 'sn';
+  onSelectModule?: (module: 'orders' | 'doors' | 'sn') => void;
   doorOrdersCount?: number;
   doorOverdueCount?: number;
   currentProfile: UserRoleProfile;
@@ -110,6 +110,18 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
               )}
             </button>
+            <button
+              type="button"
+              onClick={() => onSelectModule && onSelectModule('sn')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeModule === 'sn'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+              }`}
+            >
+              <CircuitBoard className="w-3.5 h-3.5 text-cyan-300" />
+              <span>Rozdzielnice SN</span>
+            </button>
           </div>
         </div>
 
@@ -164,7 +176,7 @@ export const Header: React.FC<HeaderProps> = ({
               Gotowe
             </button>
           </nav>
-        ) : (
+        ) : activeModule === 'doors' ? (
           <div className="hidden lg:flex items-center gap-3 text-xs text-slate-400">
             <span className="flex items-center gap-1.5 text-amber-300">
               <Layers className="w-4 h-4" />
@@ -176,6 +188,11 @@ export const Header: React.FC<HeaderProps> = ({
                 {doorOverdueCount} po terminie
               </span>
             )}
+          </div>
+        ) : (
+          <div className="hidden lg:flex items-center gap-2 text-xs text-cyan-200">
+            <CircuitBoard className="h-4 w-4" />
+            <span>Zestawienie dostaw i stanów magazynowych SN</span>
           </div>
         )}
 
