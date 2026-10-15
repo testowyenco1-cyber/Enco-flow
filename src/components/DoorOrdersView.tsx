@@ -521,7 +521,7 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                                           const uniqueNumbers = Array.from(new Set(nextNumbers));
                                           const linked = orders.filter((o) => uniqueNumbers.some((zl) => isSameOrderNumber(o.orderNumber, zl)));
                                           patch('numeryZl', uniqueNumbers);
-                                          patch('kontrahentRealizacje', linked.map((o) => `${o.orderNumber} — ${o.client?.trim() || 'kontrahent nieuzupełniony'}`).join('\\n'));
+                                          patch('kontrahentRealizacje', linked.map((o) => `${o.orderNumber} — ${o.client?.trim() || 'kontrahent nieuzupełniony'}`).join('\n'));
                                         }}
                                       />
                                       <span className="min-w-0 flex-1">
@@ -545,7 +545,7 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                       <td className="border-r border-slate-100 px-3 py-2.5 leading-relaxed">
                         <div className="whitespace-pre-line break-words">{(() => {
                            const linkedOrders = row.numeryZl.map((zl) => orders.find((o) => isSameOrderNumber(o.orderNumber, zl))).filter((o): o is Order => Boolean(o));
-                           if (linkedOrders.length) return linkedOrders.map((o) => `${o.orderNumber} — ${o.client?.trim() || 'kontrahent nieuzupełniony'}`).join('\\n');
+                           if (linkedOrders.length) return linkedOrders.map((o) => `${o.orderNumber} — ${o.client?.trim() || 'kontrahent nieuzupełniony'}`).join('\n');
                            return row.kontrahentRealizacje || '—';
                          })()}</div>
                       </td>
