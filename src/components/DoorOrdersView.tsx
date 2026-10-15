@@ -579,7 +579,7 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                           {!canManageDoors ? <span className="text-[10px] text-slate-500">Podgląd</span> : <>
                             {!isDelivered && <button type="button" onClick={() => onQuickConfirmDelivery(doorOrd)} title="Potwierdź dostawę" className="rounded p-1.5 text-emerald-700 hover:bg-emerald-100"><CheckSquare className="h-4 w-4" /></button>}
                             <button type="button" onClick={() => setOrderToDelete(doorOrd)} title="Usuń" className="rounded p-1.5 text-rose-600 hover:bg-rose-100"><Trash2 className="h-4 w-4" /></button>
-                          </>}}
+                          </>}
                         </div>
                       </td>
                     </tr>
