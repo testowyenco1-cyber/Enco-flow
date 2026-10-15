@@ -25,7 +25,7 @@ export function isSameOrderNumber(a?: string, b?: string): boolean {
 }
 
 export function getOrderYear(order: Pick<Order, 'orderNumber' | 'createdAt'>): number {
-  const explicitYear = normalizeOrderNumber(order.orderNumber).match(/^ZL\d+\/(\d{4})$/)?.[1];
+  const explicitYear = String(order.orderNumber || '').match(/\/(\d{4})$/)?.[1];
   if (explicitYear) return Number(explicitYear);
   const createdYear = order.createdAt ? new Date(order.createdAt).getFullYear() : NaN;
   return Number.isFinite(createdYear) ? createdYear : currentYear();
