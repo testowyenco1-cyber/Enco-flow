@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CircuitBoard, Search, Plus, Save, Trash2, RefreshCw, ExternalLink, PackageCheck, Truck, Warehouse } from 'lucide-react';
+import { CircuitBoard, Search, Plus, Save, Trash2, RefreshCw, ExternalLink, PackageCheck, Truck, Warehouse, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { Order } from '../types/enco';
 import { UserRoleProfile, USER_PROFILES, canEditItemType } from '../types/userRole';
 
@@ -33,7 +33,9 @@ const CATEGORIES: { key: SNCategory; label: string; icon: React.ReactNode }[] = 
   { key: 'TO_DELIVER', label: 'Do dostarczenia', icon: <Truck className="h-4 w-4" /> },
   { key: 'WAREHOUSE', label: 'Wolne na magazynie', icon: <Warehouse className="h-4 w-4" /> },
 ];
-const inputClass = 'w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-800 focus:border-blue-500 focus:outline-none disabled:bg-slate-100';
+const inputClass = 'w-full min-w-0 rounded border border-transparent bg-transparent px-1.5 py-1 text-[11px] text-slate-800 hover:border-slate-300 hover:bg-white focus:border-blue-500 focus:bg-white focus:outline-none disabled:bg-transparent';
+const filterClass = 'w-full min-w-0 rounded border border-slate-200 bg-white px-1.5 py-1 text-[10px] font-normal normal-case tracking-normal text-slate-600 focus:border-blue-500 focus:outline-none';
+type SortKey = 'rodzaj' | 'ilosc' | 'terminDostawy' | 'nrZamowienia' | 'projekt' | 'lokalizacja';
 const makeId = () => `sn_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
 export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNavigateToOrder }) => {
@@ -42,6 +44,9 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
   const [selectedType, setSelectedType] = useState<SNType>('SIEMENS');
   const [selectedCategory, setSelectedCategory] = useState<SNCategory>('DELIVERED');
   const [search, setSearch] = useState('');
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+  const [sortKey, setSortKey] = useState<SortKey>('rodzaj');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -69,12 +74,16 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
 
   useEffect(() => { void loadRecords(); }, []);
 
-  const visibleRecords = useMemo(() => records.filter(record =>
-    record.type === selectedType &&
-    record.category === selectedCategory &&
-    [record.rodzaj, record.terminDostawy, record.nrZamowienia, record.projekt, record.lokalizacja]
-      .filter(Boolean).join(' ').toLowerCase().includes(search.trim().toLowerCase())
-  ), [records, selectedType, selectedCategory, search]);
+  const visibleRecords = useMemo(() => records.filter(record => {
+    if (record.type !== selectedType || record.category !== selectedCategory) return false;
+    const allText = [record.rodzaj, record.terminDostawy, record.nrZamowienia, record.projekt, record.lokalizacja].filter(Boolean).join(' ').toLowerCase();
+    if (!allText.includes(search.trim().toLowerCase())) return false;
+    return Object.entries(columnFilters).every(([key, value]) => !value.trim() || String(record[key as keyof SNRecord] ?? '').toLowerCase().includes(value.trim().toLowerCase()));
+  }).sort((a, b) => {
+    const av = a[sortKey], bv = b[sortKey];
+    const comparison = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av ?? '').localeCompare(String(bv ?? ''), 'pl', { numeric: true, sensitivity: 'base' });
+    return sortDirection === 'asc' ? comparison : -comparison;
+  }), [records, selectedType, selectedCategory, search, columnFilters, sortKey, sortDirection]);
 
   const typeCounts = useMemo(() => TYPES.reduce((acc, type) => {
     acc[type.key] = records.filter(record => record.type === type.key).length;
@@ -85,6 +94,12 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
     acc[category.key] = records.filter(record => record.type === selectedType && record.category === category.key).length;
     return acc;
   }, {} as Record<SNCategory, number>), [records, selectedType]);
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDirection(current => current === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDirection('asc'); }
+  };
+  const sortHeader = (label: string, key: SortKey) => <button type="button" onClick={() => toggleSort(key)} className="inline-flex items-center gap-1 text-left hover:text-blue-700" title={'Sortuj według: ' + label}>{label}{sortKey === key ? (sortDirection === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-40" />}</button>;
 
   const patchRecord = (id: string, patch: Partial<SNRecord>) => {
     setRecords(current => current.map(record => record.id === id ? { ...record, ...patch } : record));
@@ -192,21 +207,24 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
         {canEdit && <button type="button" onClick={addRecord} className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100"><Plus className="h-3.5 w-3.5" /> Dodaj pozycję</button>}
       </div>
       {loading ? <div className="p-10 text-center text-sm text-slate-500">Pobieranie zestawienia…</div> : visibleRecords.length === 0 ? <div className="p-10 text-center text-sm text-slate-500">Brak pozycji w tej sekcji. Możesz dodać pierwszą pozycję przyciskiem powyżej.</div> : <div className="w-full min-w-0">
-        <table className="w-full table-fixed text-left">
-          <colgroup><col style={{ width: '4%' }} /><col style={{ width: '18%' }} /><col style={{ width: '6%' }} /><col style={{ width: '12%' }} /><col style={{ width: '12%' }} /><col style={{ width: '24%' }} /><col style={{ width: '12%' }} /><col style={{ width: '12%' }} /></colgroup>
-          <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500"><tr>{['L.p.','Rodzaj','Ilość','Termin dostawy','Nr zamówienia','Projekt / zlecenie ZL','Lokalizacja',''].map((label,index)=><th key={label || index} className="break-words px-2 py-3">{label}</th>)}</tr></thead>
+        <table className="w-full table-fixed border-collapse text-left">
+          <colgroup><col style={{ width: '3%' }} /><col style={{ width: '19%' }} /><col style={{ width: '5%' }} /><col style={{ width: '11%' }} /><col style={{ width: '11%' }} /><col style={{ width: '25%' }} /><col style={{ width: '14%' }} /><col style={{ width: '12%' }} /></colgroup>
+          <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
+            <tr className="border-b border-slate-200"><th className="px-2 py-2">Lp.</th><th className="px-2 py-2">{sortHeader('Rodzaj','rodzaj')}</th><th className="px-2 py-2">{sortHeader('Ilość','ilosc')}</th><th className="px-2 py-2">{sortHeader('Termin','terminDostawy')}</th><th className="px-2 py-2">{sortHeader('Nr zamówienia','nrZamowienia')}</th><th className="px-2 py-2">{sortHeader('Projekt / ZL','projekt')}</th><th className="px-2 py-2">{sortHeader('Lokalizacja','lokalizacja')}</th><th className="px-2 py-2">Akcje</th></tr>
+            <tr className="border-b border-slate-200 bg-white"><th className="px-1 py-1"><button type="button" onClick={() => setColumnFilters({})} className="text-[10px] font-medium text-blue-700 hover:underline">Wyczyść</button></th>{(['rodzaj','ilosc','terminDostawy','nrZamowienia','projekt','lokalizacja'] as const).map(key => <th key={key} className="px-1 py-1"><input aria-label={'Filtr: ' + key} value={columnFilters[key] || ''} onChange={event => setColumnFilters(current => ({...current,[key]:event.target.value}))} placeholder="Filtruj…" className={filterClass}/></th>)}<th className="px-1 py-1"></th></tr>
+          </thead>
           <tbody className="divide-y divide-slate-100">
             {visibleRecords.map(record => {
               const order = matchingOrder(record);
               return <tr key={record.id} className="align-top hover:bg-blue-50/30">
-                <td className="px-2 py-3 text-xs text-slate-500">{visibleRecords.findIndex(item => item.id === record.id) + 1}</td>
-                <td className="min-w-0 px-2 py-3"><input aria-label="Rodzaj rozdzielnicy" disabled={!canEdit} value={record.rodzaj} onChange={event => patchRecord(record.id,{rodzaj:event.target.value})} placeholder="Typ / konfiguracja" className={`${inputClass} min-w-0`}/></td>
+                <td className="px-2 py-1.5 text-[11px] text-slate-400">{visibleRecords.findIndex(item => item.id === record.id) + 1}</td>
+                <td className="min-w-0 px-1 py-1"><input aria-label="Rodzaj rozdzielnicy" disabled={!canEdit} value={record.rodzaj} onChange={event => patchRecord(record.id,{rodzaj:event.target.value})} placeholder="Typ / konfiguracja" className={`${inputClass} min-w-0`}/></td>
                 <td className="min-w-0 px-2 py-3"><input aria-label="Ilość" type="number" min="0" disabled={!canEdit} value={record.ilosc} onChange={event => patchRecord(record.id,{ilosc:Math.max(0,Number(event.target.value)||0)})} className={`${inputClass} min-w-0`}/></td>
                 <td className="min-w-0 px-2 py-3"><input aria-label="Termin dostawy" disabled={!canEdit} value={record.terminDostawy} onChange={event => patchRecord(record.id,{terminDostawy:event.target.value})} placeholder="Data lub „dostarczono”" className={`${inputClass} min-w-0`}/></td>
                 <td className="min-w-0 px-2 py-3"><input aria-label="Numer zamówienia" disabled={!canEdit} value={record.nrZamowienia} onChange={event => patchRecord(record.id,{nrZamowienia:event.target.value})} placeholder="Nr zamówienia" className={inputClass}/></td>
-                <td className="min-w-0 px-2 py-3"><div className="flex min-w-0 items-start gap-1"><div className="min-w-0 flex-1">{canEdit && <select aria-label="Powiązane zlecenie ZL" value={order?.id || '__custom__'} onChange={event => selectProject(record,event.target.value)} className={`${inputClass} min-w-0`}><option value="__custom__">Projekt własny / bez powiązania z ZL</option>{orders.map(item => <option key={item.id} value={item.id}>{orderLabel(item)}</option>)}</select>}{(!order || !record.linkedOrderId) && <input aria-label="Projekt / opis" disabled={!canEdit} value={record.projekt} onChange={event => patchRecord(record.id,{projekt:event.target.value,linkedOrderId:undefined})} placeholder="Projekt lub opis lokalizacji" className={`${inputClass} mt-1 min-w-0`}/>}<p className="mt-1 text-[10px] text-slate-500">{order ? `Powiązano: ${order.orderNumber} — ${order.projectName}` : 'Wybierz zlecenie, aby powiązać projekt z numerem ZL.'}</p></div>{order && <button type="button" title={`Otwórz zlecenie ${order.orderNumber}`} onClick={() => onNavigateToOrder(order.id)} className="rounded p-1.5 text-blue-700 hover:bg-blue-50"><ExternalLink className="h-4 w-4"/></button>}</div></td>
+                <td className="min-w-0 px-2 py-3"><div className="flex min-w-0 items-center gap-1"><div className="min-w-0 flex-1">{canEdit && <select aria-label="Powiązane zlecenie ZL" value={order?.id || '__custom__'} onChange={event => selectProject(record,event.target.value)} className={`${inputClass} min-w-0`}><option value="__custom__">Projekt własny / bez powiązania z ZL</option>{orders.map(item => <option key={item.id} value={item.id}>{orderLabel(item)}</option>)}</select>}{(!order || !record.linkedOrderId) && <input aria-label="Projekt / opis" disabled={!canEdit} value={record.projekt} onChange={event => patchRecord(record.id,{projekt:event.target.value,linkedOrderId:undefined})} placeholder="Projekt lub opis lokalizacji" className={`${inputClass} mt-1 min-w-0`}/>}<p className="mt-0.5 truncate text-[9px] text-slate-500">{order ? `Powiązano: ${order.orderNumber} — ${order.projectName}` : 'Wybierz zlecenie, aby powiązać projekt z numerem ZL.'}</p></div>{order && <button type="button" title={`Otwórz zlecenie ${order.orderNumber}`} onClick={() => onNavigateToOrder(order.id)} className="rounded p-1.5 text-blue-700 hover:bg-blue-50"><ExternalLink className="h-4 w-4"/></button>}</div></td>
                 <td className="min-w-0 px-2 py-3"><input aria-label="Lokalizacja" disabled={!canEdit} value={record.lokalizacja} onChange={event => patchRecord(record.id,{lokalizacja:event.target.value})} placeholder="Lokalizacja" className={inputClass}/></td>
-                <td className="min-w-0 px-2 py-3"><div className="flex min-w-0 flex-col gap-1.5">{canEdit && <><select aria-label="Typ główny rozdzielnicy" value={record.type} onChange={event => patchRecord(record.id,{type:event.target.value as SNType})} className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-1 py-1 text-[10px] text-slate-700">{TYPES.map(type => <option key={type.key} value={type.key}>{type.label}</option>)}</select><select aria-label="Przenieś do sekcji" value={record.category} onChange={event => patchRecord(record.id,{category:event.target.value as SNCategory})} className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[10px] text-slate-700">{CATEGORIES.map(category => <option key={category.key} value={category.key}>{category.label}</option>)}</select><button type="button" title="Usuń pozycję" onClick={() => removeRecord(record.id)} className="self-start rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 className="h-4 w-4"/></button></>}</div></td>
+                <td className="min-w-0 px-2 py-3"><div className="flex min-w-0 flex-col gap-1.5">{canEdit && <><select aria-label="Typ główny rozdzielnicy" value={record.type} onChange={event => patchRecord(record.id,{type:event.target.value as SNType})} className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-1 py-1 text-[10px] text-slate-700">{TYPES.map(type => <option key={type.key} value={type.key}>{type.label}</option>)}</select><select aria-label="Przenieś do sekcji" value={record.category} onChange={event => patchRecord(record.id,{category:event.target.value as SNCategory})} className="w-full min-w-0 rounded border border-slate-200 bg-white px-1 py-1 text-[10px] text-slate-700">{CATEGORIES.map(category => <option key={category.key} value={category.key}>{category.label}</option>)}</select><button type="button" title="Usuń pozycję" onClick={() => removeRecord(record.id)} className="self-start rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 className="h-4 w-4"/></button></>}</div></td>
               </tr>;
             })}
           </tbody>
