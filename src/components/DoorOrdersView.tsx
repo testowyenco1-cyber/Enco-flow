@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   DoorOrder,
   formatPLN,
@@ -43,6 +43,7 @@ interface DoorOrdersViewProps {
   onOpenDoorOrder?: (order: DoorOrder) => void;
   onEditDoorOrder: (order: DoorOrder) => void;
   onSaveDoorOrderDirect?: (order: DoorOrder) => void;
+  onSaveDoorOrdersBulk?: (orders: DoorOrder[]) => void;
   onDeleteDoorOrder: (id: string) => void;
   onQuickConfirmDelivery: (order: DoorOrder) => void;
   onNavigateToOrder?: (orderId: string) => void;
@@ -59,6 +60,7 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
   onOpenDoorOrder,
   onEditDoorOrder,
   onSaveDoorOrderDirect,
+  onSaveDoorOrdersBulk,
   onDeleteDoorOrder,
   onQuickConfirmDelivery,
   onNavigateToOrder,
@@ -73,8 +75,8 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
   const [orderToDelete, setOrderToDelete] = useState<DoorOrder | null>(null);
   const [isDoorFilesModalOpen, setIsDoorFilesModalOpen] = useState(false);
   const [activeDoorView, setActiveDoorView] = useState<'orders' | 'catalog'>('orders');
-  const [inlineEditId, setInlineEditId] = useState<string | null>(null);
-  const [inlineDraft, setInlineDraft] = useState<DoorOrder | null>(null);
+  const [draftsById, setDraftsById] = useState<Record<string, DoorOrder>>({});
+  const [dirtyDoorOrderIds, setDirtyDoorOrderIds] = useState<string[]>([]);
   const [showExtraTools, setShowExtraTools] = useState(false);
 
   // Obliczenia statystyk KPI
@@ -137,6 +139,30 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
       return true;
     });
   }, [doorOrders, filterTab, searchQuery]);
+
+  useEffect(() => {
+    setDraftsById((current) => {
+      const next = { ...current };
+      doorOrders.forEach((order) => { if (!dirtyDoorOrderIds.includes(order.id)) next[order.id] = order; });
+      Object.keys(next).forEach((id) => { if (!doorOrders.some((order) => order.id === id) && !dirtyDoorOrderIds.includes(id)) delete next[id]; });
+      return next;
+    });
+  }, [doorOrders, dirtyDoorOrderIds]);
+
+  const patchDoorOrder = (order: DoorOrder, key: keyof DoorOrder, value: any) => {
+    setDraftsById((current) => ({ ...current, [order.id]: { ...(current[order.id] || order), [key]: value } }));
+    setDirtyDoorOrderIds((current) => current.includes(order.id) ? current : [...current, order.id]);
+  };
+
+  const saveDirtyDoorOrders = () => {
+    const changed = dirtyDoorOrderIds.map((id) => draftsById[id]).filter((order): order is DoorOrder => Boolean(order))
+      .map((order) => ({ ...order, updatedAt: new Date().toISOString() }));
+    if (!changed.length) return;
+    if (onSaveDoorOrdersBulk) onSaveDoorOrdersBulk(changed);
+    else if (onSaveDoorOrderDirect) changed.forEach((order) => onSaveDoorOrderDirect(order));
+    else changed.forEach((order) => onEditDoorOrder(order));
+    setDirtyDoorOrderIds([]);
+  };
 
   const toggleExpand = (id: string) => {
     setExpandedRowId((prev) => (prev === id ? null : id));
@@ -446,7 +472,7 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
             <h2 className="text-sm font-bold text-slate-900">Rejestr zamówień PZD</h2>
             <p className="text-[11px] text-slate-600">Tabela robocza — wybierz wiersz, aby otworzyć szczegóły lub edytować zamówienie.</p>
           </div>
-          <span className="text-xs font-semibold text-slate-600">Pozycji: {filteredOrders.length} / {doorOrders.length}</span>
+          <div className="flex items-center gap-3"><span className="text-xs font-semibold text-slate-600">Pozycji: {filteredOrders.length} / {doorOrders.length}</span>{canManageDoors && <button type="button" onClick={saveDirtyDoorOrders} disabled={dirtyDoorOrderIds.length === 0} className={"inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors " + (dirtyDoorOrderIds.length ? "animate-pulse border-amber-500 bg-amber-400 text-slate-950 shadow-md" : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400")}><CheckSquare className="h-4 w-4" />{dirtyDoorOrderIds.length ? "Zapisz zmiany (" + dirtyDoorOrderIds.length + ")" : "Zapisano"}</button>}</div>
         </div>
         {filteredOrders.length === 0 ? (
           <div className="px-4 py-12 text-center">
@@ -476,10 +502,9 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                 {filteredOrders.map((doorOrd, index) => {
                   const overdueInfo = checkDoorOrderOverdue(doorOrd.terminZamowienia, doorOrd.terminDostawy);
                   const isDelivered = Boolean(doorOrd.terminDostawy && doorOrd.terminDostawy.trim());
-                  const editing = inlineEditId === doorOrd.id && inlineDraft?.id === doorOrd.id;
-                  const row = editing ? inlineDraft! : doorOrd;
+                  const row = draftsById[doorOrd.id] || doorOrd;
                   const cellInput = "w-full min-w-[90px] rounded border border-blue-300 bg-white px-1.5 py-1 text-xs text-slate-900 outline-none focus:ring-2 focus:ring-blue-200";
-                  const patch = (key: keyof DoorOrder, value: any) => setInlineDraft((current) => current ? { ...current, [key]: value } : current);
+                  const patch = (key: keyof DoorOrder, value: any) => patchDoorOrder(doorOrd, key, value);
                   return (
                     <tr
                       key={doorOrd.id}
@@ -487,19 +512,19 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                     >
                       <td className="border-r border-slate-100 px-3 py-2.5">
                         <button type="button" onClick={() => onOpenDoorOrder ? onOpenDoorOrder(doorOrd) : toggleExpand(doorOrd.id)} className="font-mono font-bold text-blue-700 hover:text-blue-900 hover:underline text-left">
-                          {editing ? <input aria-label="Numer dokumentu" className={cellInput} value={row.numerDokumentu} onChange={(e) => patch('numerDokumentu', e.target.value)} /> : doorOrd.numerDokumentu}
+                          {canManageDoors ? <input aria-label="Numer dokumentu" className={cellInput} value={row.numerDokumentu} onClick={(e) => e.stopPropagation()} onChange={(e) => patch('numerDokumentu', e.target.value)} /> : doorOrd.numerDokumentu}
                         </button>
                         {overdueInfo.isOverdue && <div className="mt-1 text-[10px] font-bold text-rose-700">Po terminie</div>}
                         {isDelivered && <div className="mt-1 text-[10px] font-semibold text-emerald-700">Dostarczono</div>}
                       </td>
-                      <td className="whitespace-nowrap border-r border-slate-100 px-3 py-2.5 font-mono">{editing ? <input aria-label="Data zamówienia" type="date" className={cellInput} value={row.dataZamowienia || ''} onChange={(e) => patch('dataZamowienia', e.target.value)} /> : formatDatePL(doorOrd.dataZamowienia)}</td>
-                      <td className={`whitespace-nowrap border-r border-slate-100 px-3 py-2.5 font-mono font-semibold ${overdueInfo.isOverdue ? 'text-rose-700' : ''}`}>{editing ? <input aria-label="Termin z zamówienia" type="date" className={cellInput} value={row.terminZamowienia || ''} onChange={(e) => patch('terminZamowienia', e.target.value)} /> : formatDatePL(doorOrd.terminZamowienia)}</td>
-                      <td className="border-r border-slate-100 px-3 py-2.5 font-mono">{editing ? <input aria-label="Kategoria" className={cellInput} value={row.kategoria || ''} onChange={(e) => patch('kategoria', e.target.value)} /> : doorOrd.kategoria || '—'}</td>
-                      <td className="whitespace-nowrap border-r border-slate-100 px-3 py-2.5 text-right font-mono tabular-nums">{editing ? <input aria-label="Netto" type="number" step="0.01" className={cellInput + ' text-right'} value={row.wartoscNetto ?? ''} onChange={(e) => patch('wartoscNetto', e.target.value === '' ? null : Number(e.target.value))} /> : formatPLN(doorOrd.wartoscNetto)}</td>
-                      <td className="whitespace-nowrap border-r border-slate-100 px-3 py-2.5 text-right font-mono font-semibold tabular-nums">{editing ? <input aria-label="Brutto" type="number" step="0.01" className={cellInput + ' text-right'} value={row.wartoscBrutto ?? ''} onChange={(e) => patch('wartoscBrutto', e.target.value === '' ? null : Number(e.target.value))} /> : formatPLN(doorOrd.wartoscBrutto)}</td>
+                      <td className="whitespace-nowrap border-r border-slate-100 px-3 py-2.5 font-mono">{canManageDoors ? <input aria-label="Data zamówienia" type="date" className={cellInput} value={row.dataZamowienia || ''} onChange={(e) => patch('dataZamowienia', e.target.value)} /> : formatDatePL(doorOrd.dataZamowienia)}</td>
+                      <td className={`whitespace-nowrap border-r border-slate-100 px-3 py-2.5 font-mono font-semibold ${overdueInfo.isOverdue ? 'text-rose-700' : ''}`}>{canManageDoors ? <input aria-label="Termin z zamówienia" type="date" className={cellInput} value={row.terminZamowienia || ''} onChange={(e) => patch('terminZamowienia', e.target.value)} /> : formatDatePL(doorOrd.terminZamowienia)}</td>
+                      <td className="border-r border-slate-100 px-3 py-2.5 font-mono">{canManageDoors ? <input aria-label="Kategoria" className={cellInput} value={row.kategoria || ''} onChange={(e) => patch('kategoria', e.target.value)} /> : doorOrd.kategoria || '—'}</td>
+                      <td className="whitespace-nowrap border-r border-slate-100 px-3 py-2.5 text-right font-mono tabular-nums">{canManageDoors ? <input aria-label="Netto" type="number" step="0.01" className={cellInput + ' text-right'} value={row.wartoscNetto ?? ''} onChange={(e) => patch('wartoscNetto', e.target.value === '' ? null : Number(e.target.value))} /> : formatPLN(doorOrd.wartoscNetto)}</td>
+                      <td className="whitespace-nowrap border-r border-slate-100 px-3 py-2.5 text-right font-mono font-semibold tabular-nums">{canManageDoors ? <input aria-label="Brutto" type="number" step="0.01" className={cellInput + ' text-right'} value={row.wartoscBrutto ?? ''} onChange={(e) => patch('wartoscBrutto', e.target.value === '' ? null : Number(e.target.value))} /> : formatPLN(doorOrd.wartoscBrutto)}</td>
                       <td className="border-r border-slate-100 px-3 py-2.5">
                         <div className="flex flex-wrap gap-1">
-                          {editing ? (
+                          {canManageDoors ? (
                             <details className="relative min-w-[170px]">
                               <summary className="cursor-pointer list-none rounded border border-blue-300 bg-white px-2 py-1.5 text-xs font-semibold text-slate-800 hover:bg-blue-50">
                                 {row.numeryZl.length ? `Wybrano: ${row.numeryZl.length} ZL ▾` : 'Wybierz zlecenia ZL ▾'}
@@ -549,18 +574,14 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                            return row.kontrahentRealizacje || '—';
                          })()}</div>
                       </td>
-                      <td className={`whitespace-nowrap border-r border-slate-100 px-3 py-2.5 font-mono ${isDelivered ? 'text-emerald-700' : 'text-slate-500'}`}>{editing ? <input aria-label="Termin dostawy" type="date" className={cellInput} value={row.terminDostawy || ''} onChange={(e) => patch('terminDostawy', e.target.value)} /> : doorOrd.terminDostawy ? formatDatePL(doorOrd.terminDostawy) : '—'}</td>
-                      <td className="border-r border-slate-100 px-3 py-2.5 leading-relaxed"><div className="whitespace-pre-wrap break-words">{editing ? <textarea aria-label="Uwagi" className={cellInput} rows={2} value={row.uwagi || ''} onChange={(e) => patch('uwagi', e.target.value)} /> : doorOrd.uwagi || '—'}</div></td>
+                      <td className={`whitespace-nowrap border-r border-slate-100 px-3 py-2.5 font-mono ${isDelivered ? 'text-emerald-700' : 'text-slate-500'}`}>{canManageDoors ? <input aria-label="Termin dostawy" type="date" className={cellInput} value={row.terminDostawy || ''} onChange={(e) => patch('terminDostawy', e.target.value)} /> : doorOrd.terminDostawy ? formatDatePL(doorOrd.terminDostawy) : '—'}</td>
+                      <td className="border-r border-slate-100 px-3 py-2.5 leading-relaxed"><div className="whitespace-pre-wrap break-words">{canManageDoors ? <textarea aria-label="Uwagi" className={cellInput} rows={2} value={row.uwagi || ''} onChange={(e) => patch('uwagi', e.target.value)} /> : doorOrd.uwagi || '—'}</div></td>
                       <td className="px-2 py-2 text-center">
                         <div className="flex items-center justify-center gap-1">
-                          {canManageDoors ? editing ? <>
-                            <button type="button" onClick={() => { if (onSaveDoorOrderDirect && inlineDraft) onSaveDoorOrderDirect({ ...inlineDraft, updatedAt: new Date().toISOString() }); else if (inlineDraft) onEditDoorOrder(inlineDraft); setInlineEditId(null); setInlineDraft(null); }} title="Zapisz wiersz" className="rounded p-1.5 text-emerald-700 hover:bg-emerald-100"><CheckSquare className="h-4 w-4" /></button>
-                            <button type="button" onClick={() => { setInlineEditId(null); setInlineDraft(null); }} title="Anuluj edycję" className="rounded p-1.5 text-slate-600 hover:bg-slate-200"><ChevronUp className="h-4 w-4" /></button>
-                          </> : <>
+                          {!canManageDoors ? <span className="text-[10px] text-slate-500">Podgląd</span> : <>
                             {!isDelivered && <button type="button" onClick={() => onQuickConfirmDelivery(doorOrd)} title="Potwierdź dostawę" className="rounded p-1.5 text-emerald-700 hover:bg-emerald-100"><CheckSquare className="h-4 w-4" /></button>}
-                            <button type="button" onClick={() => { setInlineEditId(doorOrd.id); setInlineDraft({ ...doorOrd, numeryZl: [...doorOrd.numeryZl] }); }} title="Edytuj bezpośrednio w tabeli" className="rounded p-1.5 text-blue-700 hover:bg-blue-100"><Edit2 className="h-4 w-4" /></button>
                             <button type="button" onClick={() => setOrderToDelete(doorOrd)} title="Usuń" className="rounded p-1.5 text-rose-600 hover:bg-rose-100"><Trash2 className="h-4 w-4" /></button>
-                          </> : <span className="text-[10px] text-slate-500">Podgląd</span>}
+                          </>}}
                         </div>
                       </td>
                     </tr>
