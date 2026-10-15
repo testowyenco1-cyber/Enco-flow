@@ -35,6 +35,21 @@ const CATEGORIES: { key: SNCategory; label: string; icon: React.ReactNode }[] = 
 ];
 const inputClass = 'w-full min-w-0 rounded border border-transparent bg-transparent px-1.5 py-1 text-[11px] text-slate-800 hover:border-slate-300 hover:bg-white focus:border-blue-500 focus:bg-white focus:outline-none disabled:bg-transparent';
 const filterClass = 'w-full min-w-0 rounded border border-slate-200 bg-white px-1.5 py-1 text-[10px] font-normal normal-case tracking-normal text-slate-600 focus:border-blue-500 focus:outline-none';
+const AIRSET_RODZAJE = [
+  'RM AirSet 24kV20kA NE-IIQ + napędy; wys. 1,625',
+  'RM AirSet 24kV20kA NE-IIIQ + napędy; wys. 1,625',
+  'RM AirSet NE-IIIQ 24kV20kA; wys. 1,625',
+  'RM AirSet NE-III 24kV20kA; wys. 1,4',
+  'RM AirSet 24kV20kA NE-III + napędy; wys. 1,4',
+  'RM AirSet NE-IIII 24kV20kA; wys. 1,4',
+  'RM AirSet 24kV20kA NE-IIII + napędy; wys. 1,4',
+  'RM AirSet 24kV20kA NE-IIQ; wys. 1,625',
+  'RM AirSet NE-IIIB + napędy; 24kV20kA; wys. 1,625',
+  'RM AirSet RE-IIII+LE-B + napędy; 24kV20kA; wys. 1,625',
+  'RM AirSet RE-IIII+LE-Q + napędy; 24kV20kA; wys. 1,625',
+  'RM AirSet RE-IIQ+LE-II + napędy; 24kV20kA; wys. 1,625',
+  'RM AirSet 24kV 630A, 20kA/3s RE-II+LE-IIQ + napędy',
+];
 type SortKey = 'rodzaj' | 'ilosc' | 'terminDostawy' | 'nrZamowienia' | 'projekt' | 'lokalizacja';
 const makeId = () => `sn_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
@@ -47,6 +62,8 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [sortKey, setSortKey] = useState<SortKey>('rodzaj');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [addingRodzajFor, setAddingRodzajFor] = useState<string | null>(null);
+  const [newRodzaj, setNewRodzaj] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -100,6 +117,22 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
     else { setSortKey(key); setSortDirection('asc'); }
   };
   const sortHeader = (label: string, key: SortKey) => <button type="button" onClick={() => toggleSort(key)} className="inline-flex items-center gap-1 text-left hover:text-blue-700" title={'Sortuj według: ' + label}>{label}{sortKey === key ? (sortDirection === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-40" />}</button>;
+
+  const rodzajOptions = useMemo(() => {
+    const existing = records
+      .filter(record => record.type === 'RM_AIRSET')
+      .map(record => record.rodzaj.trim())
+      .filter(Boolean);
+    return Array.from(new Set([...AIRSET_RODZAJE, ...existing])).sort((a, b) => a.localeCompare(b, 'pl', { numeric: true, sensitivity: 'base' }));
+  }, [records]);
+
+  const addRodzajOption = (recordId: string) => {
+    const value = newRodzaj.trim();
+    if (!value) return;
+    patchRecord(recordId, { rodzaj: value });
+    setNewRodzaj('');
+    setAddingRodzajFor(null);
+  };
 
   const patchRecord = (id: string, patch: Partial<SNRecord>) => {
     setRecords(current => current.map(record => record.id === id ? { ...record, ...patch } : record));
@@ -218,7 +251,22 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
               const order = matchingOrder(record);
               return <tr key={record.id} className="align-top hover:bg-blue-50/30">
                 <td className="px-2 py-1.5 text-[11px] text-slate-400">{visibleRecords.findIndex(item => item.id === record.id) + 1}</td>
-                <td className="min-w-0 px-1 py-1"><input aria-label="Rodzaj rozdzielnicy" disabled={!canEdit} value={record.rodzaj} onChange={event => patchRecord(record.id,{rodzaj:event.target.value})} placeholder="Typ / konfiguracja" className={`${inputClass} min-w-0`}/></td>
+                <td className="min-w-0 px-1 py-1">
+                  {record.type === 'RM_AIRSET' && canEdit ? <div className="min-w-0 space-y-1">
+                    <select aria-label="Rodzaj rozdzielnicy" value={addingRodzajFor === record.id ? '__add_new__' : record.rodzaj} onChange={event => {
+                      if (event.target.value === '__add_new__') { setAddingRodzajFor(record.id); setNewRodzaj(''); }
+                      else { setAddingRodzajFor(null); patchRecord(record.id, { rodzaj: event.target.value }); }
+                    }} className={`${inputClass} min-w-0`}>
+                      <option value="">Wybierz rodzaj…</option>
+                      {rodzajOptions.map(option => <option key={option} value={option}>{option}</option>)}
+                      <option value="__add_new__">＋ Dodaj nowy rodzaj…</option>
+                    </select>
+                    {addingRodzajFor === record.id && <div className="flex min-w-0 gap-1">
+                      <input aria-label="Nowy rodzaj rozdzielnicy" autoFocus value={newRodzaj} onChange={event => setNewRodzaj(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addRodzajOption(record.id); } if (event.key === 'Escape') setAddingRodzajFor(null); }} placeholder="Wpisz nowy rodzaj" className={`${inputClass} min-w-0 border-slate-300 bg-white`}/>
+                      <button type="button" onClick={() => addRodzajOption(record.id)} className="shrink-0 rounded border border-blue-200 px-1.5 text-[10px] font-semibold text-blue-700 hover:bg-blue-50">Dodaj</button>
+                    </div>}
+                  </div> : <input aria-label="Rodzaj rozdzielnicy" disabled={!canEdit} value={record.rodzaj} onChange={event => patchRecord(record.id,{rodzaj:event.target.value})} placeholder="Typ / konfiguracja" className={`${inputClass} min-w-0`}/>}
+                </td>
                 <td className="min-w-0 px-2 py-3"><input aria-label="Ilość" type="number" min="0" disabled={!canEdit} value={record.ilosc} onChange={event => patchRecord(record.id,{ilosc:Math.max(0,Number(event.target.value)||0)})} className={`${inputClass} min-w-0`}/></td>
                 <td className="min-w-0 px-2 py-3"><input aria-label="Termin dostawy" disabled={!canEdit} value={record.terminDostawy} onChange={event => patchRecord(record.id,{terminDostawy:event.target.value})} placeholder="Data lub „dostarczono”" className={`${inputClass} min-w-0`}/></td>
                 <td className="min-w-0 px-2 py-3"><input aria-label="Numer zamówienia" disabled={!canEdit} value={record.nrZamowienia} onChange={event => patchRecord(record.id,{nrZamowienia:event.target.value})} placeholder="Nr zamówienia" className={inputClass}/></td>
