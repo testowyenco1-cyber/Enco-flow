@@ -66,6 +66,7 @@ async function startServer() {
   const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
   const DOORS_FILE = path.join(DATA_DIR, 'door_orders.json');
   const OBUDOWA_VARIANTS_FILE = path.join(DATA_DIR, 'obudowa_variants.json');
+  const SN_SWITCHGEAR_FILE = path.join(DATA_DIR, 'sn_switchgear.json');
 
   // Seed initial data if files do not exist
   let currentOrders = INITIAL_ORDERS;
@@ -91,6 +92,25 @@ async function startServer() {
       console.log('Seeded initial door orders into data_store/door_orders.json');
     } catch (e) {
       console.error('Failed to seed door orders file:', e);
+    }
+  }
+
+  // Shared SN switchgear inventory, stored separately from order records.
+  if (!fs.existsSync(SN_SWITCHGEAR_FILE)) {
+    const initialSNSwitchgear = [
+      { id: 'sn_rm_001', type: 'RM_AIRSET', category: 'DELIVERED', rodzaj: 'RM AirSet 24kV20kA NE-IIQ + napędy; wys. 1,625', ilosc: 1, terminDostawy: 'dostarczono', nrZamowienia: 'ZD/88/2025', projekt: 'Rozdzielnica na targi, przyjechała bez napędu w polu Q (Bakałarzewska)', lokalizacja: 'BAKAŁARZEWSKA' },
+      { id: 'sn_rm_002', type: 'RM_AIRSET', category: 'DELIVERED', rodzaj: 'RM AirSet 24kV20kA NE-IIQ + napędy; wys. 1,625', ilosc: 1, terminDostawy: 'dostarczono', nrZamowienia: 'ZD/88/2025', projekt: 'GRABÓWKA - będzie demontaż', lokalizacja: 'GRABÓWKA' },
+      { id: 'sn_rm_003', type: 'RM_AIRSET', category: 'DELIVERED', rodzaj: 'RM AirSet 24kV20kA NE-IIQ + napędy; wys. 1,625', ilosc: 1, terminDostawy: 'dostarczono', nrZamowienia: 'ZD/88/2025', projekt: 'UTRATA SUWAŁKI', lokalizacja: 'SUWAŁKI' },
+      { id: 'sn_rm_004', type: 'RM_AIRSET', category: 'DELIVERED', rodzaj: 'RM AirSet 24kV20kA NE-IIQ + napędy; wys. 1,625', ilosc: 1, terminDostawy: 'dostarczono', nrZamowienia: 'ZD/88/2025', projekt: 'UTRATA SUWAŁKI', lokalizacja: 'SUWAŁKI' },
+      { id: 'sn_rm_005', type: 'RM_AIRSET', category: 'DELIVERED', rodzaj: 'RM AirSet 24kV20kA NE-IIQ + napędy; wys. 1,625', ilosc: 1, terminDostawy: 'dostarczono', nrZamowienia: 'ZD/88/2025', projekt: 'HOŻA AUGUSTÓW', lokalizacja: 'AUGUSTÓW' },
+      { id: 'sn_rm_006', type: 'RM_AIRSET', category: 'DELIVERED', rodzaj: 'RM AirSet 24kV20kA NE-IIQ + napędy; wys. 1,625', ilosc: 1, terminDostawy: 'dostarczono', nrZamowienia: 'ZD/88/2025', projekt: 'RAJGRODZKA AUGUSTÓW', lokalizacja: 'AUGUSTÓW' },
+      { id: 'sn_rm_007', type: 'RM_AIRSET', category: 'DELIVERED', rodzaj: 'RM AirSet 24kV20kA NE-IIIQ + napędy; wys. 1,625', ilosc: 1, terminDostawy: 'dostarczono', nrZamowienia: 'ZD/88/2025', projekt: 'RAJSK HAĆKI', lokalizacja: 'RAJSK' },
+    ];
+    try {
+      fs.writeFileSync(SN_SWITCHGEAR_FILE, JSON.stringify(initialSNSwitchgear, null, 2), 'utf-8');
+      console.log('Initialized SN switchgear inventory in data_store/sn_switchgear.json');
+    } catch (e) {
+      console.error('Failed to initialize SN switchgear inventory:', e);
     }
   }
 
@@ -285,6 +305,51 @@ async function startServer() {
     } catch (err) {
       console.error('Error writing orders file:', err);
       return res.status(500).json({ success: false, error: 'Błąd zapisu zleceń na serwerze' });
+    }
+  });
+
+  // 2.5. Shared SN switchgear inventory API. Records are independent stock/inventory rows,
+  // while order links are entered in the Nr zamówienia / Projekt fields.
+  app.get('/api/sn-switchgear', (_req, res) => {
+    try {
+      const raw = fs.readFileSync(SN_SWITCHGEAR_FILE, 'utf-8');
+      const records = JSON.parse(raw);
+      if (!Array.isArray(records)) return res.status(500).json({ success: false, error: 'Nieprawidłowy format zestawienia rozdzielnic SN' });
+      return res.json({ success: true, records, timestamp: Date.now() });
+    } catch (err) {
+      console.error('Error reading SN switchgear inventory:', err);
+      return res.status(500).json({ success: false, error: 'Błąd odczytu zestawienia rozdzielnic SN' });
+    }
+  });
+
+  app.post('/api/sn-switchgear', (req, res) => {
+    try {
+      const incoming = req.body?.records;
+      const deletedIds = Array.isArray(req.body?.deletedIds) ? req.body.deletedIds.map((id: any) => String(id)) : [];
+      if (!Array.isArray(incoming)) return res.status(400).json({ success: false, error: 'Nieprawidłowy format rekordów SN' });
+      const raw = fs.readFileSync(SN_SWITCHGEAR_FILE, 'utf-8');
+      const parsed = JSON.parse(raw);
+      const current: any[] = Array.isArray(parsed) ? parsed : [];
+      const deleted = new Set(deletedIds);
+      const merged = current.filter((record: any) => !deleted.has(String(record.id)));
+      incoming.forEach((record: any) => {
+        if (!record || !record.id) return;
+        const normalized = {
+          ...record,
+          id: String(record.id),
+          type: ['SIEMENS', 'XIRIA', 'RM_AIRSET', 'RM_AIRSET_STOEN'].includes(record.type) ? record.type : 'RM_AIRSET',
+          category: ['DELIVERED', 'TO_DELIVER', 'WAREHOUSE'].includes(record.category) ? record.category : 'TO_DELIVER',
+          ilosc: Math.max(0, Number(record.ilosc) || 0),
+        };
+        const index = merged.findIndex((existing: any) => String(existing.id) === normalized.id);
+        if (index >= 0) merged[index] = normalized;
+        else merged.push(normalized);
+      });
+      writeJsonAtomically(SN_SWITCHGEAR_FILE, merged);
+      return res.json({ success: true, records: merged, timestamp: Date.now() });
+    } catch (err) {
+      console.error('Error saving SN switchgear inventory:', err);
+      return res.status(500).json({ success: false, error: 'Błąd zapisu zestawienia rozdzielnic SN' });
     }
   });
 
