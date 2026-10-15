@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Order, OrderItem, ItemStatus, Attachment, DoorOrder } from '../types/enco';
 import { OrderStatusBadge, ItemStatusBadge } from './StatusBadge';
 import { StatusSwitcher } from './StatusSwitcher';
@@ -59,6 +59,50 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
   const [isOrderFilesModalOpen, setIsOrderFilesModalOpen] = useState(false);
   const [selectedFolderForModal, setSelectedFolderForModal] = useState<string>('01_Dokumentacja_Glowna');
+
+  type LinkedSNRecord = {
+    id: string;
+    type: string;
+    category: string;
+    rodzaj: string;
+    ilosc: number;
+    terminDostawy: string;
+    nrZamowienia: string;
+    projekt: string;
+    linkedOrderId?: string;
+    lokalizacja: string;
+  };
+  const [linkedSNRecords, setLinkedSNRecords] = useState<LinkedSNRecord[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadLinkedSNRecords = async () => {
+      try {
+        const response = await fetch('/api/sn-switchgear');
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!cancelled && data.success && Array.isArray(data.records)) {
+          setLinkedSNRecords(data.records);
+        }
+      } catch {
+        // The SN inventory is supplementary; a temporary API issue should not block the order view.
+      }
+    };
+    void loadLinkedSNRecords();
+    return () => { cancelled = true; };
+  }, [order.id]);
+
+  const orderLabelForSN = `${order.orderNumber} ${order.projectName}`.trim();
+  const linkedSNRecordsForOrder = useMemo(() => linkedSNRecords.filter(record => {
+    if (record.linkedOrderId === order.id) return true;
+    if (record.linkedOrderId && record.linkedOrderId !== order.id) return false;
+    const project = (record.projekt || '').trim().toLowerCase();
+    return !!project && (
+      project === (order.projectName || '').trim().toLowerCase() ||
+      project === orderLabelForSN.toLowerCase() ||
+      project.startsWith(`${(order.orderNumber || '').trim().toLowerCase()} `)
+    );
+  }), [linkedSNRecords, order.id, order.orderNumber, order.projectName, orderLabelForSN]);
 
   const totalOrderAttachments =
     (order.attachments?.length || 0) +
@@ -653,6 +697,43 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 setIsOrderFilesModalOpen(true);
               }}
             />
+            {item.type === 'ROZDZIELNICA_SN' && linkedSNRecordsForOrder.length > 0 && (
+              <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-blue-900">
+                    Rozdzielnica SN z zestawienia
+                  </h3>
+                  <span className="rounded-full bg-blue-100 px-2 py-1 text-[10px] font-semibold text-blue-800">
+                    {linkedSNRecordsForOrder.length} {linkedSNRecordsForOrder.length === 1 ? 'pozycja' : 'pozycje'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {linkedSNRecordsForOrder.map((record, index) => (
+                    <div key={record.id} className="rounded-lg border border-blue-100 bg-white p-3">
+                      <div className="mb-2 text-xs font-bold text-slate-800">
+                        {index === 0 ? 'Rozdzielnica SN' : `Rozdzielnica SN do ZL ${index + 1}`}
+                      </div>
+                      <dl className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+                        {[
+                          ['Typ zestawienia', record.type === 'SIEMENS' ? 'SIEMENS' : record.type === 'XIRIA' ? 'XIRIA' : record.type === 'RM_AIRSET_STOEN' ? 'RM AirSeT – STOEN' : 'RM AirSeT'],
+                          ['Rodzaj', record.rodzaj],
+                          ['Ilość', String(record.ilosc ?? '')],
+                          ['Status', record.category === 'DELIVERED' ? 'Dostarczone' : record.category === 'TO_DELIVER' ? 'Do dostarczenia' : 'Wolne na magazynie'],
+                          ['Termin dostawy', record.terminDostawy === 'dostarczono' ? 'Dostarczono' : record.terminDostawy],
+                          ['Nr zamówienia', record.nrZamowienia],
+                          ['Lokalizacja', record.lokalizacja],
+                        ].filter((entry) => entry[1] && entry[1].trim()).map(([label, value]) => (
+                          <div key={label}>
+                            <dt className="text-[10px] font-medium text-slate-500">{label}</dt>
+                            <dd className="break-words text-xs font-semibold text-slate-800">{value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {canEditItemType(profile, item.type) && (
               <div className="flex justify-end">
                 <button
