@@ -34,6 +34,7 @@ import { UserRoleProfile, USER_PROFILES, canEditItemType, getItemPermissionHint 
 
 interface ItemDetailsCardProps {
   item: OrderItem;
+  orderItems?: OrderItem[];
   orderNumber: string;
   doorOrders?: DoorOrder[];
   onStatusChange: (newStatus: ItemStatus) => void;
@@ -51,6 +52,7 @@ interface ItemDetailsCardProps {
 
 export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
   item,
+  orderItems = [],
   orderNumber,
   doorOrders = [],
   onStatusChange,
@@ -261,6 +263,10 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         break;
 
       case 'OBUDOWA': {
+        const koloryItem = orderItems.find((related) => related.type === 'KOLORY');
+        const opisyItem = orderItems.find((related) => related.type === 'OPISY');
+        const kolory = koloryItem?.details || {};
+        const opisy = opisyItem?.details || {};
         const typName =
           d.typObudowy === 'NZ'
             ? 'NZ — obudowa zewnętrzna'
@@ -298,6 +304,12 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         if (d.pokrywySNSaWPyskowicach !== undefined) entries.push({ label: 'Pokrywy SN w Pyskowicach', value: d.pokrywySNSaWPyskowicach ? 'Tak' : 'Nie' });
         if (d.wkladkiSN) entries.push({ label: 'Wkładki SN', value: d.wkladkiSN });
         if (d.wkladkiSNSaWPyskowicach !== undefined) entries.push({ label: 'Wkładki SN w Pyskowicach', value: d.wkladkiSNSaWPyskowicach ? 'Tak' : 'Nie' });
+        if (kolory.kolorObudowy) entries.push({ label: 'Kolor obudowy', value: kolory.kolorObudowy });
+        if (kolory.kolorDrzwi) entries.push({ label: 'Kolor drzwi', value: kolory.kolorDrzwi });
+        if (kolory.koloryDodatkowe) entries.push({ label: 'Kolory dodatkowe', value: kolory.koloryDodatkowe });
+        if (kolory.numeryRal) entries.push({ label: 'Numery RAL', value: kolory.numeryRal });
+        if (opisy.wymaganeOpisy) entries.push({ label: 'Wymagane opisy', value: opisy.wymaganeOpisy });
+        if (opisy.sposobWykonania) entries.push({ label: 'Sposób wykonania opisów', value: opisy.sposobWykonania });
         break;
       }
 
