@@ -76,6 +76,7 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
   const [draftsById, setDraftsById] = useState<Record<string, DoorOrder>>({});
   const [dirtyDoorOrderIds, setDirtyDoorOrderIds] = useState<string[]>([]);
   const [zlSearchQuery, setZlSearchQuery] = useState('');
+  const [zlDropdownPosition, setZlDropdownPosition] = useState<{ top: number; left: number } | null>(null);
   const [showExtraTools, setShowExtraTools] = useState(false);
 
   // Obliczenia statystyk KPI
@@ -518,10 +519,10 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                         <div className="flex flex-wrap gap-1">
                           {canManageDoors ? (
                             <details className="relative min-w-0">
-                              <summary className="max-w-full cursor-pointer list-none whitespace-normal break-words rounded border border-blue-300 bg-white px-1.5 py-1.5 text-[11px] font-semibold text-slate-800 hover:bg-blue-50">
+                              <summary onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); setZlDropdownPosition({ top: rect.bottom + 4, left: rect.left }); }} className="max-w-full cursor-pointer list-none whitespace-normal break-words rounded border border-blue-300 bg-white px-1.5 py-1.5 text-[11px] font-semibold text-slate-800 hover:bg-blue-50">
                                 {row.numeryZl.length ? `Wybrano: ${row.numeryZl.length} ZL ▾` : 'Wybierz zlecenia ZL ▾'}
                               </summary>
-                              <div className="absolute left-0 top-full z-30 mt-1 w-80 max-w-[80vw] rounded-lg border border-slate-300 bg-white p-2 shadow-xl">
+                              <div style={{ top: zlDropdownPosition?.top ?? 0, left: zlDropdownPosition?.left ?? 0 }} className="fixed z-50 mt-1 w-80 max-w-[80vw] rounded-lg border border-slate-300 bg-white p-2 shadow-xl">
                                 <div className="mb-1 px-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">Zaznacz powiązane zlecenia</div>
                                 <input
                                   type="text"
