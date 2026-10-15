@@ -67,6 +67,7 @@ async function startServer() {
   const DOORS_FILE = path.join(DATA_DIR, 'door_orders.json');
   const OBUDOWA_VARIANTS_FILE = path.join(DATA_DIR, 'obudowa_variants.json');
   const SN_SWITCHGEAR_FILE = path.join(DATA_DIR, 'sn_switchgear.json');
+  const DOOR_CATALOG_FILE = path.join(DATA_DIR, 'door_catalog.json');
 
   // Seed initial data if files do not exist
   let currentOrders = INITIAL_ORDERS;
@@ -121,6 +122,34 @@ async function startServer() {
       console.log('Initialized shared custom enclosure sizes in data_store/obudowa_variants.json');
     } catch (e) {
       console.error('Failed to initialize shared enclosure sizes file:', e);
+    }
+  }
+
+  // Shared door-hardware catalogue, seeded from the provided ENCO combination list.
+  const INITIAL_DOOR_CATALOG = [
+    { id: 'door_nz_1', grupa: 'NZ', numer: '1', wymiarZewnetrzny: '1775x1640', swiatloOtworu: '1660x1530', kolor: 'Białe', kraty: '2xkrata', opis: 'Zewnętrzne zawiasy' },
+    { id: 'door_nz_2', grupa: 'NZ', numer: '2', wymiarZewnetrzny: '1830x1315', swiatloOtworu: '1770x1185', kolor: '8014?', kraty: 'pełne', opis: 'Zewnętrzne plastikowe zawiasy, dziwny zamek' },
+    { id: 'door_nz_3', grupa: 'NZ', numer: '3', wymiarZewnetrzny: '1280x1230', swiatloOtworu: '1130x1080', kolor: '8017?', kraty: 'pełne', opis: 'Brak blokady otwarcia skrzydła drzwiowego' },
+    { id: 'door_nz_4', grupa: 'NZ', numer: '4', wymiarZewnetrzny: '2795x1335', swiatloOtworu: '2647x1180', kolor: 'Niebieskie', kraty: '2xkrata', opis: '' },
+    { id: 'door_nz_5', grupa: 'NZ', numer: '5', wymiarZewnetrzny: '2285x1680', swiatloOtworu: '2134x1528', kolor: 'Niebieskie', kraty: 'pełne', opis: '' },
+    { id: 'door_nz_6', grupa: 'NZ', numer: '6', wymiarZewnetrzny: '2130x1335', swiatloOtworu: '2063x1185', kolor: '8014?', kraty: 'pełne', opis: '' },
+    { id: 'door_nz_7', grupa: 'NZ', numer: '7', wymiarZewnetrzny: '2285x1335', swiatloOtworu: '2225x1185', kolor: '8014?', kraty: 'pełne', opis: '' },
+    { id: 'door_nz_8', grupa: 'NZ', numer: '8', wymiarZewnetrzny: '1825x1335', swiatloOtworu: '1765x1185', kolor: '8014?', kraty: '1xpełne - lew.; 1x krata - praw.', opis: '' },
+    { id: 'door_nz_bek_1', grupa: 'NZ — rama BEK', numer: '1', wymiarZewnetrzny: '2090x1395', swiatloOtworu: '1975x1283', kolor: '8014?', kraty: 'pełne', opis: 'Zewnętrzne zawiasy' },
+    { id: 'door_nz_bek_2', grupa: 'NZ — rama BEK', numer: '2', wymiarZewnetrzny: '1785x1395', swiatloOtworu: '1675x1283', kolor: '8014?', kraty: '1xpełne - lew.; 1x krata - praw.', opis: 'Zewnętrzne zawiasy' },
+    { id: 'door_bek_1', grupa: 'BEK', numer: '1', wymiarZewnetrzny: '2197x1066', swiatloOtworu: '2100x950', kolor: '8014?', kraty: '2xkrata', opis: 'Prawe' },
+    { id: 'door_bek_2', grupa: 'BEK', numer: '2', wymiarZewnetrzny: '2197x1285', swiatloOtworu: '2100x1170', kolor: '8014?', kraty: '2xkrata', opis: 'Lewe, brak zamku' },
+    { id: 'door_bek_3', grupa: 'BEK', numer: '3', wymiarZewnetrzny: '2197x1285', swiatloOtworu: '2100x1170', kolor: '8014?', kraty: '2xkrata', opis: 'Lewe' },
+    { id: 'door_bek_4', grupa: 'BEK', numer: '4', wymiarZewnetrzny: '2197x1066', swiatloOtworu: '2100x950', kolor: '8014?', kraty: '2xkrata', opis: 'Prawe' },
+    { id: 'door_bek_8', grupa: 'BEK', numer: '8', wymiarZewnetrzny: '', swiatloOtworu: '950x2100', kolor: '8014', kraty: '2xkrata', opis: 'Lewe' },
+  ];
+
+  if (!fs.existsSync(DOOR_CATALOG_FILE)) {
+    try {
+      fs.writeFileSync(DOOR_CATALOG_FILE, JSON.stringify(INITIAL_DOOR_CATALOG, null, 2), 'utf-8');
+      console.log('Initialized shared door hardware catalogue in data_store/door_catalog.json');
+    } catch (e) {
+      console.error('Failed to initialize door hardware catalogue:', e);
     }
   }
 
@@ -397,6 +426,41 @@ async function startServer() {
     } catch (err) {
       console.error('Error writing door orders file:', err);
       return res.status(500).json({ success: false, error: 'Błąd zapisu zamówień drzwi na serwerze' });
+    }
+  });
+
+  // Shared door hardware catalogue. Saving replaces the current catalogue with the edited list.
+  app.get('/api/door-catalog', (_req, res) => {
+    try {
+      const raw = fs.readFileSync(DOOR_CATALOG_FILE, 'utf-8');
+      const variants = JSON.parse(raw);
+      if (!Array.isArray(variants)) return res.status(500).json({ success: false, error: 'Nieprawidłowy format katalogu ślusarki' });
+      return res.json({ success: true, variants, timestamp: Date.now() });
+    } catch (err) {
+      console.error('Error reading door hardware catalogue:', err);
+      return res.status(500).json({ success: false, error: 'Błąd odczytu katalogu ślusarki' });
+    }
+  });
+
+  app.post('/api/door-catalog', (req, res) => {
+    try {
+      const { variants } = req.body || {};
+      if (!Array.isArray(variants) || variants.some((item: any) =>
+        !item || typeof item.id !== 'string' || typeof item.grupa !== 'string' ||
+        !['NZ', 'NZ — rama BEK', 'BEK'].includes(item.grupa)
+      )) {
+        return res.status(400).json({ success: false, error: 'Nieprawidłowe dane katalogu ślusarki' });
+      }
+      const ids = new Set<string>();
+      for (const item of variants) {
+        if (ids.has(item.id)) return res.status(400).json({ success: false, error: 'Każda kombinacja musi mieć unikalny identyfikator' });
+        ids.add(item.id);
+      }
+      writeJsonAtomically(DOOR_CATALOG_FILE, variants);
+      return res.json({ success: true, variants, timestamp: Date.now() });
+    } catch (err) {
+      console.error('Error saving door hardware catalogue:', err);
+      return res.status(500).json({ success: false, error: 'Błąd zapisu katalogu ślusarki' });
     }
   });
 
