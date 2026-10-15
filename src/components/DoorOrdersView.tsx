@@ -257,7 +257,7 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => setIsDoorFilesModalOpen(true)
+            onClick={() => setIsDoorFilesModalOpen(true)}
             className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs border border-slate-700 transition-colors cursor-pointer"
             title="Przeglądaj folder i lokalizacje plików technicznych modułu Drzwi"
           >
