@@ -1076,208 +1076,53 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
             </div>
           )}
 
-          <div className={!canEdit ? 'pointer-events-none select-none opacity-90' : ''}>
-            {item.type === 'ROZDZIELNICA_SN' ? (
-              renderSNForm()
-            ) : item.type === 'ROZDZIELNICA_NN' ? (
-              renderNNForm()
-            ) : item.type === 'OBUDOWA' ? (
-              <div className="bg-slate-50/80 rounded-lg p-3 border border-slate-100">
-                {renderDetailsSummary()}
-              </div>
-            ) : item.type === 'DRZWI' ? (
-              renderDoorForm()
-            ) : (
-              <div className="bg-slate-50/80 rounded-lg p-3 border border-slate-100">
-                {renderDetailsSummary()}
-              </div>
-            )}
+          <div className="bg-slate-50/80 rounded-lg p-3 border border-slate-100">
+            {renderDetailsSummary()}
           </div>
         </div>
 
-        {/* Dates Section */}
+        {/* Terminy wyświetlane wyłącznie do odczytu */}
         <div className="space-y-3 py-4 border-y border-slate-200 text-xs">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* 1. Data wystawienia zlecenia / kiedy zamówiono */}
-            <div className="min-w-0 flex flex-col items-start gap-1.5 rounded-lg border border-blue-200 bg-blue-50/60 p-3">
-              <div className="flex flex-wrap items-center gap-2">
-              <Send className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-              <span className="text-slate-600 font-semibold">Data zlecenia / zamówienia:</span>
-              {isEditingDate ? (
-                <input
-                  type="date"
-                  value={orderDateInput}
-                  onChange={(e) => setOrderDateInput(e.target.value)}
-                  className="px-2 py-0.5 border border-blue-300 rounded text-xs bg-blue-50/50 font-mono text-blue-950 font-bold"
-                />
-              ) : item.orderDate ? (
-                <span className="font-mono tabular-nums font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                  {item.orderDate.split('-').reverse().join('.')}
-                </span>
-              ) : (
-                <span className="font-mono text-slate-400 italic">Brak daty</span>
-              )}
-              </div>
-            </div>
-
-            {/* 2. Planowany termin / Data gotowości */}
-            <div className="min-w-0 flex flex-col items-start gap-1.5 rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <div className="flex flex-wrap items-center gap-2">
-              <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span className="text-slate-500">
-                'Planowana data gotowości:'
-              </span>
-              {isEditingDate ? (
-                <input
-                  type="date"
-                  value={plannedDateInput}
-                  onChange={(e) => setPlannedDateInput(e.target.value)}
-                  className="px-2 py-0.5 border border-slate-300 rounded text-xs bg-white font-mono"
-                />
-              ) : (
-                <span className="font-mono tabular-nums font-semibold text-slate-800">
-                  {item.plannedDate
-                    ? item.plannedDate.split('-').reverse().join('.')
-                    : 'Brak terminu'}
-                </span>
-              )}
-
-              {/* Informacja o przekroczeniu terminu gotowości dla obudowy */}
-              {item.type === 'OBUDOWA' &&
-                checkReadinessOverdue(
-                  item.details?.dataGotowosci || item.plannedDate,
-                  item.status
-                ).isOverdue && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded border border-rose-200 animate-pulse">
-                    <AlertTriangle className="w-3 h-3 text-rose-600" />
-                    Przekroczono termin gotowości!
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* 3. Rzeczywista data zakończenia */}
-            <div className="min-w-0 flex flex-col items-start gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
-              <div className="flex flex-wrap items-center gap-2">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span className="text-slate-500">Rzeczywista data zakończenia:</span>
-              {isEditingDate ? (
-                <input
-                  type="date"
-                  value={completedDateInput}
-                  onChange={(e) => setCompletedDateInput(e.target.value)}
-                  className="px-2 py-0.5 border border-slate-300 rounded text-xs bg-white font-mono"
-                />
-              ) : (
-                <span className="font-mono tabular-nums font-semibold text-slate-800">
-                  {item.completedDate
-                    ? item.completedDate.split('-').reverse().join('.')
-                    : '—'}
-                </span>
-              )}
-              </div>
-            </div>
+          <div className="flex items-center justify-between gap-3">
+            <h4 className="font-bold uppercase tracking-wider text-slate-700">Terminy</h4>
+            <button type="button" onClick={onOpenEditModal} className="text-xs font-semibold text-blue-600 hover:text-blue-800">
+              {canEdit ? 'Edytuj daty' : 'Podgląd'}
+            </button>
           </div>
-
-          <div className="flex justify-end">
-            {canEdit ? (
-              isEditingDate ? (
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleSaveDates}
-                    className="px-2.5 py-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded cursor-pointer"
-                  >
-                    Zapisz daty
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingDate(false)}
-                    className="text-xs text-slate-500 hover:text-slate-700 cursor-pointer"
-                  >
-                    Anuluj
-                  </button>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {([
+              ['Data zlecenia / zamówienia', item.orderDate],
+              ['Planowana data gotowości', item.plannedDate],
+              ['Rzeczywista data zakończenia', item.completedDate],
+            ] as const).map(([label, value]) => (
+              <div key={label} className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <div className="font-semibold text-slate-500">{label}</div>
+                <div className="mt-1 font-mono font-bold text-slate-800">
+                  {value ? value.split('-').reverse().join('.') : '—'}
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOrderDateInput(item.orderDate || '');
-                    setPlannedDateInput(item.plannedDate || '');
-                    setCompletedDateInput(item.completedDate || '');
-                    setIsEditingDate(true);
-                  }}
-                  className="text-xs text-slate-500 hover:text-blue-600 hover:underline cursor-pointer"
-                >
-                  Zmień daty
-                </button>
-              )
-            ) : null}
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Notes Section */}
+        {/* Uwagi — edycja wyłącznie w oknie elementu */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider">
               <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
               <span>Uwagi do elementu</span>
             </div>
-
-            {canEdit && !isEditingNotes && (
-              <button
-                type="button"
-                onClick={() => {
-                  setNotesInput(item.notes || '');
-                  setIsEditingNotes(true);
-                }}
-                className="text-xs font-semibold text-blue-600 hover:text-blue-800 cursor-pointer"
-              >
-                {item.notes ? 'Edytuj uwagę' : '+ Dodaj uwagę'}
-              </button>
-            )}
+            <button type="button" onClick={onOpenEditModal} className="text-xs font-semibold text-blue-600 hover:text-blue-800">
+              {canEdit ? 'Edytuj uwagi' : 'Podgląd'}
+            </button>
           </div>
-
-          {isEditingNotes ? (
-            <div className="space-y-2">
-              <textarea
-                value={notesInput}
-                onChange={(e) => setNotesInput(e.target.value)}
-                placeholder="Wpisz bieżące uwagi, status dostawy, ustalenia telefoniczne..."
-                rows={3}
-                className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:outline-hidden bg-white"
-                autoFocus
-              />
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleSaveNotes}
-                  className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md cursor-pointer"
-                >
-                  Zapisz uwagę
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsEditingNotes(false)}
-                  className="px-2.5 py-1.5 text-xs text-slate-500 hover:text-slate-700 cursor-pointer"
-                >
-                  Anuluj
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div
-              className={`p-3 rounded-lg text-xs border ${
-                item.notes
-                  ? isProblem
-                    ? 'bg-rose-100/60 border-rose-200 text-rose-900 font-medium'
-                    : 'bg-slate-50 border-slate-200 text-slate-800'
-                  : 'bg-slate-50/50 border-dashed border-slate-200 text-slate-400 italic'
-              }`}
-            >
-              {item.notes || 'Brak wpisanych uwag.'}
-            </div>
-          )}
+          <div className={`p-3 rounded-lg text-xs border whitespace-pre-wrap break-words ${
+            item.notes
+              ? isProblem ? 'bg-rose-100/60 border-rose-200 text-rose-900 font-medium' : 'bg-slate-50 border-slate-200 text-slate-800'
+              : 'bg-slate-50/50 border-dashed border-slate-200 text-slate-400 italic'
+          }`}>
+            {item.notes || 'Brak wpisanych uwag.'}
+          </div>
         </div>
 
         {/* Attachments Section */}
