@@ -608,6 +608,7 @@ export default function App() {
               setEditingDoorOrder(doorOrd);
               setIsDoorOrderModalOpen(true);
             }}
+            onSaveDoorOrderDirect={handleSaveDoorOrder}
             onDeleteDoorOrder={handleDeleteDoorOrder}
             onQuickConfirmDelivery={handleQuickConfirmDelivery}
             onNavigateToOrder={(ordId) => navigate(`/zlecenia/${encodeURIComponent(ordId)}`)}
