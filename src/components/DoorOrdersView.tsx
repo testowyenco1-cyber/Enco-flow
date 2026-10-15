@@ -470,7 +470,7 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2">
           <div>
             <h2 className="text-sm font-bold text-slate-900">Rejestr zamówień PZD</h2>
-            <p className="text-[11px] text-slate-600">Tabela robocza — wybierz wiersz, aby otworzyć szczegóły lub edytować zamówienie.</p>
+            <p className="text-[11px] text-slate-600">Edytuj pola bezpośrednio w tabeli. Przycisk „Zapisz zmiany” miga, gdy są niezapisane poprawki.</p>
           </div>
           <div className="flex items-center gap-3"><span className="text-xs font-semibold text-slate-600">Pozycji: {filteredOrders.length} / {doorOrders.length}</span>{canManageDoors && <button type="button" onClick={saveDirtyDoorOrders} disabled={dirtyDoorOrderIds.length === 0} className={"inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors " + (dirtyDoorOrderIds.length ? "animate-pulse border-amber-500 bg-amber-400 text-slate-950 shadow-md" : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400")}><CheckSquare className="h-4 w-4" />{dirtyDoorOrderIds.length ? "Zapisz zmiany (" + dirtyDoorOrderIds.length + ")" : "Zapisano"}</button>}</div>
         </div>
@@ -511,9 +511,7 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                       className={`group align-top transition-colors hover:bg-blue-50/70 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'} ${overdueInfo.isOverdue ? '!bg-rose-50' : ''} ${isDelivered ? 'text-slate-600' : ''}`}
                     >
                       <td className="border-r border-slate-100 px-3 py-2.5">
-                        <button type="button" onClick={() => onOpenDoorOrder ? onOpenDoorOrder(doorOrd) : toggleExpand(doorOrd.id)} className="font-mono font-bold text-blue-700 hover:text-blue-900 hover:underline text-left">
-                          {canManageDoors ? <input aria-label="Numer dokumentu" className={cellInput} value={row.numerDokumentu} onClick={(e) => e.stopPropagation()} onChange={(e) => patch('numerDokumentu', e.target.value)} /> : doorOrd.numerDokumentu}
-                        </button>
+                        {canManageDoors ? <input aria-label="Numer dokumentu" className={cellInput + " font-mono font-bold"} value={row.numerDokumentu} onChange={(e) => patch('numerDokumentu', e.target.value)} /> : <button type="button" onClick={() => onOpenDoorOrder ? onOpenDoorOrder(doorOrd) : toggleExpand(doorOrd.id)} className="font-mono font-bold text-blue-700 hover:text-blue-900 hover:underline text-left">{doorOrd.numerDokumentu}</button>}
                         {overdueInfo.isOverdue && <div className="mt-1 text-[10px] font-bold text-rose-700">Po terminie</div>}
                         {isDelivered && <div className="mt-1 text-[10px] font-semibold text-emerald-700">Dostarczono</div>}
                       </td>
