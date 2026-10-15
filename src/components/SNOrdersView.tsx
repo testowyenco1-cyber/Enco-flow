@@ -50,6 +50,17 @@ const AIRSET_RODZAJE = [
   'RM AirSet RE-IIQ+LE-II + napędy; 24kV20kA; wys. 1,625',
   'RM AirSet 24kV 630A, 20kA/3s RE-II+LE-IIQ + napędy',
 ];
+const SIEMENS_RODZAJE = [
+  '8DJH blue GIS RRR',
+  '8DJH blue GIS RRT',
+  '8DJH blue GIS RRRT',
+  '8DJH blue GIS RRRR',
+  '8DJH blue GIS RRRR + NAPĘDY',
+  '8DJH blue GIS RRT + NAPĘDY W POLACH R',
+  '8DJH blue GIS RRRT + NAPĘDY W POLACH R',
+  '8DJH blue GIS RRR + NAPĘDY, OSŁONY POGŁĘBIONE',
+  '8DJH blue GIS RRRR + NAPĘDY, OSŁONY POGŁĘBIONE',
+];
 type SortKey = 'rodzaj' | 'ilosc' | 'terminDostawy' | 'nrZamowienia' | 'projekt' | 'lokalizacja';
 const makeId = () => `sn_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
@@ -119,12 +130,13 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
   const sortHeader = (label: string, key: SortKey) => <button type="button" onClick={() => toggleSort(key)} className="inline-flex items-center gap-1 text-left hover:text-blue-700" title={'Sortuj według: ' + label}>{label}{sortKey === key ? (sortDirection === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-40" />}</button>;
 
   const rodzajOptions = useMemo(() => {
+    const seedOptions = selectedType === 'RM_AIRSET' ? AIRSET_RODZAJE : selectedType === 'SIEMENS' ? SIEMENS_RODZAJE : [];
     const existing = records
-      .filter(record => record.type === 'RM_AIRSET')
+      .filter(record => record.type === selectedType)
       .map(record => record.rodzaj.trim())
       .filter(Boolean);
-    return Array.from(new Set([...AIRSET_RODZAJE, ...existing])).sort((a, b) => a.localeCompare(b, 'pl', { numeric: true, sensitivity: 'base' }));
-  }, [records]);
+    return Array.from(new Set([...seedOptions, ...existing])).sort((a, b) => a.localeCompare(b, 'pl', { numeric: true, sensitivity: 'base' }));
+  }, [records, selectedType]);
 
   const addRodzajOption = (recordId: string) => {
     const value = newRodzaj.trim();
@@ -252,7 +264,7 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
               return <tr key={record.id} className="align-top hover:bg-blue-50/30">
                 <td className="px-2 py-1.5 text-[11px] text-slate-400">{visibleRecords.findIndex(item => item.id === record.id) + 1}</td>
                 <td className="min-w-0 px-1 py-1">
-                  {record.type === 'RM_AIRSET' && canEdit ? <div className="min-w-0 space-y-1">
+                  {(record.type === 'RM_AIRSET' || record.type === 'SIEMENS') && canEdit ? <div className="min-w-0 space-y-1">
                     <select aria-label="Rodzaj rozdzielnicy" value={addingRodzajFor === record.id ? '__add_new__' : record.rodzaj} onChange={event => {
                       if (event.target.value === '__add_new__') { setAddingRodzajFor(record.id); setNewRodzaj(''); }
                       else { setAddingRodzajFor(null); patchRecord(record.id, { rodzaj: event.target.value }); }
