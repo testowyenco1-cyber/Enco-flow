@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CircuitBoard, Search, Plus, Save, Trash2, RefreshCw, ExternalLink, PackageCheck, Truck, Warehouse, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { CircuitBoard, Search, Plus, Save, Trash2, RefreshCw, ExternalLink, PackageCheck, Truck, Warehouse, ArrowUpDown, ChevronUp, ChevronDown, Copy } from 'lucide-react';
 import { Order } from '../types/enco';
 import { UserRoleProfile, USER_PROFILES, canEditItemType } from '../types/userRole';
 
@@ -194,6 +194,19 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
     setNotice('');
   };
 
+  const duplicateRecord = (id: string) => {
+    if (!canEdit) return;
+    const source = records.find(record => record.id === id);
+    if (!source) return;
+    const copy: SNRecord = { ...source, id: makeId() };
+    setRecords(current => {
+      const index = current.findIndex(record => record.id === id);
+      if (index < 0) return [...current, copy];
+      return [...current.slice(0, index + 1), copy, ...current.slice(index + 1)];
+    });
+    setNotice('Skopiowano pozycję. Pamiętaj, aby zapisać zestawienie.');
+  };
+
   const removeRecord = (id: string) => {
     if (!canEdit) return;
     setRecords(current => current.filter(record => record.id !== id));
@@ -324,7 +337,7 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
                 <td className="min-w-0 px-2 py-1"><input aria-label="Numer zamówienia" disabled={!canEdit} value={record.nrZamowienia} onChange={event => patchRecord(record.id,{nrZamowienia:event.target.value})} placeholder="Nr zamówienia" className={inputClass}/></td>
                 <td className="min-w-0 px-2 py-1"><div className="flex min-w-0 items-center gap-1"><div className="min-w-0 flex-1">{canEdit && <select aria-label="Powiązane zlecenie ZL" value={order?.id || '__custom__'} onChange={event => selectProject(record,event.target.value)} className={`${inputClass} min-w-0`}><option value="__custom__">Projekt własny / bez powiązania z ZL</option>{orders.map(item => <option key={item.id} value={item.id}>{orderLabel(item)}</option>)}</select>}{(!order || !record.linkedOrderId) && <input aria-label="Projekt / opis" disabled={!canEdit} value={record.projekt} onChange={event => patchRecord(record.id,{projekt:event.target.value,linkedOrderId:undefined})} placeholder="Projekt lub opis lokalizacji" className={`${inputClass} mt-1 min-w-0`}/>}<p className="mt-0.5 truncate text-[10px] font-medium text-slate-600">{order ? `Powiązano: ${order.orderNumber} — ${order.projectName}` : 'Wybierz zlecenie, aby powiązać projekt z numerem ZL.'}</p></div>{order && <button type="button" title={`Otwórz zlecenie ${order.orderNumber}`} onClick={() => onNavigateToOrder(order.id)} className="rounded p-1.5 text-blue-700 hover:bg-blue-50"><ExternalLink className="h-4 w-4"/></button>}</div></td>
                 <td className="min-w-0 px-2 py-1"><input aria-label="Lokalizacja" disabled={!canEdit} value={record.lokalizacja} onChange={event => patchRecord(record.id,{lokalizacja:event.target.value})} placeholder="Lokalizacja" className={inputClass}/></td>
-                <td className="min-w-0 px-2 py-1"><div className="flex min-w-0 flex-col gap-1.5">{canEdit && <><select aria-label="Typ główny rozdzielnicy" value={record.type} onChange={event => patchRecord(record.id,{type:event.target.value as SNType})} className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-1 py-0.5 text-[11px] font-medium text-slate-800">{TYPES.map(type => <option key={type.key} value={type.key}>{type.label}</option>)}</select><select aria-label="Przenieś do sekcji" value={record.category} onChange={event => patchRecord(record.id,{category:event.target.value as SNCategory})} className="w-full min-w-0 rounded border border-slate-200 bg-white px-1 py-0.5 text-[11px] font-medium text-slate-800">{CATEGORIES.map(category => <option key={category.key} value={category.key}>{category.label}</option>)}</select><button type="button" title="Usuń pozycję" onClick={() => removeRecord(record.id)} className="self-start rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 className="h-4 w-4"/></button></>}</div></td>
+                <td className="min-w-0 px-2 py-1"><div className="flex min-w-0 flex-col gap-1.5">{canEdit && <><select aria-label="Typ główny rozdzielnicy" value={record.type} onChange={event => patchRecord(record.id,{type:event.target.value as SNType})} className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-1 py-0.5 text-[11px] font-medium text-slate-800">{TYPES.map(type => <option key={type.key} value={type.key}>{type.label}</option>)}</select><select aria-label="Przenieś do sekcji" value={record.category} onChange={event => patchRecord(record.id,{category:event.target.value as SNCategory})} className="w-full min-w-0 rounded border border-slate-200 bg-white px-1 py-0.5 text-[11px] font-medium text-slate-800">{CATEGORIES.map(category => <option key={category.key} value={category.key}>{category.label}</option>)}</select><div className="flex items-center gap-1"><button type="button" title="Kopiuj pozycję" aria-label={`Kopiuj pozycję ${record.rodzaj || record.id}`} onClick={() => duplicateRecord(record.id)} className="rounded-md p-1.5 text-blue-700 hover:bg-blue-50 hover:text-blue-900"><Copy className="h-4 w-4"/></button><button type="button" title="Usuń pozycję" onClick={() => removeRecord(record.id)} className="rounded-md p-1.5 text-slate-500 hover:bg-rose-50 hover:text-rose-600"><Trash2 className="h-4 w-4"/></button></div></>}</div></td>
               </tr>;
             })}
           </tbody>
