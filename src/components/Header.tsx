@@ -120,7 +120,7 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <CircuitBoard className="w-3.5 h-3.5 text-cyan-300" />
-              <span>Rozdzielnice SN</span>
+              <span>Zestawienie SN</span>
             </button>
           </div>
         </div>
