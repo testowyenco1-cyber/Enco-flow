@@ -567,7 +567,7 @@ export default function App() {
       />
 
       {/* Main Viewport */}
-      <main className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 transition-[padding] duration-200 ${sidebarOpen ? 'lg:pl-[clamp(196px,calc(12vw+16px),256px)]' : ''} ${
+      <main className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 transition-[padding] duration-200 ${sidebarOpen ? 'lg:pl-[clamp(236px,calc(16vw+16px),296px)]' : ''} ${
         activeModule === 'doors' ? 'max-w-full xl:max-w-[1600px]' : 'max-w-7xl'
       }`}>
         {activeModule !== 'sn' && (
