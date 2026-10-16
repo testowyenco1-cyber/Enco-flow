@@ -133,15 +133,15 @@ export const Header: React.FC<HeaderProps> = ({
 
       {sidebarOpen && (
           <nav id="enco-navigation-menu" aria-label="Nawigacja ENCO Flow"
-            className="fixed top-16 bottom-0 left-0 z-40 w-[clamp(180px,12vw,240px)] overflow-y-auto border-r border-slate-700 bg-slate-900 p-3 space-y-5">
+            className="fixed top-16 bottom-0 left-0 z-40 w-[clamp(220px,16vw,280px)] overflow-y-auto border-r border-slate-700 bg-slate-900 p-3 space-y-5">
             <div>
               <p className="mb-2 px-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Moduły</p>
               <div className="space-y-1">
                 {modules.map(({ id, label, Icon }) => (
                   <button key={id} type="button" onClick={() => navigateModule(id)}
-                    className={`w-full flex items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition-colors ${activeModule === id ? 'bg-blue-600 text-white font-bold' : 'text-slate-200 hover:bg-slate-800'}`}>
+                    className={`w-full min-w-0 flex items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition-colors ${activeModule === id ? 'bg-blue-600 text-white font-bold' : 'text-slate-200 hover:bg-slate-800'}`}>
                     <Icon className="w-4 h-4 shrink-0" />
-                    <span className="flex-1">{label}</span>
+                    <span className="min-w-0 flex-1 break-words leading-snug">{label}</span>
                     {id === 'doors' && doorOrdersCount > 0 && (
                       <span className={`rounded px-1.5 py-0.5 text-xs ${doorOverdueCount > 0 ? 'bg-rose-700 text-white' : 'bg-slate-700 text-slate-200'}`}>{doorOrdersCount}</span>
                     )}
@@ -157,8 +157,8 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="grid grid-cols-1 gap-2">
                   {orderFilters.map(({ id, label }) => (
                     <button key={id} type="button" onClick={() => navigateFilter(id)}
-                      className={`rounded-lg px-3 py-2.5 text-left text-xs font-semibold transition-colors ${activeTab === id ? 'bg-blue-600/20 text-blue-200 border border-blue-500/60' : 'bg-slate-800 text-slate-300 border border-slate-700 hover:text-white'}`}>
-                      {label}{id === 'urgent' && problemCount > 0 ? ` ( ${problemCount} )` : ''}
+                      className={`w-full min-w-0 flex items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-semibold transition-colors ${activeTab === id ? 'bg-blue-600/20 text-blue-200 border border-blue-500/60' : 'bg-slate-800 text-slate-300 border border-slate-700 hover:text-white'}`}>
+                      <span className="min-w-0 flex-1 break-words leading-snug">{label}</span>{id === 'urgent' && problemCount > 0 && <span className="shrink-0 rounded-md bg-rose-500/15 px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-rose-300">{problemCount}</span>}
                     </button>
                   ))}
                 </div>
@@ -173,15 +173,15 @@ export const Header: React.FC<HeaderProps> = ({
 
             <div className="border-t border-slate-700 pt-3">
               <button type="button" onClick={onOpenArchive}
-                className={`w-full flex items-center gap-3 rounded-lg px-3 py-3 text-left text-sm ${archiveActive ? 'bg-blue-600 text-white font-bold' : 'text-slate-200 hover:bg-slate-800'}`}>
+                className={`w-full min-w-0 flex items-center gap-3 rounded-lg px-3 py-3 text-left text-sm ${archiveActive ? 'bg-blue-600 text-white font-bold' : 'text-slate-200 hover:bg-slate-800'}`}>
                 <Archive className="w-4 h-4 shrink-0" />
-                <span className="flex-1">Archiwum zleceń</span>
+                <span className="min-w-0 flex-1 break-words leading-snug">Archiwum zleceń</span>
                 <span className="text-xs text-slate-400">{archiveCount}</span>
               </button>
               <button type="button" onClick={() => {  onRefresh(); }}
-                className="w-full flex items-center gap-3 rounded-lg px-3 py-3 text-left text-sm text-slate-200 hover:bg-slate-800">
-                <RefreshCw className="w-4 h-4" />
-                Odśwież dane z serwera
+                className="w-full min-w-0 flex items-start gap-3 rounded-lg px-3 py-3 text-left text-sm text-slate-200 hover:bg-slate-800">
+                <RefreshCw className="w-4 h-4 shrink-0 mt-0.5" />
+                <span className="min-w-0 flex-1 break-words leading-snug">Odśwież dane z serwera</span>
               </button>
               <p className="px-3 text-[11px] text-slate-400">Odświeżenie odrzuci niezapisane zmiany lokalne.</p>
             </div>
