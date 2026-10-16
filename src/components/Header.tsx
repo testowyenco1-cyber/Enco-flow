@@ -221,7 +221,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="text-xs text-slate-400">{archiveCount}</span>
               </button>
               <button type="button" onClick={onOpenCustomers} className="w-full min-w-0 flex items-center gap-3 rounded-lg px-3 py-3 text-left text-sm text-slate-200 hover:bg-slate-800"><UsersRound className="w-4 h-4 shrink-0"/><span className="min-w-0 flex-1 break-words leading-snug">Baza klientów</span></button>
-              <button type="button" onClick={() => {  onRefresh(); }
+              <button type="button" onClick={() => {  onRefresh(); }}
                 className="w-full min-w-0 flex items-start gap-3 rounded-lg px-3 py-3 text-left text-sm text-slate-200 hover:bg-slate-800">
                 <RefreshCw className="w-4 h-4 shrink-0 mt-0.5" />
                 <span className="min-w-0 flex-1 break-words leading-snug">Odśwież dane z serwera</span>
