@@ -337,6 +337,11 @@ export function checkReadinessOverdue(
 }
 
 export interface Order {
+  customerId?: string;
+  contactId?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
   archivedAt?: string | null;
   id: string;
   orderNumber: string;
