@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Plus, RefreshCw, Zap, Layers, AlertTriangle, Lock, CircuitBoard, Menu, X, ChevronDown } from 'lucide-react';
 import { UserRoleProfile, UserRoleId } from '../types/userRole';
 import { UserRoleSelector } from './UserRoleSelector';
 
 interface HeaderProps {
+  sidebarOpen: boolean;
+  onToggleSidebar: () => void;
   onNewOrder: () => void;
   onNewDoorOrder?: () => void;
   onRefresh: () => void;
@@ -33,24 +35,24 @@ const orderFilters = [
 ] as const;
 
 export const Header: React.FC<HeaderProps> = ({
+  sidebarOpen, onToggleSidebar,
   onNewOrder, onNewDoorOrder, onRefresh,
   activeTab = 'all', onSelectTab, problemCount = 0,
   activeModule = 'orders', onSelectModule,
   doorOrdersCount = 0, doorOverdueCount = 0,
   currentProfile, onSelectProfile, onOpenMatrixModal,
 }) => {
-  const [menuOpen, setMenuOpen] = useState(false);
   const selectedModule = modules.find((module) => module.id === activeModule) ?? modules[0];
   const SelectedIcon = selectedModule.Icon;
 
   const navigateModule = (id: 'orders' | 'doors' | 'sn') => {
     onSelectModule?.(id);
-    setMenuOpen(false);
+    
   };
 
   const navigateFilter = (id: string) => {
     onSelectTab?.(id);
-    setMenuOpen(false);
+    
   };
 
   return (
@@ -58,13 +60,13 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 min-h-16 flex items-center gap-3 sm:gap-4">
         <button
           type="button"
-          onClick={() => setMenuOpen((open) => !open)}
-          aria-label={menuOpen ? 'Zamknij menu' : 'Otwórz menu'}
-          aria-expanded={menuOpen}
+          onClick={onToggleSidebar}
+          aria-label={sidebarOpen ? 'Zwiń panel boczny' : 'Rozwiń panel boczny'}
+          aria-expanded={sidebarOpen}
           aria-controls="enco-navigation-menu"
           className="shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white transition-colors"
         >
-          {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
 
         <button
@@ -85,7 +87,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="hidden md:block h-7 w-px bg-slate-700" aria-hidden="true" />
         <button
           type="button"
-          onClick={() => setMenuOpen((open) => !open)}
+          onClick={onToggleSidebar}
           className="hidden md:inline-flex min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 transition-colors"
           title="Wybierz moduł z menu"
         >
@@ -126,13 +128,9 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {menuOpen && (
-        <>
-          <button type="button" aria-label="Zamknij menu nawigacji"
-            className="fixed inset-0 top-16 z-30 bg-slate-950/50 cursor-default"
-            onClick={() => setMenuOpen(false)} />
+      {sidebarOpen && (
           <nav id="enco-navigation-menu" aria-label="Nawigacja ENCO Flow"
-            className="absolute top-full left-0 z-40 w-full max-w-sm max-h-[calc(100dvh-4rem)] overflow-y-auto border-r border-b border-slate-700 bg-slate-900 shadow-2xl rounded-br-xl p-4 space-y-5">
+            className="fixed top-16 bottom-0 left-0 z-40 w-[clamp(180px,12vw,240px)] overflow-y-auto border-r border-slate-700 bg-slate-900 p-3 space-y-5">
             <div>
               <p className="mb-2 px-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Moduły</p>
               <div className="space-y-1">
@@ -153,7 +151,7 @@ export const Header: React.FC<HeaderProps> = ({
             {activeModule === 'orders' && (
               <div>
                 <p className="mb-2 px-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Filtry zleceń</p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2">
                   {orderFilters.map(({ id, label }) => (
                     <button key={id} type="button" onClick={() => navigateFilter(id)}
                       className={`rounded-lg px-3 py-2.5 text-left text-xs font-semibold transition-colors ${activeTab === id ? 'bg-blue-600/20 text-blue-200 border border-blue-500/60' : 'bg-slate-800 text-slate-300 border border-slate-700 hover:text-white'}`}>
@@ -171,7 +169,7 @@ export const Header: React.FC<HeaderProps> = ({
             )}
 
             <div className="border-t border-slate-700 pt-3">
-              <button type="button" onClick={() => { setMenuOpen(false); onRefresh(); }}
+              <button type="button" onClick={() => {  onRefresh(); }}
                 className="w-full flex items-center gap-3 rounded-lg px-3 py-3 text-left text-sm text-slate-200 hover:bg-slate-800">
                 <RefreshCw className="w-4 h-4" />
                 Odśwież dane z serwera
@@ -179,7 +177,6 @@ export const Header: React.FC<HeaderProps> = ({
               <p className="px-3 text-[11px] text-slate-400">Odświeżenie odrzuci niezapisane zmiany lokalne.</p>
             </div>
           </nav>
-        </>
       )}
     </header>
   );
