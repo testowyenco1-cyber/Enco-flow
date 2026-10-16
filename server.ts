@@ -313,6 +313,30 @@ async function startServer() {
     } catch (err) { console.error('Error saving customer database:', err); return res.status(500).json({ success: false, error: 'Błąd zapisu bazy klientów' }); }
   });
 
+  app.put('/api/customers/:customerId', (req, res) => {
+    try {
+      const incoming = req.body?.customer;
+      if (!incoming || String(incoming.id) !== String(req.params.customerId) || !String(incoming.name || '').trim()) return res.status(400).json({ success: false, error: 'Nieprawidłowe dane firmy' });
+      const parsed = JSON.parse(fs.readFileSync(CUSTOMERS_FILE, 'utf-8'));
+      const customers: any[] = Array.isArray(parsed) ? parsed : [];
+      const index = customers.findIndex((item: any) => String(item.id) === String(req.params.customerId));
+      if (index < 0) return res.status(404).json({ success: false, error: 'Nie znaleziono firmy' });
+      customers[index] = { ...incoming, contacts: Array.isArray(incoming.contacts) ? incoming.contacts : [] };
+      writeJsonAtomically(CUSTOMERS_FILE, customers);
+      return res.json({ success: true, customers, timestamp: Date.now() });
+    } catch (err) { console.error('Error updating customer:', err); return res.status(500).json({ success: false, error: 'Błąd aktualizacji firmy' }); }
+  });
+  app.delete('/api/customers/:customerId', (req, res) => {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(CUSTOMERS_FILE, 'utf-8'));
+      const customers: any[] = Array.isArray(parsed) ? parsed : [];
+      const updated = customers.filter((item: any) => String(item.id) !== String(req.params.customerId));
+      if (updated.length === customers.length) return res.status(404).json({ success: false, error: 'Nie znaleziono firmy' });
+      writeJsonAtomically(CUSTOMERS_FILE, updated);
+      return res.json({ success: true, customers: updated, timestamp: Date.now() });
+    } catch (err) { console.error('Error deleting customer:', err); return res.status(500).json({ success: false, error: 'Błąd usuwania firmy' }); }
+  });
+
   // 1. Orders API
   app.get('/api/orders', (req, res) => {
     try {
