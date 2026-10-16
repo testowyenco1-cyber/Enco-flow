@@ -927,7 +927,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
             type="text"
             value={wyposazenieVal}
             onChange={(e) => handleUpdateNN('wyposazenieDodatkowe', e.target.value)}
-            placeholder="np. Rozłącznik główny 1000A, 8 odpływów listwowych NH2, pomiar półpośredni..."
+            placeholder="Wpisz wyposażenie dodatkowe lub aparaturę..."
             className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
           />
         </div>
