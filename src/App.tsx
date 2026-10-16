@@ -24,7 +24,6 @@ import {
   setServerDoorOrdersSnapshot,
   fetchDoorOrdersFromServer,
   saveDoorOrdersToServer,
-  resetServerAndLocalData,
 } from './services/storageService';
 import { Header } from './components/Header';
 import { DashboardView } from './components/DashboardView';
@@ -525,28 +524,6 @@ export default function App() {
     handleSaveDoorOrder(updatedOrder);
   };
 
-  const handleResetData = async () => {
-    if (!currentProfile.canResetDemo) {
-      showToast('Tylko profil Administratora może przywrócić dane demonstracyjne', 'warning');
-      return;
-    }
-    const res = await resetServerAndLocalData();
-    if (!res.success) {
-      showToast('Nie udało się przywrócić danych na serwerze. Lokalny widok pozostawiono bez zmian.', 'warning');
-      return;
-    }
-    setOrders(res.orders);
-    setDoorOrders(res.doorOrders);
-    ordersRef.current = res.orders;
-    doorOrdersRef.current = res.doorOrders;
-    pendingOrdersRef.current = false;
-    pendingDoorOrdersRef.current = false;
-    setHasPendingChanges(false);
-    sessionStorage.removeItem('enco_selected_order_id');
-    setSelectedOrderId(null);
-    showToast('Przywrócono przykładowe dane testowe zleceń i drzwi na serwerze.', 'info');
-  };
-
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col font-sans">
       {/* Top Bar */}
@@ -556,7 +533,6 @@ export default function App() {
           setEditingDoorOrder(null);
           setIsDoorOrderModalOpen(true);
         }}
-        onResetData={handleResetData}
         onRefresh={() => void refreshDataFromServer({ discardPending: true, showMessage: true })}
         activeTab={filterTab}
         onSelectTab={(tab) => {
