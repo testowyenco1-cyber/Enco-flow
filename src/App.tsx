@@ -38,6 +38,7 @@ import { PasswordAuthModal } from './components/PasswordAuthModal';
 import { DoorOrderDetailView } from './components/DoorOrderDetailView';
 import { SNOrdersView } from './components/SNOrdersView';
 import { CalendarView } from './components/CalendarView';
+import { CustomerDatabaseModal } from './components/CustomerDatabaseModal';
 import { CheckCircle2, AlertTriangle, Info, Archive, RotateCcw, Search } from 'lucide-react';
 import { validateOrderNumber } from './utils/orderNumberUtils';
 import {
@@ -169,6 +170,7 @@ export default function App() {
 
   // Modals state
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
+  const [isCustomerDatabaseOpen, setIsCustomerDatabaseOpen] = useState(false);
   const [isEditOrderModalOpen, setIsEditOrderModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<OrderItem | null>(null);
 
@@ -574,6 +576,7 @@ export default function App() {
         isSavingChanges={isSavingChanges}
         onSaveChanges={() => void handleSaveAllChanges()}
         onOpenArchive={() => navigate('/archiwum')}
+        onOpenCustomers={() => setIsCustomerDatabaseOpen(true)}
         archiveActive={archiveActive}
         archiveCount={archivedOrders.length}
         activeTab={filterTab}
@@ -700,6 +703,8 @@ export default function App() {
       </footer>
 
       {/* Modals */}
+      <CustomerDatabaseModal isOpen={isCustomerDatabaseOpen} onClose={() => setIsCustomerDatabaseOpen(false)} />
+
       <NewOrderModal
         isOpen={isNewOrderModalOpen}
         onClose={() => setIsNewOrderModalOpen(false)}
