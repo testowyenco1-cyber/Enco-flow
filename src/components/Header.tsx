@@ -1,12 +1,11 @@
 import React from 'react';
-import { Plus, RotateCcw, RefreshCw, Zap, Layers, AlertTriangle, Lock, CircuitBoard } from 'lucide-react';
+import { Plus, RefreshCw, Zap, Layers, AlertTriangle, Lock, CircuitBoard } from 'lucide-react';
 import { UserRoleProfile, UserRoleId } from '../types/userRole';
 import { UserRoleSelector } from './UserRoleSelector';
 
 interface HeaderProps {
   onNewOrder: () => void;
   onNewDoorOrder?: () => void;
-  onResetData: () => void;
   onRefresh: () => void;
   activeTab?: string;
   onSelectTab?: (tab: string) => void;
@@ -23,7 +22,6 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   onNewOrder,
   onNewDoorOrder,
-  onResetData,
   onRefresh,
   activeTab = 'all',
   onSelectTab,
@@ -204,19 +202,6 @@ export const Header: React.FC<HeaderProps> = ({
             onSelectProfile={onSelectProfile}
             onOpenMatrixModal={onOpenMatrixModal}
           />
-
-          {/* Reset Demo Data button (Admin only) */}
-          {currentProfile.canResetDemo && (
-            <button
-              type="button"
-              onClick={onResetData}
-              title="Przywróć przykładowe dane testowe stacji i drzwi"
-              className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer whitespace-nowrap border border-slate-700/60"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Dane demo</span>
-            </button>
-          )}
 
           {activeModule === 'doors' ? (
             currentProfile.canManageDoors ? (
