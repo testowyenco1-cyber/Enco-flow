@@ -94,6 +94,9 @@ export function sanitizeOrders(parsed: any[]): Order[] {
   if (!Array.isArray(parsed)) {
     return INITIAL_ORDERS;
   }
+  // Permanently exclude the original demo stations from the application.
+  const demoOrderIds = new Set(['ord_zl1', 'ord_zl2', 'ord_zl3', 'ord_zl4', 'ord_zl5', 'ord_zl6']);
+  parsed = parsed.filter((order: any) => !demoOrderIds.has(String(order?.id)) && !/^ZL[1-6]$/.test(String(order?.orderNumber || '').trim()));
   // An empty server array is valid state; do not replace it with demo orders.
   if (parsed.length === 0) return [];
 
@@ -262,8 +265,16 @@ export async function fetchOrdersFromServer(): Promise<Order[] | null> {
     if (!res.ok) return null;
     const json = await res.json();
     if (json.success && Array.isArray(json.orders)) {
-      const sanitized = sanitizeOrders(json.orders);
-      return sanitized;
+      const demoIds = json.orders.filter((order: any) => /^ord_zl[1-6]$/.test(String(order?.id || '')) || /^ZL[1-6]$/.test(String(order?.orderNumber || '').trim())).map((order: any) => String(order.id));
+      if (demoIds.length > 0) {
+        // Remove legacy demo records from persistent shared server storage, not just the visible list.
+        try {
+          await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orders: [], deletedIds: demoIds, merge: true }) });
+        } catch (cleanupError) {
+          console.warn('Could not permanently remove legacy demo orders from server:', cleanupError);
+        }
+      }
+      return sanitizeOrders(json.orders);
     }
     return null;
   } catch (err) {
