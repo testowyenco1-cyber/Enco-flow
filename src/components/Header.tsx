@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, RefreshCw, Zap, Layers, AlertTriangle, Lock, CircuitBoard, Menu, X, ChevronDown, Archive, ShieldCheck, Download } from 'lucide-react';
+import { Plus, RefreshCw, Zap, Layers, AlertTriangle, Lock, CircuitBoard, Menu, X, ChevronDown, Archive, ShieldCheck, Download, Save, LoaderCircle, CheckCircle2 } from 'lucide-react';
 import { UserRoleProfile, UserRoleId } from '../types/userRole';
 import { UserRoleSelector } from './UserRoleSelector';
 
@@ -9,6 +9,9 @@ interface HeaderProps {
   onNewOrder: () => void;
   onNewDoorOrder?: () => void;
   onRefresh: () => void;
+  hasPendingChanges: boolean;
+  isSavingChanges: boolean;
+  onSaveChanges: () => void;
   onOpenArchive: () => void;
   archiveActive: boolean;
   archiveCount: number;
@@ -39,7 +42,7 @@ const orderFilters = [
 
 export const Header: React.FC<HeaderProps> = ({
   sidebarOpen, onToggleSidebar,
-  onNewOrder, onNewDoorOrder, onRefresh, onOpenArchive, archiveActive, archiveCount,
+  onNewOrder, onNewDoorOrder, onRefresh, onSaveChanges, hasPendingChanges, isSavingChanges, onOpenArchive, archiveActive, archiveCount,
   activeTab = 'all', onSelectTab, problemCount = 0,
   activeModule = 'orders', onSelectModule,
   doorOrdersCount = 0, doorOverdueCount = 0,
@@ -189,6 +192,24 @@ export const Header: React.FC<HeaderProps> = ({
                 <AlertTriangle className="h-4 w-4" /> {doorOverdueCount} zamówień drzwi po terminie
               </div>
             )}
+
+            <div className="border-t border-slate-700 pt-3 space-y-2">
+              <button
+                type="button"
+                onClick={onSaveChanges}
+                disabled={!hasPendingChanges || isSavingChanges}
+                aria-live="polite"
+                className={`relative w-full min-w-0 flex items-center justify-center gap-2 rounded-lg px-3 py-3 text-sm font-bold transition-all ${hasPendingChanges ? 'bg-blue-600 text-white shadow-md shadow-blue-950/40 hover:bg-blue-500' : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'}`}
+                title={hasPendingChanges ? 'Zapisz niezapisane zmiany na serwerze' : 'Wszystkie zmiany są zapisane'}
+              >
+                {hasPendingChanges && <span className="absolute left-3 h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse ring-2 ring-red-400/20" aria-label="Niezapisane zmiany" />}
+                {isSavingChanges ? <LoaderCircle className="h-4 w-4 shrink-0 animate-spin" /> : hasPendingChanges ? <Save className="h-4 w-4 shrink-0" /> : <CheckCircle2 className="h-4 w-4 shrink-0" />}
+                <span>{isSavingChanges ? 'Zapisywanie…' : 'Zapisz zmiany'}</span>
+              </button>
+              <p className={`px-1 text-[11px] leading-snug text-center ${hasPendingChanges ? 'text-rose-300' : 'text-slate-500'}`}>
+                {hasPendingChanges ? 'Masz niezapisane zmiany.' : 'Wszystkie zmiany są zapisane.'}
+              </p>
+            </div>
 
             <div className="border-t border-slate-700 pt-3">
               <button type="button" onClick={onOpenArchive}
