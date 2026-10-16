@@ -216,6 +216,8 @@ export function sanitizeOrders(parsed: any[]): Order[] {
     return {
       ...ord,
       orderNumber: migratedOrderNumber,
+      // For legacy records, preserve the currently stored date as the best available baseline.
+      originalDepartureDate: ord.originalDepartureDate || ord.departureDate || '',
       items: sanitizedItems,
       status: calculateOrderStatus(sanitizedItems),
       attachments: Array.isArray(ord.attachments) ? ord.attachments : [],
@@ -469,6 +471,7 @@ export function createNewOrder(params: {
     projectName: params.projectName.trim(),
     stationSize: params.stationSize.trim(),
     departureDate: params.departureDate,
+    originalDepartureDate: params.departureDate,
     generalNotes: params.generalNotes || '',
     additionalInfo: params.additionalInfo || '',
     status,
