@@ -54,6 +54,7 @@ interface ObudowaFormProps {
     wysokosc?: number | string;
     typWysokosci?: string;
     wymiary?: string;
+    isCustomSize?: boolean;
     przepustyNN?: string;
     przepustySN?: string;
     pokrywyNN?: string;
@@ -99,11 +100,11 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
   });
 
   const [isCustomMode, setIsCustomMode] = useState<boolean>(() => {
-    return initialData?.rozmiar === 'Inny rozmiar' || initialData?.rozmiar === 'Niestandardowy';
+    return Boolean(initialData?.isCustomSize) || initialData?.rozmiar === 'Inny rozmiar' || initialData?.rozmiar === 'Niestandardowy';
   });
 
   // Custom dimensions state
-  const [customName, setCustomName] = useState<string>('');
+  const [customName, setCustomName] = useState<string>(() => initialData?.isCustomSize ? (initialData?.rozmiar || '') : '');
   const initialVariant = getObudowaVariantsForType(initialType).find((v) => v.name === (initialData?.rozmiar || (initialType === 'NZ' ? 'NZ 210/290' : 'BEK 250/350')));
   const [customWidth, setCustomWidth] = useState<string>(
     initialData?.szerokosc !== undefined ? String(initialData.szerokosc) : String(initialVariant?.width ?? (initialType === 'NZ' ? 2.1 : 2.5))
@@ -159,8 +160,12 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
 
       if (initialData.rozmiar) {
         setRozmiar(initialData.rozmiar);
-        if (initialData.rozmiar === 'Inny rozmiar') {
+        if (initialData.isCustomSize || initialData.rozmiar === 'Inny rozmiar' || initialData.rozmiar === 'Niestandardowy') {
           setIsCustomMode(true);
+          setCustomName(initialData.rozmiar === 'Inny rozmiar' || initialData.rozmiar === 'Niestandardowy' ? '' : initialData.rozmiar);
+        } else {
+          setIsCustomMode(false);
+          setCustomName('');
         }
       }
       if (initialData.dataGotowosci) {
