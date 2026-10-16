@@ -48,6 +48,7 @@ import {
 } from './types/userRole';
 
 export default function App() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
   const [activeModule, setActiveModule] = useState<'orders' | 'doors' | 'sn'>(() => {
     const path = window.location.pathname;
@@ -528,6 +529,8 @@ export default function App() {
     <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col font-sans">
       {/* Top Bar */}
       <Header
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={() => setSidebarOpen((open) => !open)}
         onNewOrder={() => setIsNewOrderModalOpen(true)}
         onNewDoorOrder={() => {
           setEditingDoorOrder(null);
@@ -550,7 +553,7 @@ export default function App() {
       />
 
       {/* Main Viewport */}
-      <main className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 ${
+      <main className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 transition-[padding] duration-200 ${sidebarOpen ? 'lg:pl-[clamp(196px,calc(12vw+16px),256px)]' : ''} ${
         activeModule === 'doors' ? 'max-w-full xl:max-w-[1600px]' : 'max-w-7xl'
       }`}>
         {activeModule !== 'sn' && (
