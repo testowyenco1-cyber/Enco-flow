@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, RefreshCw, Zap, Layers, AlertTriangle, Lock, CircuitBoard, Menu, X, ChevronDown } from 'lucide-react';
+import { Plus, RefreshCw, Zap, Layers, AlertTriangle, Lock, CircuitBoard, Menu, X, ChevronDown, Archive } from 'lucide-react';
 import { UserRoleProfile, UserRoleId } from '../types/userRole';
 import { UserRoleSelector } from './UserRoleSelector';
 
@@ -9,6 +9,9 @@ interface HeaderProps {
   onNewOrder: () => void;
   onNewDoorOrder?: () => void;
   onRefresh: () => void;
+  onOpenArchive: () => void;
+  archiveActive: boolean;
+  archiveCount: number;
   activeTab?: string;
   onSelectTab?: (tab: string) => void;
   problemCount?: number;
@@ -36,14 +39,14 @@ const orderFilters = [
 
 export const Header: React.FC<HeaderProps> = ({
   sidebarOpen, onToggleSidebar,
-  onNewOrder, onNewDoorOrder, onRefresh,
+  onNewOrder, onNewDoorOrder, onRefresh, onOpenArchive, archiveActive, archiveCount,
   activeTab = 'all', onSelectTab, problemCount = 0,
   activeModule = 'orders', onSelectModule,
   doorOrdersCount = 0, doorOverdueCount = 0,
   currentProfile, onSelectProfile, onOpenMatrixModal,
 }) => {
   const selectedModule = modules.find((module) => module.id === activeModule) ?? modules[0];
-  const SelectedIcon = selectedModule.Icon;
+  const SelectedIcon = archiveActive ? Archive : selectedModule.Icon;
 
   const navigateModule = (id: 'orders' | 'doors' | 'sn') => {
     onSelectModule?.(id);
@@ -92,7 +95,7 @@ export const Header: React.FC<HeaderProps> = ({
           title="Wybierz moduł z menu"
         >
           <SelectedIcon className="w-4 h-4 shrink-0 text-blue-300" />
-          <span className="truncate font-semibold">{selectedModule.label}</span>
+          <span className="truncate font-semibold">{archiveActive ? 'Archiwum zleceń' : selectedModule.label}</span>
           <ChevronDown className="w-4 h-4 shrink-0 text-slate-400" />
         </button>
 
@@ -148,7 +151,7 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
 
-            {activeModule === 'orders' && (
+            {!archiveActive && activeModule === 'orders' && (
               <div>
                 <p className="mb-2 px-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Filtry zleceń</p>
                 <div className="grid grid-cols-1 gap-2">
@@ -169,6 +172,12 @@ export const Header: React.FC<HeaderProps> = ({
             )}
 
             <div className="border-t border-slate-700 pt-3">
+              <button type="button" onClick={onOpenArchive}
+                className={`w-full flex items-center gap-3 rounded-lg px-3 py-3 text-left text-sm ${archiveActive ? 'bg-blue-600 text-white font-bold' : 'text-slate-200 hover:bg-slate-800'}`}>
+                <Archive className="w-4 h-4 shrink-0" />
+                <span className="flex-1">Archiwum zleceń</span>
+                <span className="text-xs text-slate-400">{archiveCount}</span>
+              </button>
               <button type="button" onClick={() => {  onRefresh(); }}
                 className="w-full flex items-center gap-3 rounded-lg px-3 py-3 text-left text-sm text-slate-200 hover:bg-slate-800">
                 <RefreshCw className="w-4 h-4" />
