@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, RefreshCw, Zap, Layers, AlertTriangle, Lock, CircuitBoard, Menu, X, ChevronDown, Archive } from 'lucide-react';
+import { Plus, RefreshCw, Zap, Layers, AlertTriangle, Lock, CircuitBoard, Menu, X, ChevronDown, Archive, ShieldCheck, Download } from 'lucide-react';
 import { UserRoleProfile, UserRoleId } from '../types/userRole';
 import { UserRoleSelector } from './UserRoleSelector';
 
@@ -150,6 +150,25 @@ export const Header: React.FC<HeaderProps> = ({
                 ))}
               </div>
             </div>
+
+            <section className="rounded-xl border border-slate-700 bg-slate-800/70 p-3 space-y-2.5">
+              <div className="flex items-start gap-2.5 min-w-0">
+                <span className="text-xl shrink-0" aria-hidden="true">{currentProfile.avatar}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Aktywne konto użytkownika</p>
+                  <p className="mt-0.5 text-sm font-bold text-white break-words leading-snug">{currentProfile.name}</p>
+                  <p className="mt-1 text-[11px] leading-snug text-slate-400 break-words">{currentProfile.department}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 border-t border-slate-700 pt-2">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-blue-300" />
+                <p className="min-w-0 text-[11px] leading-snug text-slate-200 break-words">{currentProfile.editScopeSummary}</p>
+              </div>
+              <div className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 text-[11px] font-semibold ${currentProfile.canDownload ? 'border-emerald-800 bg-emerald-950/50 text-emerald-300' : 'border-rose-800 bg-rose-950/50 text-rose-300'}`}>
+                <Download className="h-3.5 w-3.5 shrink-0" />
+                <span>{currentProfile.canDownload ? 'Pobieranie: Włączone' : 'Pobieranie: Zablokowane'}</span>
+              </div>
+            </section>
 
             {!archiveActive && activeModule === 'orders' && (
               <div>
