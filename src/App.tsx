@@ -366,6 +366,11 @@ export default function App() {
   const handleCreateOrder = (params: {
     orderNumber: string;
     client: string;
+    customerId?: string;
+    contactId?: string;
+    contactName?: string;
+    contactEmail?: string;
+    contactPhone?: string;
     projectName: string;
     stationSize: string;
     departureDate: string;
