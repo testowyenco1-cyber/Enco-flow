@@ -37,7 +37,7 @@ import { RoleMatrixModal } from './components/RoleMatrixModal';
 import { PasswordAuthModal } from './components/PasswordAuthModal';
 import { DoorOrderDetailView } from './components/DoorOrderDetailView';
 import { SNOrdersView } from './components/SNOrdersView';
-import { CheckCircle2, AlertTriangle, Info } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Info, Archive, RotateCcw, Search } from 'lucide-react';
 import { validateOrderNumber } from './utils/orderNumberUtils';
 import {
   UserRoleId,
@@ -50,6 +50,7 @@ import {
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
+  const [archiveSearch, setArchiveSearch] = useState('');
   const [activeModule, setActiveModule] = useState<'orders' | 'doors' | 'sn'>(() => {
     const path = window.location.pathname;
     if (path === '/rozdzielnice-sn') return 'sn';
@@ -308,10 +309,13 @@ export default function App() {
     }
   };
 
-  const selectedOrder = orders.find((o) => o.id === selectedOrderId) || null;
+  const archiveActive = currentPath === '/archiwum' || currentPath.startsWith('/archiwum/');
+  const activeOrders = orders.filter((o) => !o.archivedAt);
+  const archivedOrders = orders.filter((o) => Boolean(o.archivedAt));
+  const selectedOrder = orders.find((o) => o.id === selectedOrderId && Boolean(o.archivedAt) === archiveActive) || null;
 
   // Problem orders count for header badge
-  const problemOrdersCount = orders.filter((o) => o.status === 'PROBLEM').length;
+  const problemOrdersCount = activeOrders.filter((o) => o.status === 'PROBLEM').length;
 
   // Door overdue count
   const doorOverdueCount = doorOrders.filter(
@@ -420,6 +424,13 @@ export default function App() {
     updateOrdersState(newOrders);
     navigate('/zlecenia');
     showToast('Zlecenie zostało usunięte', 'info');
+  };
+
+  const handleToggleArchive = (order: Order) => {
+    const archived = !order.archivedAt;
+    const updated: Order = { ...order, archivedAt: archived ? new Date().toISOString() : null, updatedAt: new Date().toISOString() };
+    void handleSaveOrderChanges(updated);
+    navigate(archived ? '/archiwum' : '/zlecenia');
   };
 
   const handleCancelItemEdit = () => {
@@ -537,6 +548,9 @@ export default function App() {
           setIsDoorOrderModalOpen(true);
         }}
         onRefresh={() => void refreshDataFromServer({ discardPending: true, showMessage: true })}
+        onOpenArchive={() => navigate('/archiwum')}
+        archiveActive={archiveActive}
+        archiveCount={archivedOrders.length}
         activeTab={filterTab}
         onSelectTab={(tab) => {
           setFilterTab(tab);
@@ -610,7 +624,9 @@ export default function App() {
           <OrderDetailView
             order={selectedOrder}
             doorOrders={doorOrders}
-            onBack={handleBackToDashboard}
+            onBack={archiveActive ? () => navigate('/archiwum') : handleBackToDashboard}
+            onArchive={() => handleToggleArchive(selectedOrder)}
+            isArchived={Boolean(selectedOrder.archivedAt)}
             onUpdateOrderStatus={handleUpdateOrderStatus}
             onSaveOrderChanges={handleSaveOrderChanges}
             onOpenEditOrderModal={() => setIsEditOrderModalOpen(true)}
@@ -632,9 +648,25 @@ export default function App() {
             }}
             currentProfile={currentProfile}
           />
+        ) : archiveActive ? (
+          <section className="space-y-4">
+            <div className="flex items-center gap-3"><Archive className="w-6 h-6 text-slate-600" /><h1 className="text-xl font-bold">Archiwum zleceń</h1><span className="text-sm text-slate-500">({archivedOrders.length})</span></div>
+            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" /><input value={archiveSearch} onChange={(e) => setArchiveSearch(e.target.value)} placeholder="Szukaj w archiwum: numer, klient, projekt..." className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm" /></div>
+            <div className="rounded-xl border border-slate-200 bg-white divide-y divide-slate-100 overflow-hidden">
+              {archivedOrders.filter((o) => [o.orderNumber, o.client, o.projectName, o.stationSize].some((v) => v.toLowerCase().includes(archiveSearch.toLowerCase().trim()))).map((o) => (
+                <div key={o.id} className="flex flex-wrap items-center gap-3 p-4 hover:bg-slate-50">
+                  <button type="button" onClick={() => navigate(`/archiwum/${encodeURIComponent(o.id)}`)} className="flex-1 min-w-0 text-left">
+                    <span className="font-bold text-blue-700">{o.orderNumber}</span><span className="ml-3 text-sm text-slate-700">{o.projectName}</span><p className="text-xs text-slate-500 mt-1">{o.client} · {o.stationSize}</p>
+                  </button>
+                  <button type="button" onClick={() => handleToggleArchive(o)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold hover:bg-slate-100"><RotateCcw className="w-4 h-4" />Przywróć</button>
+                </div>
+              ))}
+              {archivedOrders.length === 0 && <p className="p-8 text-center text-slate-500">Archiwum jest puste.</p>}
+            </div>
+          </section>
         ) : (
           <DashboardView
-            orders={orders}
+            orders={activeOrders}
             onSelectOrder={handleSelectOrder}
             onNewOrder={() => setIsNewOrderModalOpen(true)}
             filterTab={filterTab}
