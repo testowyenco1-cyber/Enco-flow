@@ -347,6 +347,14 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                   <Building2 className="w-3.5 h-3.5 text-blue-400" />
                   <span className="font-medium text-white">{order.client}</span>
                 </div>
+                {order.contactName && (
+                  <div className="inline-flex flex-wrap items-center gap-2 text-slate-200">
+                    <span className="text-slate-500">·</span>
+                    <span>Kontakt: <strong className="text-white">{order.contactName}</strong></span>
+                    {order.contactEmail && <a className="text-blue-200 hover:text-white underline" href={`mailto:${order.contactEmail}`}>{order.contactEmail}</a>}
+                    {order.contactPhone && <a className="text-blue-200 hover:text-white underline" href={`tel:${order.contactPhone}`}>{order.contactPhone}</a>}
+                  </div>
+                )}
                 <span className="text-slate-500">·</span>
                 <div className="inline-flex flex-wrap items-center gap-2 rounded-lg border border-blue-400/50 bg-blue-950/70 px-3 py-1.5 shadow-sm">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-blue-200">Rozmiar stacji</span>
