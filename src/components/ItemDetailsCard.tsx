@@ -34,6 +34,7 @@ import { UserRoleProfile, USER_PROFILES, canEditItemType, getItemPermissionHint 
 
 interface ItemDetailsCardProps {
   item: OrderItem;
+  orderItems?: OrderItem[];
   orderNumber: string;
   doorOrders?: DoorOrder[];
   onStatusChange: (newStatus: ItemStatus) => void;
@@ -51,6 +52,7 @@ interface ItemDetailsCardProps {
 
 export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
   item,
+  orderItems = [],
   orderNumber,
   doorOrders = [],
   onStatusChange,
@@ -154,6 +156,13 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
           label: 'Konfiguracja pól',
           value: `${snConfig} (L: liniowe, T: transformatorowe)`,
         });
+        if (d.numerSeryjny) entries.push({ label: 'Numer seryjny', value: String(d.numerSeryjny) });
+        const formatSNDate = (value: unknown) =>
+          typeof value === 'string' && value ? value.split('-').reverse().join('.') : '';
+        if (d.dataDostawyPlan) entries.push({ label: 'Data dostawy plan.', value: formatSNDate(d.dataDostawyPlan) });
+        if (d.dataDostawyFakt) entries.push({ label: 'Data dostawy fakt.', value: formatSNDate(d.dataDostawyFakt) });
+        if (d.dataPlDostawyPyskowice) entries.push({ label: 'Data pl. dos. do Pyskowic', value: formatSNDate(d.dataPlDostawyPyskowice) });
+        entries.push({ label: 'SN w Pyskowicach', value: d.snWPyskowicach ? 'Tak' : 'Nie' });
         if (d.parametryTechniczne) {
           entries.push({ label: 'Parametry techniczne', value: d.parametryTechniczne });
         }
@@ -261,6 +270,10 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         break;
 
       case 'OBUDOWA': {
+        const koloryItem = orderItems.find((related) => related.type === 'KOLORY');
+        const opisyItem = orderItems.find((related) => related.type === 'OPISY');
+        const kolory = koloryItem?.details || {};
+        const opisy = opisyItem?.details || {};
         const typName =
           d.typObudowy === 'NZ'
             ? 'NZ — obudowa zewnętrzna'
@@ -290,6 +303,20 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
           const fDate = parts.length === 3 ? `${parts[2]}.${parts[1]}.${parts[0]}` : d.dataGotowosci;
           entries.push({ label: 'Data gotowości', value: fDate });
         }
+        if (d.przepustyNN) entries.push({ label: 'Przepusty NN', value: d.przepustyNN });
+        if (d.przepustySN) entries.push({ label: 'Przepusty SN', value: d.przepustySN });
+        if (d.pokrywyNN) entries.push({ label: 'Pokrywy NN', value: d.pokrywyNN });
+        if (d.pokrywyNNSaWPyskowicach !== undefined) entries.push({ label: 'Pokrywy NN w Pyskowicach', value: d.pokrywyNNSaWPyskowicach ? 'Tak' : 'Nie' });
+        if (d.pokrywySN) entries.push({ label: 'Pokrywy SN', value: d.pokrywySN });
+        if (d.pokrywySNSaWPyskowicach !== undefined) entries.push({ label: 'Pokrywy SN w Pyskowicach', value: d.pokrywySNSaWPyskowicach ? 'Tak' : 'Nie' });
+        if (d.wkladkiSN) entries.push({ label: 'Wkładki SN', value: d.wkladkiSN });
+        if (d.wkladkiSNSaWPyskowicach !== undefined) entries.push({ label: 'Wkładki SN w Pyskowicach', value: d.wkladkiSNSaWPyskowicach ? 'Tak' : 'Nie' });
+        if (kolory.kolorObudowy) entries.push({ label: 'Kolor obudowy', value: kolory.kolorObudowy });
+        if (kolory.kolorDrzwi) entries.push({ label: 'Kolor drzwi', value: kolory.kolorDrzwi });
+        if (kolory.koloryDodatkowe) entries.push({ label: 'Kolory dodatkowe', value: kolory.koloryDodatkowe });
+        if (kolory.numeryRal) entries.push({ label: 'Numery RAL', value: kolory.numeryRal });
+        if (opisy.wymaganeOpisy) entries.push({ label: 'Wymagane opisy', value: opisy.wymaganeOpisy });
+        if (opisy.sposobWykonania) entries.push({ label: 'Sposób wykonania opisów', value: opisy.sposobWykonania });
         break;
       }
 
@@ -309,6 +336,106 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         Object.entries(d).forEach(([key, val]) => {
           if (val) entries.push({ label: key, value: String(val) });
         });
+    }
+
+    if (item.type === 'OBUDOWA') {
+      const d = item.details || {};
+      const koloryItem = orderItems.find((related) => related.type === 'KOLORY');
+      const opisyItem = orderItems.find((related) => related.type === 'OPISY');
+      const kolory = koloryItem?.details || {};
+      const opisy = opisyItem?.details || {};
+      const typName =
+        d.typObudowy === 'NZ'
+          ? 'NZ — obudowa zewnętrzna'
+          : d.typObudowy === 'BEK'
+          ? 'BEK — obudowa wewnętrzna'
+          : (d.typObudowy || 'BEK');
+      const displayValue = (value: unknown) =>
+        value === undefined || value === null || value === '' ? '—' : String(value);
+      const yesNo = (value: unknown) =>
+        value === undefined || value === null ? '—' : value ? 'Tak' : 'Nie';
+      const formatDate = (value: unknown) => {
+        if (typeof value !== 'string' || !value) return '—';
+        const parts = value.split('-');
+        return parts.length === 3 ? `${parts[2]}.${parts[1]}.${parts[0]}` : value;
+      };
+      const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+        <div className="pt-3 first:pt-0">
+          <h5 className="mb-2 border-b border-slate-200 pb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-slate-700">
+            {title}
+          </h5>
+          {children}
+        </div>
+      );
+      const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
+        <div className="min-w-0">
+          <span className="block text-[11px] font-medium text-slate-500">{label}</span>
+          <span className="block break-words text-xs font-semibold text-slate-900">{value}</span>
+        </div>
+      );
+
+      return (
+        <div className="divide-y divide-slate-200 text-xs">
+          <Section title="1. Rodzaj i rozmiar">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Rodzaj obudowy" value={typName} />
+              <Field label="Rozmiar obudowy" value={displayValue(d.rozmiar)} />
+              <Field
+                label="Wymiary rzeczywiste"
+                value={
+                  d.szerokosc !== undefined && d.glebokosc !== undefined
+                    ? `${formatDimensionM(d.szerokosc)} × ${formatDimensionM(d.glebokosc)} × ${formatDimensionM(d.wysokosc)} (${d.typWysokosci || (d.typObudowy === 'NZ' ? 'wysokość zewnętrzna' : 'wysokość wewnętrzna pomieszczeń')})`
+                    : displayValue(d.wymiary)
+                }
+              />
+            </div>
+          </Section>
+
+          <Section title="2. Przepusty i pokrywy">
+            <div className="space-y-3">
+              <div>
+                <div className="mb-2 text-[11px] font-extrabold uppercase tracking-wider text-blue-800">NN</div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <Field label="Przepusty NN" value={displayValue(d.przepustyNN)} />
+                  <Field label="Pokrywy NN" value={displayValue(d.pokrywyNN)} />
+                  <Field label="Pokrywy NN w Pyskowicach" value={yesNo(d.pokrywyNNSaWPyskowicach)} />
+                </div>
+              </div>
+              <div className="border-t border-slate-200 pt-3">
+                <div className="mb-2 text-[11px] font-extrabold uppercase tracking-wider text-amber-800">SN</div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <Field label="Przepusty SN" value={displayValue(d.przepustySN)} />
+                  <Field label="Pokrywy SN" value={displayValue(d.pokrywySN)} />
+                  <Field label="Pokrywy SN w Pyskowicach" value={yesNo(d.pokrywySNSaWPyskowicach)} />
+                </div>
+              </div>
+            </div>
+          </Section>
+
+          <Section title="3. Wkładki SN">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Wkładki SN" value={displayValue(d.wkladkiSN)} />
+              <Field label="Wkładki SN w Pyskowicach" value={yesNo(d.wkladkiSNSaWPyskowicach)} />
+            </div>
+          </Section>
+
+          <Section title="4. Kolory">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Field label="Kolor obudowy" value={displayValue(kolory.kolorObudowy)} />
+              <Field label="Kolor drzwi" value={displayValue(kolory.kolorDrzwi)} />
+              <Field label="Kolory dodatkowe" value={displayValue(kolory.koloryDodatkowe)} />
+              <Field label="Numery RAL" value={displayValue(kolory.numeryRal)} />
+            </div>
+          </Section>
+
+          <Section title="5. Opisy">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Wymagane opisy" value={displayValue(opisy.wymaganeOpisy)} />
+              <Field label="Sposób wykonania opisów" value={displayValue(opisy.sposobWykonania)} />
+            </div>
+          </Section>
+        </div>
+      );
     }
 
     if (entries.length === 0) {
@@ -568,6 +695,58 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
           </div>
         </div>
 
+        {/* Dane logistyczne rozdzielnicy SN */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-200">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Numer seryjny</label>
+            <input
+              type="text"
+              value={d.numerSeryjny || ''}
+              onChange={(e) => handleUpdateSNField('numerSeryjny', e.target.value)}
+              placeholder="Numer seryjny producenta"
+              className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Data dostawy plan.</label>
+            <input
+              type="date"
+              value={d.dataDostawyPlan || ''}
+              onChange={(e) => handleUpdateSNField('dataDostawyPlan', e.target.value)}
+              className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Data dostawy fakt.</label>
+            <input
+              type="date"
+              value={d.dataDostawyFakt || ''}
+              onChange={(e) => handleUpdateSNField('dataDostawyFakt', e.target.value)}
+              className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Data pl. dos. do Pyskowic</label>
+            <input
+              type="date"
+              value={d.dataPlDostawyPyskowice || ''}
+              onChange={(e) => handleUpdateSNField('dataPlDostawyPyskowice', e.target.value)}
+              className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">SN w Pyskowicach</label>
+            <select
+              value={String(Boolean(d.snWPyskowicach))}
+              onChange={(e) => handleUpdateSNField('snWPyskowicach', e.target.value === 'true')}
+              className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden font-semibold"
+            >
+              <option value="false">Nie</option>
+              <option value="true">Tak</option>
+            </select>
+          </div>
+        </div>
+
         {/* Parametry techniczne / wyposażenie dodatkowe SN */}
         <div className="pt-2 border-t border-slate-200">
           <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -748,7 +927,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
             type="text"
             value={wyposazenieVal}
             onChange={(e) => handleUpdateNN('wyposazenieDodatkowe', e.target.value)}
-            placeholder="np. Rozłącznik główny 1000A, 8 odpływów listwowych NH2, pomiar półpośredni..."
+            placeholder="Wpisz wyposażenie dodatkowe lub aparaturę..."
             className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
           />
         </div>
@@ -878,7 +1057,9 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
             >
               <Edit2 className="w-3 h-3" />
               {canEdit
-                ? item.type === 'ROZDZIELNICA_SN' || item.type === 'ROZDZIELNICA_NN' || item.type === 'OBUDOWA' || item.type === 'DRZWI'
+                ? item.type === 'OBUDOWA'
+                  ? 'Edytuj'
+                  : item.type === 'ROZDZIELNICA_SN' || item.type === 'ROZDZIELNICA_NN' || item.type === 'DRZWI'
                   ? 'Otwórz w oknie'
                   : 'Edytuj parametry'
                 : 'Podgląd w oknie'}
@@ -895,200 +1076,53 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
             </div>
           )}
 
-          <div className={!canEdit ? 'pointer-events-none select-none opacity-90' : ''}>
-            {item.type === 'ROZDZIELNICA_SN' ? (
-              renderSNForm()
-            ) : item.type === 'ROZDZIELNICA_NN' ? (
-              renderNNForm()
-            ) : item.type === 'OBUDOWA' ? (
-              renderObudowaForm()
-            ) : item.type === 'DRZWI' ? (
-              renderDoorForm()
-            ) : (
-              <div className="bg-slate-50/80 rounded-lg p-3 border border-slate-100">
-                {renderDetailsSummary()}
-              </div>
-            )}
+          <div className="bg-slate-50/80 rounded-lg p-3 border border-slate-100">
+            {renderDetailsSummary()}
           </div>
         </div>
 
-        {/* Dates Section */}
-        <div className="flex flex-wrap items-center justify-between gap-4 py-3 border-y border-slate-100 text-xs">
-          <div className="flex flex-wrap items-center gap-6">
-            {/* 1. Data wystawienia zlecenia / kiedy zamówiono */}
-            <div className="flex items-center gap-2">
-              <Send className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-              <span className="text-slate-600 font-semibold">Data zlecenia / zamówienia:</span>
-              {isEditingDate ? (
-                <input
-                  type="date"
-                  value={orderDateInput}
-                  onChange={(e) => setOrderDateInput(e.target.value)}
-                  className="px-2 py-0.5 border border-blue-300 rounded text-xs bg-blue-50/50 font-mono text-blue-950 font-bold"
-                />
-              ) : item.orderDate ? (
-                <span className="font-mono tabular-nums font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                  {item.orderDate.split('-').reverse().join('.')}
-                </span>
-              ) : (
-                <span className="font-mono text-slate-400 italic">Brak daty</span>
-              )}
-            </div>
-
-            {/* 2. Planowany termin / Data gotowości */}
-            <div className="flex items-center gap-2">
-              <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span className="text-slate-500">
-                {item.type === 'OBUDOWA' ? 'Data gotowości obudowy:' : 'Planowany termin:'}
-              </span>
-              {isEditingDate ? (
-                <input
-                  type="date"
-                  value={plannedDateInput}
-                  onChange={(e) => setPlannedDateInput(e.target.value)}
-                  className="px-2 py-0.5 border border-slate-300 rounded text-xs bg-white font-mono"
-                />
-              ) : (
-                <span className="font-mono tabular-nums font-semibold text-slate-800">
-                  {item.plannedDate
-                    ? item.plannedDate.split('-').reverse().join('.')
-                    : 'Brak terminu'}
-                </span>
-              )}
-
-              {/* Informacja o przekroczeniu terminu gotowości dla obudowy */}
-              {item.type === 'OBUDOWA' &&
-                checkReadinessOverdue(
-                  item.details?.dataGotowosci || item.plannedDate,
-                  item.status
-                ).isOverdue && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded border border-rose-200 animate-pulse">
-                    <AlertTriangle className="w-3 h-3 text-rose-600" />
-                    Przekroczono termin gotowości!
-                  </span>
-                )}
-            </div>
-
-            {/* 3. Rzeczywista data zakończenia */}
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span className="text-slate-500">Rzeczywista data zakończenia:</span>
-              {isEditingDate ? (
-                <input
-                  type="date"
-                  value={completedDateInput}
-                  onChange={(e) => setCompletedDateInput(e.target.value)}
-                  className="px-2 py-0.5 border border-slate-300 rounded text-xs bg-white font-mono"
-                />
-              ) : (
-                <span className="font-mono tabular-nums font-semibold text-slate-800">
-                  {item.completedDate
-                    ? item.completedDate.split('-').reverse().join('.')
-                    : '—'}
-                </span>
-              )}
-            </div>
+        {/* Terminy wyświetlane wyłącznie do odczytu */}
+        <div className="space-y-3 py-4 border-y border-slate-200 text-xs">
+          <div className="flex items-center justify-between gap-3">
+            <h4 className="font-bold uppercase tracking-wider text-slate-700">Terminy</h4>
+            <button type="button" onClick={onOpenEditModal} className="text-xs font-semibold text-blue-600 hover:text-blue-800">
+              {canEdit ? 'Edytuj daty' : 'Podgląd'}
+            </button>
           </div>
-
-          <div>
-            {canEdit ? (
-              isEditingDate ? (
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleSaveDates}
-                    className="px-2.5 py-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded cursor-pointer"
-                  >
-                    Zapisz daty
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingDate(false)}
-                    className="text-xs text-slate-500 hover:text-slate-700 cursor-pointer"
-                  >
-                    Anuluj
-                  </button>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {([
+              ['Data zlecenia / zamówienia', item.orderDate],
+              ['Planowana data gotowości', item.plannedDate],
+              ['Rzeczywista data zakończenia', item.completedDate],
+            ] as const).map(([label, value]) => (
+              <div key={label} className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <div className="font-semibold text-slate-500">{label}</div>
+                <div className="mt-1 font-mono font-bold text-slate-800">
+                  {value ? value.split('-').reverse().join('.') : '—'}
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOrderDateInput(item.orderDate || '');
-                    setPlannedDateInput(item.plannedDate || '');
-                    setCompletedDateInput(item.completedDate || '');
-                    setIsEditingDate(true);
-                  }}
-                  className="text-xs text-slate-500 hover:text-blue-600 hover:underline cursor-pointer"
-                >
-                  Zmień daty
-                </button>
-              )
-            ) : null}
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Notes Section */}
+        {/* Uwagi — edycja wyłącznie w oknie elementu */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 uppercase tracking-wider">
               <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
               <span>Uwagi do elementu</span>
             </div>
-
-            {canEdit && !isEditingNotes && (
-              <button
-                type="button"
-                onClick={() => {
-                  setNotesInput(item.notes || '');
-                  setIsEditingNotes(true);
-                }}
-                className="text-xs font-semibold text-blue-600 hover:text-blue-800 cursor-pointer"
-              >
-                {item.notes ? 'Edytuj uwagę' : '+ Dodaj uwagę'}
-              </button>
-            )}
+            <button type="button" onClick={onOpenEditModal} className="text-xs font-semibold text-blue-600 hover:text-blue-800">
+              {canEdit ? 'Edytuj uwagi' : 'Podgląd'}
+            </button>
           </div>
-
-          {isEditingNotes ? (
-            <div className="space-y-2">
-              <textarea
-                value={notesInput}
-                onChange={(e) => setNotesInput(e.target.value)}
-                placeholder="Wpisz bieżące uwagi, status dostawy, ustalenia telefoniczne..."
-                rows={3}
-                className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:outline-hidden bg-white"
-                autoFocus
-              />
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleSaveNotes}
-                  className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md cursor-pointer"
-                >
-                  Zapisz uwagę
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsEditingNotes(false)}
-                  className="px-2.5 py-1.5 text-xs text-slate-500 hover:text-slate-700 cursor-pointer"
-                >
-                  Anuluj
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div
-              className={`p-3 rounded-lg text-xs border ${
-                item.notes
-                  ? isProblem
-                    ? 'bg-rose-100/60 border-rose-200 text-rose-900 font-medium'
-                    : 'bg-slate-50 border-slate-200 text-slate-800'
-                  : 'bg-slate-50/50 border-dashed border-slate-200 text-slate-400 italic'
-              }`}
-            >
-              {item.notes || 'Brak wpisanych uwag.'}
-            </div>
-          )}
+          <div className={`p-3 rounded-lg text-xs border whitespace-pre-wrap break-words ${
+            item.notes
+              ? isProblem ? 'bg-rose-100/60 border-rose-200 text-rose-900 font-medium' : 'bg-slate-50 border-slate-200 text-slate-800'
+              : 'bg-slate-50/50 border-dashed border-slate-200 text-slate-400 italic'
+          }`}>
+            {item.notes || 'Brak wpisanych uwag.'}
+          </div>
         </div>
 
         {/* Attachments Section */}

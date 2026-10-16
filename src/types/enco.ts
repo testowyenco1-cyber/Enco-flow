@@ -3,7 +3,7 @@
  * System Kontroli Kompletności i Stanu Realizacji Stacji Transformatorowych
  */
 
-export type ItemStatus = 'NOT_ORDERED' | 'ORDERED' | 'IN_PROGRESS' | 'READY' | 'PROBLEM';
+export type ItemStatus = 'NOT_ORDERED' | 'ORDERED' | 'IN_PROGRESS' | 'READY' | 'PROBLEM' | 'NOT_APPLICABLE';
 
 export type OrderStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'READY' | 'PROBLEM';
 
@@ -221,26 +221,53 @@ export const DEFAULT_OBUDOWA_VARIANTS: ObudowaSizeVariant[] = [
   },
 ];
 
-export const CUSTOM_OBUDOWA_STORAGE_KEY = 'enco_flow_obudowa_variants_v1';
+export const CUSTOM_OBUDOWA_VARIANTS_UPDATED_EVENT = 'enco:custom-obudowa-variants-updated';
 
-export function getCustomObudowaVariants(): ObudowaSizeVariant[] {
-  try {
-    const raw = localStorage.getItem(CUSTOM_OBUDOWA_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
+// This in-memory cache is refreshed only at app startup or by the explicit ODŚWIEŻ action.
+let customObudowaVariantsCache: ObudowaSizeVariant[] = [];
+
+export function setCustomObudowaVariants(variants: ObudowaSizeVariant[]): void {
+  customObudowaVariantsCache = Array.isArray(variants)
+    ? variants.map((variant) => ({ ...variant, isCustom: true }))
+    : [];
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(CUSTOM_OBUDOWA_VARIANTS_UPDATED_EVENT));
   }
 }
 
-export function saveCustomObudowaVariant(variant: ObudowaSizeVariant): void {
+export function getCustomObudowaVariants(): ObudowaSizeVariant[] {
+  return [...customObudowaVariantsCache];
+}
+
+export async function fetchCustomObudowaVariantsFromServer(): Promise<ObudowaSizeVariant[] | null> {
   try {
-    const existing = getCustomObudowaVariants().filter((v) => v.name !== variant.name);
-    const updated = [...existing, { ...variant, isCustom: true }];
-    localStorage.setItem(CUSTOM_OBUDOWA_STORAGE_KEY, JSON.stringify(updated));
+    const res = await fetch('/api/obudowa-variants');
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.success && Array.isArray(json.variants) ? json.variants : null;
   } catch (err) {
-    console.error('Failed to save custom variant:', err);
+    console.warn('Could not fetch custom enclosure sizes from server:', err);
+    return null;
+  }
+}
+
+export async function saveCustomObudowaVariant(variant: ObudowaSizeVariant): Promise<boolean> {
+  try {
+    const res = await fetch('/api/obudowa-variants', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ variant }),
+    });
+    if (!res.ok) return false;
+
+    const json = await res.json();
+    if (!json.success || !Array.isArray(json.variants)) return false;
+    setCustomObudowaVariants(json.variants);
+    return true;
+  } catch (err) {
+    console.error('Failed to save custom enclosure size to the server:', err);
+    return false;
   }
 }
 
@@ -289,7 +316,7 @@ export function checkReadinessOverdue(
   const formattedDate = parts.length === 3 ? `${parts[2]}.${parts[1]}.${parts[0]}` : deadlineDate;
 
   // If item is already marked as READY, it is not overdue
-  if (isReady === true || isReady === 'READY') {
+  if (isReady === true || isReady === 'READY' || isReady === 'NOT_APPLICABLE') {
     return { isOverdue: false, daysOverdue: 0, formattedDate };
   }
 
@@ -310,12 +337,19 @@ export function checkReadinessOverdue(
 }
 
 export interface Order {
+  customerId?: string;
+  contactId?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  archivedAt?: string | null;
   id: string;
   orderNumber: string;
   client: string;
   projectName: string;
   stationSize: string;
-  departureDate: string; // YYYY-MM-DD
+  departureDate: string; // Aktualnie planowany wyjazd (YYYY-MM-DD)
+  originalDepartureDate?: string; // Pierwotny termin z oferty, zachowywany przy zmianach planu (YYYY-MM-DD)
   generalNotes: string;
   additionalInfo?: string;
   status: OrderStatus;
@@ -506,6 +540,20 @@ export const STATUS_META: Record<
     cardBg: 'bg-emerald-50/70',
     accentBorder: 'border-l-emerald-600',
   },
+  NOT_APPLICABLE: {
+    label: 'BRAK / niepotrzebne',
+    shortLabel: 'BRAK',
+    icon: '⚪',
+    color: 'text-slate-500',
+    bgBadge: 'bg-slate-100',
+    textBadge: 'text-slate-600 font-bold',
+    borderBadge: 'border-slate-300 border-dashed',
+    dotColor: 'bg-slate-300 ring-2 ring-slate-100',
+    nextStatus: 'NOT_ORDERED',
+    cardBorder: 'border-slate-300',
+    cardBg: 'bg-slate-50',
+    accentBorder: 'border-l-slate-300',
+  },
   PROBLEM: {
     label: 'Problem',
     shortLabel: 'Problem',
@@ -570,7 +618,7 @@ export const ORDER_STATUS_META: Record<
 /**
  * Automatyczne wyliczanie ogólnego statusu zlecenia:
  * 1. Dowolny element 'PROBLEM' -> 'PROBLEM'
- * 2. Wszystkie elementy 'READY' -> 'READY'
+ * 2. Wszystkie elementy 'READY' lub 'NOT_APPLICABLE' -> 'READY'
  * 3. Jakikolwiek element 'ORDERED' lub część 'READY' -> 'IN_PROGRESS'
  * 4. Wszystkie 'NOT_ORDERED' -> 'NOT_STARTED'
  */
@@ -579,7 +627,7 @@ export function calculateOrderStatus(items: OrderItem[]): OrderStatus {
   if (items.some((item) => item.status === 'PROBLEM')) {
     return 'PROBLEM';
   }
-  if (items.every((item) => item.status === 'READY')) {
+  if (items.every((item) => item.status === 'READY' || item.status === 'NOT_APPLICABLE')) {
     return 'READY';
   }
   if (items.some((item) => item.status === 'ORDERED' || item.status === 'IN_PROGRESS' || item.status === 'READY')) {

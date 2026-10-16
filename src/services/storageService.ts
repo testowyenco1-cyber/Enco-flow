@@ -1,5 +1,6 @@
 import { Order, OrderItem, calculateOrderStatus, Attachment, DoorOrder } from '../types/enco';
 import { INITIAL_ORDERS, createDefaultItemsForOrder } from '../data/mockData';
+import { normalizeOrderNumber } from '../utils/orderNumberUtils';
 import { INITIAL_DOOR_ORDERS } from '../data/mockDoorOrders';
 
 const STORAGE_KEY = 'enco_flow_orders_v8';
@@ -30,6 +31,15 @@ function writeSnapshot<T>(key: string, values: T[]): void {
   }
 }
 
+// Called by App.tsx only after verifying that the response belongs to the latest refresh.
+export function setServerOrdersSnapshot(orders: Order[]): void {
+  writeSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, orders);
+}
+
+export function setServerDoorOrdersSnapshot(doorOrders: DoorOrder[]): void {
+  writeSnapshot(SERVER_DOOR_SNAPSHOT_KEY, doorOrders);
+}
+
 function getPendingChanges<T>(current: T[], snapshot: T[] | null): { changed: T[]; deletedIds: string[] } {
   // If the initial server read failed, upsert records but never infer deletions
   // from an incomplete local cache.
@@ -46,28 +56,49 @@ function getPendingChanges<T>(current: T[], snapshot: T[] | null): { changed: T[
   return { changed, deletedIds };
 }
 
-// Unique client identifier for current browser tab to avoid echo loops
-export const CLIENT_ID =
-  typeof window !== 'undefined'
-    ? sessionStorage.getItem('enco_client_id') ||
-      (() => {
-        const id = 'c_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8);
-        try {
-          sessionStorage.setItem('enco_client_id', id);
-        } catch (e) {
-          // ignore storage error
-        }
-        return id;
-      })()
-    : 'server';
+function applySavedChangesToSnapshot<T>(snapshotKey: string, changed: T[], deletedIds: string[]): void {
+  // Patch only records confirmed by this save. This preserves local baseline
+  // changes from other saves that may finish while this request is in flight.
+  const snapshot = readSnapshot<T>(snapshotKey) || [];
+  const deleted = new Set(deletedIds.map(String));
+  const next = snapshot.filter((entry: any) => !deleted.has(String(entry.id)));
+
+  changed.forEach((incoming: any) => {
+    const index = next.findIndex((existing: any) => String(existing.id) === String(incoming.id));
+    if (index >= 0) next[index] = incoming;
+    else next.push(incoming);
+  });
+
+  writeSnapshot(snapshotKey, next);
+}
+
+function hasPendingChanges<T>(current: T[], snapshotKey: string): boolean {
+  const snapshot = readSnapshot<T>(snapshotKey);
+  if (!snapshot) return true;
+  const pending = getPendingChanges(current, snapshot);
+  return pending.changed.length > 0 || pending.deletedIds.length > 0;
+}
+
+export function hasPendingOrderChanges(orders: Order[]): boolean {
+  return hasPendingChanges(orders, SERVER_ORDERS_SNAPSHOT_KEY);
+}
+
+export function hasPendingDoorOrderChanges(doorOrders: DoorOrder[]): boolean {
+  return hasPendingChanges(doorOrders, SERVER_DOOR_SNAPSHOT_KEY);
+}
 
 /**
  * Sanitize and migrate orders array ensuring all fields and item structures are valid
  */
 export function sanitizeOrders(parsed: any[]): Order[] {
-  if (!Array.isArray(parsed) || parsed.length === 0) {
+  if (!Array.isArray(parsed)) {
     return INITIAL_ORDERS;
   }
+  // Permanently exclude the original demo stations from the application.
+  const demoOrderIds = new Set(['ord_zl1', 'ord_zl2', 'ord_zl3', 'ord_zl4', 'ord_zl5', 'ord_zl6']);
+  parsed = parsed.filter((order: any) => !demoOrderIds.has(String(order?.id)) && !/^ZL[1-6]$/.test(String(order?.orderNumber || '').trim()));
+  // An empty server array is valid state; do not replace it with demo orders.
+  if (parsed.length === 0) return [];
 
   const validItemStatuses: Set<string> = new Set([
     'NOT_ORDERED',
@@ -75,6 +106,7 @@ export function sanitizeOrders(parsed: any[]): Order[] {
     'IN_PROGRESS',
     'READY',
     'PROBLEM',
+    'NOT_APPLICABLE',
   ]);
 
   return parsed.map((ord) => {
@@ -177,8 +209,15 @@ export function sanitizeOrders(parsed: any[]): Order[] {
       return baseItem;
     });
 
+    const createdYear = ord.createdAt ? new Date(ord.createdAt).getFullYear() : new Date().getFullYear();
+    const existingYear = String(ord.orderNumber || '').match(/\/(\d{4})$/)?.[1];
+    const migratedOrderNumber = normalizeOrderNumber(ord.orderNumber || '', Number(existingYear || createdYear));
+
     return {
       ...ord,
+      orderNumber: migratedOrderNumber,
+      // For legacy records, preserve the currently stored date as the best available baseline.
+      originalDepartureDate: ord.originalDepartureDate || ord.departureDate || '',
       items: sanitizedItems,
       status: calculateOrderStatus(sanitizedItems),
       attachments: Array.isArray(ord.attachments) ? ord.attachments : [],
@@ -187,34 +226,35 @@ export function sanitizeOrders(parsed: any[]): Order[] {
 }
 
 /**
- * Load initial orders immediately from local storage cache for 0ms initial render
+ * Load this tab's orders from sessionStorage for an immediate initial render
  */
 export function loadOrders(): Order[] {
   try {
-    let raw = localStorage.getItem(STORAGE_KEY);
+    let raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      raw = localStorage.getItem(PREV_STORAGE_KEY);
+      raw = sessionStorage.getItem(PREV_STORAGE_KEY);
     }
     if (!raw) {
-      saveOrders(INITIAL_ORDERS);
-      return INITIAL_ORDERS;
+      const migratedInitialOrders = sanitizeOrders(INITIAL_ORDERS);
+      saveOrders(migratedInitialOrders);
+      return migratedInitialOrders;
     }
     const parsed: Order[] = JSON.parse(raw);
     return sanitizeOrders(parsed);
   } catch (err) {
-    console.error('Failed to load orders from localStorage:', err);
+    console.error('Failed to load orders from sessionStorage:', err);
     return INITIAL_ORDERS;
   }
 }
 
 /**
- * Save orders to local storage cache
+ * Save orders to this tab's sessionStorage cache
  */
 export function saveOrders(orders: Order[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
   } catch (err) {
-    console.error('Failed to save orders to localStorage:', err);
+    console.error('Failed to save orders to sessionStorage:', err);
   }
 }
 
@@ -227,10 +267,16 @@ export async function fetchOrdersFromServer(): Promise<Order[] | null> {
     if (!res.ok) return null;
     const json = await res.json();
     if (json.success && Array.isArray(json.orders)) {
-      const sanitized = sanitizeOrders(json.orders);
-      saveOrders(sanitized);
-      writeSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, sanitized);
-      return sanitized;
+      const demoIds = json.orders.filter((order: any) => /^ord_zl[1-6]$/.test(String(order?.id || '')) || /^ZL[1-6]$/.test(String(order?.orderNumber || '').trim())).map((order: any) => String(order.id));
+      if (demoIds.length > 0) {
+        // Remove legacy demo records from persistent shared server storage, not just the visible list.
+        try {
+          await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orders: [], deletedIds: demoIds, merge: true }) });
+        } catch (cleanupError) {
+          console.warn('Could not permanently remove legacy demo orders from server:', cleanupError);
+        }
+      }
+      return sanitizeOrders(json.orders);
     }
     return null;
   } catch (err) {
@@ -240,20 +286,53 @@ export async function fetchOrdersFromServer(): Promise<Order[] | null> {
 }
 
 /**
+ * Save exactly one order record. Other records edited locally in this tab remain unsent.
+ * Only this record is advanced in the server snapshot after a successful response.
+ */
+export async function saveSingleOrderToServer(order: Order): Promise<boolean> {
+  const snapshot = readSnapshot<Order>(SERVER_ORDERS_SNAPSHOT_KEY);
+  if (!snapshot) {
+    console.warn('Cannot save an order before a successful server refresh establishes a baseline.');
+    return false;
+  }
+
+  try {
+    const res = await fetch('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orders: [order], deletedIds: [], merge: true }),
+    });
+    if (!res.ok) return false;
+
+    applySavedChangesToSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, [order], []);
+    return true;
+  } catch (err) {
+    console.warn('Could not save single order to server:', err);
+    return false;
+  }
+}
+
+/**
  * Save only this browser's changed records; the server merges them without
  * replacing records created or updated by other users.
  */
 export async function saveOrdersToServer(orders: Order[]): Promise<boolean> {
   saveOrders(orders);
-  const { changed, deletedIds } = getPendingChanges(orders, readSnapshot<Order>(SERVER_ORDERS_SNAPSHOT_KEY));
+  const snapshot = readSnapshot<Order>(SERVER_ORDERS_SNAPSHOT_KEY);
+  if (!snapshot) {
+    console.warn('Cannot save orders before a successful server refresh establishes a baseline.');
+    return false;
+  }
+  const { changed, deletedIds } = getPendingChanges(orders, snapshot);
   try {
     const res = await fetch('/api/orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orders: changed, deletedIds, merge: true, originId: CLIENT_ID }),
+      body: JSON.stringify({ orders: changed, deletedIds, merge: true }),
     });
     if (!res.ok) return false;
-    writeSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, orders);
+    // Advance only the records included in this successful request; preserve other baselines.
+    applySavedChangesToSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, changed, deletedIds);
     return true;
   } catch (err) {
     console.warn('Could not save orders to server:', err);
@@ -262,38 +341,39 @@ export async function saveOrdersToServer(orders: Order[]): Promise<boolean> {
 }
 
 /**
- * Load initial door orders immediately from local storage cache
+ * Load this tab's door orders from sessionStorage
  */
 export function loadDoorOrders(): DoorOrder[] {
   try {
-    let raw = localStorage.getItem(DOOR_STORAGE_KEY);
+    let raw = sessionStorage.getItem(DOOR_STORAGE_KEY);
     if (!raw) {
-      raw = localStorage.getItem(PREV_DOOR_STORAGE_KEY);
+      raw = sessionStorage.getItem(PREV_DOOR_STORAGE_KEY);
     }
     if (!raw) {
       saveDoorOrders(INITIAL_DOOR_ORDERS);
       return INITIAL_DOOR_ORDERS;
     }
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) {
+    if (!Array.isArray(parsed)) {
       saveDoorOrders(INITIAL_DOOR_ORDERS);
       return INITIAL_DOOR_ORDERS;
     }
+    // An intentionally empty server list must remain empty.
     return parsed;
   } catch (err) {
-    console.error('Failed to load door orders from localStorage:', err);
+    console.error('Failed to load door orders from sessionStorage:', err);
     return INITIAL_DOOR_ORDERS;
   }
 }
 
 /**
- * Save door orders to local storage cache
+ * Save door orders to this tab's sessionStorage cache
  */
 export function saveDoorOrders(doorOrders: DoorOrder[]): void {
   try {
-    localStorage.setItem(DOOR_STORAGE_KEY, JSON.stringify(doorOrders));
+    sessionStorage.setItem(DOOR_STORAGE_KEY, JSON.stringify(doorOrders));
   } catch (err) {
-    console.error('Failed to save door orders to localStorage:', err);
+    console.error('Failed to save door orders to sessionStorage:', err);
   }
 }
 
@@ -306,8 +386,6 @@ export async function fetchDoorOrdersFromServer(): Promise<DoorOrder[] | null> {
     if (!res.ok) return null;
     const json = await res.json();
     if (json.success && Array.isArray(json.doorOrders)) {
-      saveDoorOrders(json.doorOrders);
-      writeSnapshot(SERVER_DOOR_SNAPSHOT_KEY, json.doorOrders);
       return json.doorOrders;
     }
     return null;
@@ -322,15 +400,20 @@ export async function fetchDoorOrdersFromServer(): Promise<DoorOrder[] | null> {
  */
 export async function saveDoorOrdersToServer(doorOrders: DoorOrder[]): Promise<boolean> {
   saveDoorOrders(doorOrders);
-  const { changed, deletedIds } = getPendingChanges(doorOrders, readSnapshot<DoorOrder>(SERVER_DOOR_SNAPSHOT_KEY));
+  const snapshot = readSnapshot<DoorOrder>(SERVER_DOOR_SNAPSHOT_KEY);
+  if (!snapshot) {
+    console.warn('Cannot save door orders before a successful server refresh establishes a baseline.');
+    return false;
+  }
+  const { changed, deletedIds } = getPendingChanges(doorOrders, snapshot);
   try {
     const res = await fetch('/api/door-orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ doorOrders: changed, deletedIds, merge: true, originId: CLIENT_ID }),
+      body: JSON.stringify({ doorOrders: changed, deletedIds, merge: true }),
     });
     if (!res.ok) return false;
-    writeSnapshot(SERVER_DOOR_SNAPSHOT_KEY, doorOrders);
+    applySavedChangesToSnapshot(SERVER_DOOR_SNAPSHOT_KEY, changed, deletedIds);
     return true;
   } catch (err) {
     console.warn('Could not save door orders to server:', err);
@@ -341,103 +424,40 @@ export async function saveDoorOrdersToServer(doorOrders: DoorOrder[]): Promise<b
 /**
  * Reset demo data on server and locally
  */
-export async function resetServerAndLocalData(): Promise<{ orders: Order[]; doorOrders: DoorOrder[] }> {
-  saveOrders(INITIAL_ORDERS);
-  saveDoorOrders(INITIAL_DOOR_ORDERS);
-
+export async function resetServerAndLocalData(): Promise<{ orders: Order[]; doorOrders: DoorOrder[]; success: boolean }> {
   try {
-    await fetch('/api/reset-data', { method: 'POST' });
-  } catch (e) {
-    console.warn('Could not notify server of demo reset:', e);
-  }
-
-  return { orders: INITIAL_ORDERS, doorOrders: INITIAL_DOOR_ORDERS };
-}
-
-export function resetToDemoOrders(): Order[] {
-  saveOrders(INITIAL_ORDERS);
-  saveDoorOrders(INITIAL_DOOR_ORDERS);
-  return INITIAL_ORDERS;
-}
-
-export function resetToDemoDoorOrders(): DoorOrder[] {
-  saveDoorOrders(INITIAL_DOOR_ORDERS);
-  return INITIAL_DOOR_ORDERS;
-}
-
-/**
- * Setup Real-time SSE synchronization listener
- */
-export function setupRealtimeSync(options: {
-  onOrdersUpdated: (orders: Order[], isRemote: boolean) => void;
-  onDoorOrdersUpdated: (doorOrders: DoorOrder[], isRemote: boolean) => void;
-  onReset: () => void;
-  onStatusChange?: (isConnected: boolean) => void;
-}): () => void {
-  let eventSource: EventSource | null = null;
-  let isClosed = false;
-  let reconnectTimer: NodeJS.Timeout | null = null;
-
-  function connect() {
-    if (isClosed) return;
-
-    try {
-      eventSource = new EventSource('/api/realtime/stream');
-
-      eventSource.onopen = () => {
-        options.onStatusChange?.(true);
-      };
-
-      eventSource.onmessage = (event) => {
-        if (!event.data || event.data.trim() === ': keepalive') return;
-        try {
-          const payload = JSON.parse(event.data);
-          const isRemote = Boolean(payload.originId && payload.originId !== CLIENT_ID);
-
-          if (payload.type === 'orders' && Array.isArray(payload.data)) {
-            const sanitized = sanitizeOrders(payload.data);
-            options.onOrdersUpdated(sanitized, isRemote);
-          } else if (payload.type === 'doorOrders' && Array.isArray(payload.data)) {
-            options.onDoorOrdersUpdated(payload.data, isRemote);
-          } else if (payload.type === 'reset') {
-            options.onReset();
-          }
-        } catch (e) {
-          console.error('Error handling SSE message:', e);
-        }
-      };
-
-      eventSource.onerror = () => {
-        options.onStatusChange?.(false);
-        if (eventSource) {
-          eventSource.close();
-          eventSource = null;
-        }
-        if (!isClosed) {
-          reconnectTimer = setTimeout(connect, 3000);
-        }
-      };
-    } catch (e) {
-      options.onStatusChange?.(false);
-      if (!isClosed) {
-        reconnectTimer = setTimeout(connect, 3000);
-      }
+    const res = await fetch('/api/reset-data', { method: 'POST' });
+    if (!res.ok) {
+      console.warn('Server rejected demo-data reset:', res.status);
+      return { orders: [], doorOrders: [], success: false };
     }
+
+    const json = await res.json();
+    if (!json.success || !Array.isArray(json.orders) || !Array.isArray(json.doorOrders)) {
+      return { orders: [], doorOrders: [], success: false };
+    }
+
+    const orders = sanitizeOrders(json.orders);
+    const doorOrders = json.doorOrders as DoorOrder[];
+    saveOrders(orders);
+    saveDoorOrders(doorOrders);
+    setServerOrdersSnapshot(orders);
+    setServerDoorOrdersSnapshot(doorOrders);
+    return { orders, doorOrders, success: true };
+  } catch (err) {
+    console.warn('Could not reset demo data on the server:', err);
+    return { orders: [], doorOrders: [], success: false };
   }
-
-  connect();
-
-  // Realtime updates arrive through SSE; do not force a fetch when the tab gains focus.
-  return () => {
-    isClosed = true;
-    if (reconnectTimer) clearTimeout(reconnectTimer);
-    if (eventSource) eventSource.close();
-  };
 }
 
 export function createNewOrder(params: {
   orderNumber: string;
   client: string;
+  customerId?: string;
+  contactId?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
   projectName: string;
   stationSize: string;
   departureDate: string;
@@ -453,9 +473,15 @@ export function createNewOrder(params: {
     id,
     orderNumber: params.orderNumber.trim(),
     client: params.client.trim(),
+    customerId: params.customerId || '',
+    contactId: params.contactId || '',
+    contactName: params.contactName || '',
+    contactEmail: params.contactEmail || '',
+    contactPhone: params.contactPhone || '',
     projectName: params.projectName.trim(),
     stationSize: params.stationSize.trim(),
     departureDate: params.departureDate,
+    originalDepartureDate: params.departureDate,
     generalNotes: params.generalNotes || '',
     additionalInfo: params.additionalInfo || '',
     status,

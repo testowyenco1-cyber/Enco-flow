@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   DoorOrder,
   formatPLN,
@@ -30,6 +30,7 @@ import {
   Info,
   Lock,
   FolderOpen,
+  Download,
 } from 'lucide-react';
 import { isSameOrderNumber } from '../utils/orderNumberUtils';
 import { UserRoleProfile, USER_PROFILES } from '../types/userRole';
@@ -41,6 +42,8 @@ interface DoorOrdersViewProps {
   onAddDoorOrder: () => void;
   onOpenDoorOrder?: (order: DoorOrder) => void;
   onEditDoorOrder: (order: DoorOrder) => void;
+  onSaveDoorOrderDirect?: (order: DoorOrder) => void;
+  onSaveDoorOrdersBulk?: (orders: DoorOrder[]) => void;
   onDeleteDoorOrder: (id: string) => void;
   onQuickConfirmDelivery: (order: DoorOrder) => void;
   onNavigateToOrder?: (orderId: string) => void;
@@ -56,6 +59,8 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
   onAddDoorOrder,
   onOpenDoorOrder,
   onEditDoorOrder,
+  onSaveDoorOrderDirect,
+  onSaveDoorOrdersBulk,
   onDeleteDoorOrder,
   onQuickConfirmDelivery,
   onNavigateToOrder,
@@ -69,6 +74,11 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const [orderToDelete, setOrderToDelete] = useState<DoorOrder | null>(null);
   const [isDoorFilesModalOpen, setIsDoorFilesModalOpen] = useState(false);
+  const [draftsById, setDraftsById] = useState<Record<string, DoorOrder>>({});
+  const [dirtyDoorOrderIds, setDirtyDoorOrderIds] = useState<string[]>([]);
+  const [zlSearchQuery, setZlSearchQuery] = useState('');
+  const [zlDropdownPosition, setZlDropdownPosition] = useState<{ top: number; left: number } | null>(null);
+  const [showExtraTools, setShowExtraTools] = useState(false);
 
   // Obliczenia statystyk KPI
   const stats = useMemo(() => {
@@ -131,12 +141,102 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
     });
   }, [doorOrders, filterTab, searchQuery]);
 
+  useEffect(() => {
+    const closeZlDropdownOnOutsideClick = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element) || target.closest('[data-zl-dropdown]')) return;
+      document.querySelectorAll<HTMLDetailsElement>('details[data-zl-dropdown][open]').forEach((dropdown) => {
+        dropdown.open = false;
+      });
+      setZlDropdownPosition(null);
+    };
+
+    document.addEventListener('mousedown', closeZlDropdownOnOutsideClick);
+    return () => document.removeEventListener('mousedown', closeZlDropdownOnOutsideClick);
+  }, []);
+
+  useEffect(() => {
+    setDraftsById((current) => {
+      const next = { ...current };
+      doorOrders.forEach((order) => { if (!dirtyDoorOrderIds.includes(order.id)) next[order.id] = order; });
+      Object.keys(next).forEach((id) => { if (!doorOrders.some((order) => order.id === id) && !dirtyDoorOrderIds.includes(id)) delete next[id]; });
+      return next;
+    });
+  }, [doorOrders, dirtyDoorOrderIds]);
+
+  const patchDoorOrder = (order: DoorOrder, key: keyof DoorOrder, value: any) => {
+    setDraftsById((current) => {
+      const existing = current[order.id] || order;
+      const updated: DoorOrder = { ...existing, [key]: value };
+      // Przy zmianie netto automatycznie przelicz brutto według stawki VAT 23%.
+      if (key === 'wartoscNetto') {
+        updated.wartoscBrutto = value == null || value === ''
+          ? null
+          : Math.round((Number(value) * 1.23 + Number.EPSILON) * 100) / 100;
+      }
+      return { ...current, [order.id]: updated };
+    });
+    setDirtyDoorOrderIds((current) => current.includes(order.id) ? current : [...current, order.id]);
+  };
+
+  const formatAmountInput = (value: number | null | undefined) =>
+    value == null || !Number.isFinite(Number(value)) ? '' : Number(value).toFixed(2);
+
+  const saveDirtyDoorOrders = () => {
+    const changed = dirtyDoorOrderIds.map((id) => draftsById[id]).filter((order): order is DoorOrder => Boolean(order))
+      .map((order) => ({ ...order, updatedAt: new Date().toISOString() }));
+    if (!changed.length) return;
+    if (onSaveDoorOrdersBulk) onSaveDoorOrdersBulk(changed);
+    else if (onSaveDoorOrderDirect) changed.forEach((order) => onSaveDoorOrderDirect(order));
+    else changed.forEach((order) => onEditDoorOrder(order));
+    setDirtyDoorOrderIds([]);
+  };
+
   const toggleExpand = (id: string) => {
     setExpandedRowId((prev) => (prev === id ? null : id));
   };
 
+  const exportDoorOrdersToExcel = () => {
+    const columns = [
+      ['Numer dokumentu', (order: DoorOrder) => order.numerDokumentu],
+      ['Data zamówienia', (order: DoorOrder) => order.dataZamowienia || ''],
+      ['Termin z zamówienia', (order: DoorOrder) => order.terminZamowienia || ''],
+      ['Kategoria', (order: DoorOrder) => order.kategoria || ''],
+      ['Netto', (order: DoorOrder) => order.wartoscNetto == null ? '' : Number(order.wartoscNetto).toFixed(2)],
+      ['Brutto', (order: DoorOrder) => order.wartoscBrutto == null ? '' : Number(order.wartoscBrutto).toFixed(2)],
+      ['Numery ZL', (order: DoorOrder) => (order.numeryZl || []).join(', ')],
+      ['Kontrahent / realizacje', (order: DoorOrder) => {
+        const linked = (order.numeryZl || []).map((zl) => orders.find((o) => isSameOrderNumber(o.orderNumber, zl))).filter((o): o is Order => Boolean(o));
+        return linked.length ? linked.map((o) => `${o.orderNumber} — ${o.client?.trim() || 'kontrahent nieuzupełniony'}`).join(' | ') : (order.kontrahentRealizacje || '').replace(/\n/g, ' | ');
+      }],
+      ['Termin dostawy', (order: DoorOrder) => order.terminDostawy || ''],
+      ['Uwagi', (order: DoorOrder) => order.uwagi || ''],
+    ] as const;
+    const escapeCell = (value: unknown) => {
+      const text = String(value ?? '');
+      return /[;"\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    };
+    const rows = [
+      columns.map(([header]) => escapeCell(header)).join(';'),
+      ...filteredOrders.map((order) => {
+        const current = draftsById[order.id] || order;
+        return columns.map(([, getValue]) => escapeCell(getValue(current))).join(';');
+      }),
+    ];
+    const blob = new Blob(['\uFEFFsep=;\r\n' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ENCO_Drzwi_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       {/* 1. NAGŁÓWEK MODUŁU DRZWI Z PRZYCISKIEM DODAWANIA */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-start sm:items-center gap-3.5">
@@ -159,6 +259,15 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2.5 self-start md:self-auto shrink-0">
+          <button
+            type="button"
+            onClick={exportDoorOrdersToExcel}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+            title="Eksportuj widoczne zamówienia drzwi do pliku otwieranego w Excelu"
+          >
+            <Download className="w-4 h-4" />
+            <span>Eksport Excel</span>
+          </button>
           <button
             type="button"
             onClick={() => setIsDoorFilesModalOpen(true)}
@@ -206,6 +315,11 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
       )}
 
       {/* 2. KAFLE KPI / STATYSTYKI Z INTERAKTYWNYM FILTROWANIEM */}
+      <details className="rounded-xl border border-slate-200 bg-white">
+        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+          Pokaż statystyki, wykresy i dodatkowe filtry
+        </summary>
+        <div className="space-y-4 border-t border-slate-200 p-3">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Karta 1: Wszystkie */}
         <div
@@ -299,6 +413,9 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
           </div>
         </div>
       </div>
+
+        </div>
+      </details>
 
       {/* 3. PASEK WYSZUKIWANIA I PRZEŁĄCZNIK WIDOKU */}
       <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
@@ -412,718 +529,158 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
         </div>
       </div>
 
-      {/* 4. WIDOK 1: NOWOCZESNA TABELA — 100% WIDOCZNYCH ELEMENTÓW BEZ UCIĘĆ I PRZEWIJANIA */}
-      {viewMode === 'table' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          {filteredOrders.length === 0 ? (
-            <div className="p-16 text-center text-slate-400">
-              <Layers className="w-10 h-10 mx-auto mb-3 text-slate-300" />
-              <p className="font-bold text-slate-700 text-base">Brak zamówień drzwi spełniających wybrane kryteria</p>
-              <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
-                Zmień frazę wyszukiwania, wyzeruj filtry lub kliknij przycisk „Nowe zamówienie drzwi”.
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50/90 border-b border-slate-200 text-[11px] font-extrabold text-slate-600 uppercase tracking-wider">
-                    <th className="py-3.5 px-4 w-[220px]">Dokument i Wartość</th>
-                    <th className="py-3.5 px-4 w-[230px]">Terminy i Status Dostawy</th>
-                    <th className="py-3.5 px-3.5 w-[160px]">Powiązane Zlecenia (ZL)</th>
-                    <th className="py-3.5 px-4 min-w-[280px]">Kontrahent / Realizacje & Uwagi</th>
-                    <th className="py-3.5 px-4 text-right w-[170px]">Akcje</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-xs">
-                  {filteredOrders.map((doorOrd) => {
-                    const isExpanded = expandedRowId === doorOrd.id;
-                    const isDelivered = Boolean(doorOrd.terminDostawy && doorOrd.terminDostawy.trim() !== '');
-                    const overdueInfo = checkDoorOrderOverdue(doorOrd.terminZamowienia, doorOrd.terminDostawy);
-
-                    return (
-                      <React.Fragment key={doorOrd.id}>
-                        <tr
-                          className={`hover:bg-slate-50/90 transition-colors group ${
-                            isExpanded ? 'bg-blue-50/30' : ''
-                          } ${overdueInfo.isOverdue ? 'bg-rose-50/20' : ''}`}
-                        >
-                          {/* 1. DOKUMENT, KATEGORIA I FINANSE (W PEŁNI WIDOCZNE) */}
-                          <td className="py-4 px-4 align-top">
-                            <div className="flex flex-col gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => toggleExpand(doorOrd.id)}
-                                className="text-left font-mono text-sm font-black text-blue-700 hover:text-blue-900 hover:underline flex items-center gap-1.5 cursor-pointer w-fit"
-                              >
-                                <span>{doorOrd.numerDokumentu}</span>
-                                {isExpanded ? (
-                                  <ChevronUp className="w-4 h-4 text-blue-600 shrink-0" />
-                                ) : (
-                                  <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-blue-600 shrink-0" />
-                                )}
-                              </button>
-
-                              {doorOrd.kategoria && (
-                                <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md border border-slate-200/80 font-mono text-[10px] font-semibold w-fit">
-                                  {doorOrd.kategoria}
-                                </span>
-                              )}
-
-                              {/* Wartości finansowe widoczne od razu */}
-                              {(doorOrd.wartoscNetto || doorOrd.wartoscBrutto) ? (
-                                <div className="mt-1 pt-1 border-t border-slate-100 font-mono text-[11px] space-y-0.5">
-                                  {doorOrd.wartoscNetto && (
-                                    <div className="text-slate-600">
-                                      Netto: <strong className="text-slate-900">{formatPLN(doorOrd.wartoscNetto)}</strong>
-                                    </div>
-                                  )}
-                                  {doorOrd.wartoscBrutto && (
-                                    <div className="text-emerald-700 font-bold">
-                                      Brutto: {formatPLN(doorOrd.wartoscBrutto)}
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-[10px] text-slate-400 italic">Brak kwoty z dok.</span>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* 2. TERMINY I STATUS DOSTAWY (W PEŁNI WIDOCZNE) */}
-                          <td className="py-4 px-4 align-top">
-                            <div className="space-y-2">
-                              {/* Data zamówienia i termin wymagany */}
-                              <div className="bg-slate-50 p-2 rounded-lg border border-slate-200/70 space-y-1">
-                                <div className="flex items-center justify-between text-[11px]">
-                                  <span className="text-slate-500 font-medium">Data zamówienia:</span>
-                                  <span className="font-mono font-semibold text-slate-800">
-                                    {formatDatePL(doorOrd.dataZamowienia)}
-                                  </span>
-                                </div>
-                                <div className="flex items-center justify-between text-[11px]">
-                                  <span className="text-slate-500 font-medium">Termin wymagany:</span>
-                                  <span className={`font-mono font-bold ${overdueInfo.isOverdue ? 'text-rose-700' : 'text-slate-900'}`}>
-                                    {formatDatePL(doorOrd.terminZamowienia)}
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Status terminowości (Badge) */}
-                              <div>
-                                {overdueInfo.isOverdue ? (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300 shadow-2xs">
-                                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                                    <span>{overdueInfo.label}</span>
-                                  </span>
-                                ) : isDelivered ? (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                    <span>Dostarczono ({formatDatePL(doorOrd.terminDostawy)})</span>
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-amber-50 text-amber-900 border border-amber-200">
-                                    <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                                    <span>W toku ({overdueInfo.label})</span>
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Szybkie potwierdzenie jeśli nie dostarczono */}
-                              {!isDelivered && (
-                                <button
-                                  type="button"
-                                  onClick={() => onQuickConfirmDelivery(doorOrd)}
-                                  className="w-full mt-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-[11px] font-bold rounded-lg shadow-2xs cursor-pointer flex items-center justify-center gap-1.5 transition-colors"
-                                  title="Potwierdź odbiór drzwi dzisiaj"
-                                >
-                                  <CheckSquare className="w-3.5 h-3.5" />
-                                  <span>Potwierdź dostawę</span>
-                                </button>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* 3. POWIĄZANE ZLECENIA Z BEZPOŚREDNIMI LINKAMI */}
-                          <td className="py-4 px-3.5 align-top">
-                            <div className="flex flex-col gap-1.5">
-                              <span className="text-[10px] uppercase font-bold text-slate-400">
-                                Numery ZL ({doorOrd.numeryZl.length}):
-                              </span>
-                              {doorOrd.numeryZl.length > 0 ? (
-                                <div className="flex flex-wrap gap-1.5">
-                                  {doorOrd.numeryZl.map((zl) => {
-                                    const matchingOrder = orders.find(
-                                      (o) => isSameOrderNumber(o.orderNumber, zl)
-                                    );
-
-                                    return (
-                                      <button
-                                        key={zl}
-                                        type="button"
-                                        onClick={() =>
-                                          matchingOrder && onNavigateToOrder && onNavigateToOrder(matchingOrder.id)
-                                        }
-                                        className={`px-2 py-1 rounded-lg text-xs font-mono font-bold flex items-center gap-1 transition-all ${
-                                          matchingOrder
-                                            ? 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-600 hover:text-white cursor-pointer shadow-2xs'
-                                            : 'bg-slate-100 text-slate-700 border border-slate-200 cursor-default'
-                                        }`}
-                                        title={
-                                          matchingOrder
-                                            ? `Kliknij, aby otworzyć zlecenie ${matchingOrder.projectName} (${matchingOrder.orderNumber})`
-                                            : `Brak aktywnego zlecenia o numerze ${zl}`
-                                        }
-                                      >
-                                        <Tag className="w-3 h-3 opacity-70" />
-                                        <span>{zl}</span>
-                                        {matchingOrder && (
-                                          <ExternalLink className="w-2.5 h-2.5 opacity-70 ml-0.5" />
-                                        )}
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                <span className="text-slate-400 italic text-[11px]">Brak przypisania ZL</span>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* 4. KONTRAHENT / PRZYPISANE STACJE ORAZ PEŁNE UWAGI */}
-                          <td className="py-4 px-4 align-top">
-                            <div className="space-y-2">
-                              {/* Kontrahent i realizacje */}
-                              <div>
-                                <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
-                                  Stacje i realizacje:
-                                </span>
-                                <div className="text-slate-900 font-semibold text-xs leading-relaxed bg-slate-50/70 p-2 rounded-lg border border-slate-200/70">
-                                  {doorOrd.kontrahentRealizacje || (
-                                    <span className="text-slate-400 italic">Brak podanego kontrahenta</span>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Uwagi – w pełni wyeksponowane, bez obcinania! */}
-                              {doorOrd.uwagi ? (
-                                <div className="p-2.5 bg-amber-50/80 rounded-lg border border-amber-200/80 text-xs text-slate-800">
-                                  <div className="flex items-center gap-1 text-[10px] uppercase font-extrabold text-amber-900 mb-1">
-                                    <Info className="w-3 h-3 text-amber-700 shrink-0" />
-                                    <span>Uwagi i specyfikacja techniczna:</span>
-                                  </div>
-                                  <div className="whitespace-pre-wrap leading-relaxed text-slate-800">
-                                    {doorOrd.uwagi}
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="text-[11px] text-slate-400 italic block">
-                                  Brak dodatkowych uwag technicznych
-                                </span>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* 5. PRZYCISKI AKCJI (ZAWSZE WIDOCZNE) */}
-                          <td className="py-4 px-4 text-right align-top">
-                            <div className="flex flex-col items-end gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => toggleExpand(doorOrd.id)}
-                                className={`w-full max-w-[130px] px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors flex items-center justify-center gap-1 ${
-                                  isExpanded
-                                    ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                                }`}
-                              >
-                                <span>{isExpanded ? 'Zwiń' : 'Szczegóły'}</span>
-                                {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                              </button>
-
-                              {onOpenDoorOrder && (
-                                <button
-                                  type="button"
-                                  onClick={() => onOpenDoorOrder(doorOrd)}
-                                  className="w-full max-w-[130px] px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-lg text-xs font-bold cursor-pointer transition-colors"
-                                >
-                                  Otwórz podstronę
-                                </button>
-                              )}
-
-                              {canManageDoors && (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => onEditDoorOrder(doorOrd)
-                                    className="w-full max-w-[130px] px-3 py-1.5 bg-white hover:bg-blue-50 text-blue-700 hover:text-blue-800 border border-blue-200 rounded-lg text-xs font-semibold cursor-pointer transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
-                                  >
-                                    <Edit2 className="w-3.5 h-3.5" />
-                                    <span>Edytuj</span>
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => setOrderToDelete(doorOrd)}
-                                    className="w-full max-w-[130px] px-2.5 py-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg text-xs font-medium cursor-pointer transition-colors flex items-center justify-center gap-1"
-                                    title="Usuń zamówienie drzwi"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                    <span>Usuń</span>
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-
-                        {/* ROZWINIĘTY WIERSZ: PEŁNE DETALE, HISTORIA ZMIAN I POWIĄZANIA */}
-                        {isExpanded && (
-                          <tr className="bg-slate-50/80 border-b border-slate-200">
-                            <td colSpan={5} className="p-4 sm:p-5">
-                              <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-4">
-                                {/* Górna belka szczegółów: Finanse, Dostawa i Przejście do zlecenia */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-4 border-b border-slate-200">
-                                  {/* Finanse dokumentu */}
-                                  <div className="p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-200/80">
-                                    <div className="text-xs font-bold text-emerald-950 flex items-center gap-1.5 mb-2">
-                                      <DollarSign className="w-4 h-4 text-emerald-600" />
-                                      Wartość zamówienia źródłowego
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2 text-xs">
-                                      <div>
-                                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Netto:</span>
-                                        <span className="text-base font-mono font-black text-slate-900">
-                                          {formatPLN(doorOrd.wartoscNetto)}
-                                        </span>
-                                      </div>
-                                      <div>
-                                        <span className="text-[10px] uppercase font-bold text-slate-500 block">Brutto:</span>
-                                        <span className="text-base font-mono font-black text-emerald-900">
-                                          {formatPLN(doorOrd.wartoscBrutto)}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Status realizacji dostawy */}
-                                  <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                                    <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5 mb-2">
-                                      <Calendar className="w-4 h-4 text-blue-600" />
-                                      Potwierdzenie dostawy
-                                    </div>
-                                    <div className="text-xs">
-                                      {doorOrd.terminDostawy ? (
-                                        <div className="text-emerald-700 font-bold flex items-center gap-1.5">
-                                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                                          <span>Dostarczono: {formatDatePL(doorOrd.terminDostawy)}</span>
-                                        </div>
-                                      ) : (
-                                        <div className="text-amber-700 font-bold flex items-center gap-1.5">
-                                          <Clock className="w-4 h-4 text-amber-600" />
-                                          <span>Oczekuje na dostarczenie</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="mt-2.5 pt-2 border-t border-slate-200 flex items-center gap-2">
-                                      {canManageDoors ? (
-                                        !doorOrd.terminDostawy ? (
-                                          <button
-                                            type="button"
-                                            onClick={() => onQuickConfirmDelivery(doorOrd)}
-                                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg cursor-pointer transition-colors flex items-center gap-1"
-                                          >
-                                            <CheckSquare className="w-3.5 h-3.5" />
-                                            <span>Potwierdź dzisiaj</span>
-                                          </button>
-                                        ) : (
-                                          <button
-                                            type="button"
-                                            onClick={() => onEditDoorOrder(doorOrd)}
-                                            className="px-2.5 py-1 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-medium rounded-lg cursor-pointer transition-colors"
-                                          >
-                                            Zmień datę dostawy
-                                          </button>
-                                        )
-                                      ) : (
-                                        <span className="text-[11px] text-slate-400 italic">
-                                          Brak uprawnień do edycji dostawy
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  {/* Przejście do zleceń stacji */}
-                                  <div className="p-3.5 bg-blue-50/50 rounded-xl border border-blue-200/70">
-                                    <div className="text-xs font-bold text-blue-950 flex items-center gap-1.5 mb-2">
-                                      <Building2 className="w-4 h-4 text-blue-600" />
-                                      Powiązane zlecenia stacji ENCO
-                                    </div>
-                                    <div className="flex flex-wrap gap-1.5">
-                                      {doorOrd.numeryZl.map((zl) => {
-                                        const matchingOrder = orders.find(
-                                          (o) => isSameOrderNumber(o.orderNumber, zl)
-                                        );
-                                        return matchingOrder ? (
-                                          <button
-                                            key={zl}
-                                            type="button"
-                                            onClick={() => onNavigateToOrder && onNavigateToOrder(matchingOrder.id)}
-                                            className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer transition-colors"
-                                          >
-                                            <span>Otwórz {matchingOrder.projectName} ({zl})</span>
-                                            <ArrowRight className="w-3.5 h-3.5" />
-                                          </button>
-                                        ) : (
-                                          <span key={zl} className="text-xs text-slate-500 font-mono">
-                                            {zl} (brak zlecenia)
-                                          </span>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Rejestr historii zmian terminów i uwag */}
-                                <div>
-                                  <div className="flex items-center justify-between mb-2">
-                                    <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                                      <Clock className="w-4 h-4 text-blue-600" />
-                                      Historia i audit log zmian tego zamówienia
-                                    </h4>
-                                    <span className="text-[11px] text-slate-400">
-                                      Liczba wpisów: {doorOrd.history?.length || 0}
-                                    </span>
-                                  </div>
-
-                                  {doorOrd.history && doorOrd.history.length > 0 ? (
-                                    <div className="space-y-2 border-l-2 border-blue-200 ml-2 pl-3 py-1">
-                                      {doorOrd.history.map((h) => {
-                                        const dateObj = new Date(h.timestamp);
-                                        const formattedTs = isNaN(dateObj.getTime())
-                                          ? h.timestamp
-                                          : `${dateObj.toLocaleDateString('pl-PL')} ${dateObj.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}`;
-
-                                        return (
-                                          <div key={h.id} className="text-xs text-slate-700 relative">
-                                            <div className="absolute -left-[19px] top-1.5 w-2.5 h-2.5 rounded-full bg-blue-600 border-2 border-white" />
-                                            <div className="flex items-center gap-2">
-                                              <span className="font-bold text-slate-900">{h.fieldName}</span>
-                                              <span className="text-[10px] text-slate-400 font-mono">{formattedTs}</span>
-                                            </div>
-                                            <div className="text-[11px] text-slate-600 mt-0.5">
-                                              <span className="line-through text-slate-400">{h.oldValue}</span>
-                                              <span className="mx-1.5 text-slate-400 font-bold">→</span>
-                                              <span className="font-bold text-slate-900">{h.newValue}</span>
-                                            </div>
-                                            {h.note && (
-                                              <div className="text-[11px] text-slate-500 italic mt-0.5">
-                                                Notatka: {h.note}
-                                              </div>
-                                            )}
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  ) : (
-                                    <p className="text-xs text-slate-400 italic">
-                                      Brak zarejestrowanych zmian terminów lub uwag dla tego zamówienia.
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Podsumowanie dolne */}
-          <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
-            <div>
-              Wyświetlono <span className="font-bold text-slate-800">{filteredOrders.length}</span> z{' '}
-              <span className="font-bold text-slate-800">{doorOrders.length}</span> zamówień drzwi
-            </div>
-            <div className="flex items-center gap-4 text-xs">
-              <span>
-                Suma netto: <strong className="text-slate-900">{formatPLN(stats.totalNetto)}</strong>
-              </span>
-              <span>
-                Suma brutto: <strong className="text-emerald-800">{formatPLN(stats.totalBrutto)}</strong>
-              </span>
-            </div>
+      {/* 4. GŁÓWNY REJESTR PZD — zwarta tabela */}
+      <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900">Rejestr zamówień PZD</h2>
+            <p className="text-[11px] text-slate-600">Edytuj pola bezpośrednio w tabeli. Przycisk „Zapisz zmiany” miga, gdy są niezapisane poprawki.</p>
           </div>
+          <div className="flex items-center gap-3"><span className="text-xs font-semibold text-slate-600">Pozycji: {filteredOrders.length} / {doorOrders.length}</span>{canManageDoors && <button type="button" onClick={saveDirtyDoorOrders} disabled={dirtyDoorOrderIds.length === 0} className={"inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors " + (dirtyDoorOrderIds.length ? "animate-pulse border-amber-500 bg-amber-400 text-slate-950 shadow-md" : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400")}><CheckSquare className="h-4 w-4" />{dirtyDoorOrderIds.length ? "Zapisz zmiany (" + dirtyDoorOrderIds.length + ")" : "Zapisano"}</button>}</div>
         </div>
-      )}
-
-      {/* 5. WIDOK 2: KARTY (KAFLE) — DLA PRZEJRZYSTEGO WIDOKU KAŻDEGO ZAMÓWIENIA */}
-      {viewMode === 'cards' && (
-        <div className="space-y-4">
-          {filteredOrders.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-16 text-center text-slate-400">
-              <Layers className="w-10 h-10 mx-auto mb-3 text-slate-300" />
-              <p className="font-bold text-slate-700 text-base">Brak zamówień drzwi spełniających kryteria</p>
-              <p className="text-xs text-slate-400 mt-1">Zmień filtry lub dodaj nowe zamówienie.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-              {filteredOrders.map((doorOrd) => {
-                const isDelivered = Boolean(doorOrd.terminDostawy && doorOrd.terminDostawy.trim() !== '');
-                const overdueInfo = checkDoorOrderOverdue(doorOrd.terminZamowienia, doorOrd.terminDostawy);
-                const isExpanded = expandedRowId === doorOrd.id;
-
-                return (
-                  <div
-                    key={doorOrd.id}
-                    className={`bg-white rounded-2xl border transition-all shadow-xs hover:shadow-md flex flex-col justify-between ${
-                      overdueInfo.isOverdue
-                        ? 'border-rose-300 border-l-4 border-l-rose-600 ring-1 ring-rose-200'
-                        : isDelivered
-                        ? 'border-emerald-300 border-l-4 border-l-emerald-600'
-                        : 'border-slate-200 border-l-4 border-l-amber-500'
-                    }`}
-                  >
-                    {/* Nagłówek karty */}
-                    <div className="p-4 border-b border-slate-100 bg-slate-50/70 rounded-t-2xl flex items-start justify-between gap-2">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-base font-black text-slate-900 tracking-tight">
-                            {doorOrd.numerDokumentu}
-                          </span>
-                          {doorOrd.kategoria && (
-                            <span className="px-2 py-0.5 bg-slate-200/80 text-slate-700 rounded text-[10px] font-mono font-semibold">
-                              {doorOrd.kategoria}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Status Badge */}
-                        <div className="mt-1.5">
-                          {overdueInfo.isOverdue ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
-                              <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-                              {overdueInfo.label}
-                            </span>
-                          ) : isDelivered ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                              Dostarczono ({formatDatePL(doorOrd.terminDostawy)})
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-900 border border-amber-200">
-                              <Clock className="w-3.5 h-3.5 text-amber-600" />
-                              W toku ({overdueInfo.label})
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Akcje nagłówka */}
-                      <div className="flex items-center gap-1">
-                        {onOpenDoorOrder && <button type="button" onClick={() => onOpenDoorOrder(doorOrd)} className="rounded-lg p-1.5 text-blue-700 hover:bg-blue-50" title="Otwórz osobną podstronę"><FileText className="h-4 w-4" /></button>}
-                        {canManageDoors ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => onEditDoorOrder(doorOrd)}
-                              className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer transition-colors"
-                              title="Edytuj zamówienie drzwi"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setOrderToDelete(doorOrd)}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors"
-                              title="Usuń zamówienie drzwi"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </>
-                        ) : (
-                          <span className="text-[10px] text-slate-400 font-mono px-1.5 py-0.5 bg-slate-100 rounded border border-slate-200">
-                            Podgląd
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Ciało karty – wszystkie elementy w pełni widoczne */}
-                    <div className="p-4 space-y-3.5 flex-1 text-xs">
-                      {/* Terminy */}
-                      <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
-                        <div>
-                          <span className="text-[10px] text-slate-500 font-medium block">Data zamówienia:</span>
-                          <span className="font-mono font-semibold text-slate-800">
-                            {formatDatePL(doorOrd.dataZamowienia)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-slate-500 font-medium block">Termin z zamówienia:</span>
-                          <span className={`font-mono font-bold ${overdueInfo.isOverdue ? 'text-rose-700' : 'text-slate-900'}`}>
-                            {formatDatePL(doorOrd.terminZamowienia)}
-                          </span>
-                        </div>
-                        <div className="col-span-2 pt-1.5 border-t border-slate-200/60 flex items-center justify-between">
-                          <span className="text-[10px] text-slate-500 font-medium">Rzeczywista dostawa:</span>
-                          <span className={`font-mono font-bold ${isDelivered ? 'text-emerald-700' : 'text-amber-700'}`}>
-                            {doorOrd.terminDostawy ? formatDatePL(doorOrd.terminDostawy) : 'Nieustalony'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Finanse */}
-                      {(doorOrd.wartoscNetto || doorOrd.wartoscBrutto) && (
-                        <div className="p-2.5 bg-emerald-50/60 rounded-xl border border-emerald-200/60 flex items-center justify-between text-xs">
-                          <span className="text-emerald-950 font-bold flex items-center gap-1">
-                            <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
-                            Wartość:
-                          </span>
-                          <div className="flex items-center gap-3 font-mono font-bold">
-                            {doorOrd.wartoscNetto && (
-                              <span className="text-slate-800">Netto: {formatPLN(doorOrd.wartoscNetto)}</span>
-                            )}
-                            {doorOrd.wartoscBrutto && (
-                              <span className="text-emerald-900">Brutto: {formatPLN(doorOrd.wartoscBrutto)}</span>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Kontrahent i stacje */}
-                      <div>
-                        <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
-                          Kontrahent / Przypisane realizacje:
-                        </span>
-                        <div className="text-slate-900 font-semibold bg-white p-2.5 rounded-xl border border-slate-200 leading-relaxed">
-                          {doorOrd.kontrahentRealizacje || <span className="text-slate-400 italic">Brak wpisu</span>}
-                        </div>
-                      </div>
-
-                      {/* Powiązane zlecenia ZL */}
-                      <div>
-                        <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">
-                          Numery ZL:
-                        </span>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {doorOrd.numeryZl.length > 0 ? (
-                            doorOrd.numeryZl.map((zl) => {
-                              const matchingOrder = orders.find(
-                                (o) => isSameOrderNumber(o.orderNumber, zl)
-                              );
-                              return (
-                                <button
-                                  key={zl}
-                                  type="button"
-                                  onClick={() =>
-                                    matchingOrder && onNavigateToOrder && onNavigateToOrder(matchingOrder.id)
-                                  }
-                                  className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-colors ${
-                                    matchingOrder
-                                      ? 'bg-blue-50 text-blue-700 border border-blue-300 hover:bg-blue-600 hover:text-white cursor-pointer shadow-2xs'
-                                      : 'bg-slate-100 text-slate-700 border border-slate-200 cursor-default'
-                                  }`}
-                                  title={matchingOrder ? `Otwórz zlecenie ${matchingOrder.projectName}` : undefined}
-                                >
-                                  <Tag className="w-3 h-3 opacity-70" />
-                                  <span>{zl}</span>
-                                  {matchingOrder && <ExternalLink className="w-3 h-3 opacity-70 ml-0.5" />}
-                                </button>
-                              );
-                            })
-                          ) : (
-                            <span className="text-slate-400 italic text-xs">Brak przypisanych ZL</span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Uwagi */}
-                      {doorOrd.uwagi && (
-                        <div className="p-2.5 bg-amber-50/70 rounded-xl border border-amber-200/80">
-                          <span className="text-[10px] uppercase font-bold text-amber-900 block mb-1">
-                            Uwagi i specyfikacja:
-                          </span>
-                          <div className="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">
-                            {doorOrd.uwagi}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Rozwijana historia */}
-                      {isExpanded && doorOrd.history && doorOrd.history.length > 0 && (
-                        <div className="pt-2 border-t border-slate-200 space-y-2">
-                          <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5 text-blue-600" />
-                            Historia modyfikacji ({doorOrd.history.length}):
-                          </div>
-                          <div className="space-y-1.5 border-l-2 border-blue-200 pl-3 py-1">
-                            {doorOrd.history.map((h) => (
-                              <div key={h.id} className="text-[11px]">
-                                <span className="font-semibold text-slate-900">{h.fieldName}: </span>
-                                <span className="line-through text-slate-400">{h.oldValue}</span>
-                                <span className="mx-1 text-slate-400">→</span>
-                                <span className="font-semibold text-slate-800">{h.newValue}</span>
-                                {h.note && <span className="text-slate-500 italic ml-1.5">({h.note})</span>}
+        {filteredOrders.length === 0 ? (
+          <div className="px-4 py-12 text-center">
+            <FileText className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+            <p className="text-sm font-semibold text-slate-800">Brak zamówień spełniających kryteria</p>
+            <p className="mt-1 text-xs text-slate-500">Zmień wyszukiwanie lub dodaj nowe zamówienie.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1080px] table-fixed border-collapse text-left text-[11px]">
+              <thead className="sticky top-0 z-10 bg-slate-100 text-[11px] font-bold text-slate-800">
+                <tr className="[&>th]:border-b [&>th]:border-r [&>th]:border-slate-300 [&>th]:px-1.5 [&>th]:py-2 [&>th]:whitespace-normal [&>th]:break-words [&>th]:leading-tight">
+                  <th className="w-[110px]">Numer dokumentu</th>
+                  <th className="w-[105px]">Data zamówienia</th>
+                  <th className="w-[105px]">Termin z zamówienia</th>
+                  <th className="w-[115px]">Kategoria</th>
+                  <th className="w-[85px] text-right">Netto</th>
+                  <th className="w-[85px] text-right">Brutto</th>
+                  <th className="w-[125px]">Numer ZL</th>
+                  <th className="w-[180px]">Kontrahent</th>
+                  <th className="w-[105px]">Termin dostawy</th>
+                  <th className="w-[140px]">Uwagi</th>
+                  <th className="w-[70px] text-center">Akcje</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 text-slate-800">
+                {filteredOrders.map((doorOrd, index) => {
+                  const overdueInfo = checkDoorOrderOverdue(doorOrd.terminZamowienia, doorOrd.terminDostawy);
+                  const isDelivered = Boolean(doorOrd.terminDostawy && doorOrd.terminDostawy.trim());
+                  const row = draftsById[doorOrd.id] || doorOrd;
+                  const zlSearch = zlSearchQuery.trim().toLowerCase();
+                  const filteredZlOrders = orders.filter((availableOrder) =>
+                    !zlSearch ||
+                    availableOrder.orderNumber.toLowerCase().includes(zlSearch) ||
+                    (availableOrder.client || '').toLowerCase().includes(zlSearch) ||
+                    (availableOrder.projectName || '').toLowerCase().includes(zlSearch)
+                  );
+                  const cellInput = "w-full min-w-0 max-w-full rounded border border-blue-300 bg-white px-1 py-1 text-[11px] text-slate-900 outline-none focus:ring-2 focus:ring-blue-200";
+                  const patch = (key: keyof DoorOrder, value: any) => patchDoorOrder(doorOrd, key, value);
+                  return (
+                    <tr
+                      key={doorOrd.id}
+                      className={`group align-top transition-colors hover:bg-blue-50/70 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'} ${overdueInfo.isOverdue ? '!bg-rose-50' : ''} ${isDelivered ? 'text-slate-600' : ''}`}
+                    >
+                      <td className="border-r border-slate-100 px-2 py-2">
+                        {canManageDoors ? <input aria-label="Numer dokumentu" className={cellInput + " font-mono font-bold"} value={row.numerDokumentu} onChange={(e) => patch('numerDokumentu', e.target.value)} /> : <button type="button" onClick={() => onOpenDoorOrder ? onOpenDoorOrder(doorOrd) : toggleExpand(doorOrd.id)} className="font-mono font-bold text-blue-700 hover:text-blue-900 hover:underline text-left">{doorOrd.numerDokumentu}</button>}
+                        {overdueInfo.isOverdue && <div className="mt-1 text-[10px] font-bold text-rose-700">Po terminie</div>}
+                        {isDelivered && <div className="mt-1 text-[10px] font-semibold text-emerald-700">Dostarczono</div>}
+                      </td>
+                      <td className="min-w-0 border-r border-slate-100 px-1.5 py-2 font-mono">{canManageDoors ? <input aria-label="Data zamówienia" type="date" className={cellInput} value={row.dataZamowienia || ''} onChange={(e) => patch('dataZamowienia', e.target.value)} /> : formatDatePL(doorOrd.dataZamowienia)}</td>
+                      <td className={`min-w-0 border-r border-slate-100 px-1.5 py-2 font-mono font-semibold ${overdueInfo.isOverdue ? 'text-rose-700' : ''}`}>{canManageDoors ? <input aria-label="Termin z zamówienia" type="date" className={cellInput} value={row.terminZamowienia || ''} onChange={(e) => patch('terminZamowienia', e.target.value)} /> : formatDatePL(doorOrd.terminZamowienia)}</td>
+                      <td className="border-r border-slate-100 px-2 py-2 font-mono">{canManageDoors ? <input aria-label="Kategoria" className={cellInput} value={row.kategoria || ''} onChange={(e) => patch('kategoria', e.target.value)} /> : doorOrd.kategoria || '—'}</td>
+                      <td className="min-w-0 border-r border-slate-100 px-1.5 py-2 text-right font-mono tabular-nums">{canManageDoors ? <input aria-label="Netto" type="number" step="0.01" className={cellInput + ' text-right'} value={formatAmountInput(row.wartoscNetto)} onChange={(e) => patch('wartoscNetto', e.target.value === '' ? null : Number(e.target.value))} /> : formatPLN(doorOrd.wartoscNetto)}</td>
+                      <td className="min-w-0 border-r border-slate-100 px-1.5 py-2 text-right font-mono font-semibold tabular-nums">{canManageDoors ? <input aria-label="Brutto" type="number" step="0.01" className={cellInput + ' text-right'} value={formatAmountInput(row.wartoscBrutto)} onChange={(e) => patch('wartoscBrutto', e.target.value === '' ? null : Number(e.target.value))} /> : formatPLN(doorOrd.wartoscBrutto)}</td>
+                      <td className="min-w-0 border-r border-slate-100 px-1.5 py-2 break-words">
+                        <div className="flex flex-wrap gap-1">
+                          {canManageDoors ? (
+                            <details data-zl-dropdown className="relative min-w-0">
+                              <summary onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); setZlDropdownPosition({ top: rect.bottom + 4, left: rect.left }); }} className="max-w-full cursor-pointer list-none whitespace-normal break-words rounded border border-blue-300 bg-white px-1.5 py-1.5 text-[11px] font-semibold text-slate-800 hover:bg-blue-50">
+                                {row.numeryZl.length ? `Wybrano: ${row.numeryZl.length} ZL ▾` : 'Wybierz zlecenia ZL ▾'}
+                              </summary>
+                              <div style={{ top: zlDropdownPosition?.top ?? 0, left: zlDropdownPosition?.left ?? 0 }} className="fixed z-50 mt-1 w-80 max-w-[80vw] rounded-lg border border-slate-300 bg-white p-2 shadow-xl">
+                                <div className="mb-1 px-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">Zaznacz powiązane zlecenia</div>
+                                <input
+                                  type="text"
+                                  value={zlSearchQuery}
+                                  onChange={(e) => setZlSearchQuery(e.target.value)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  placeholder="Wpisz numer ZL, klienta lub projekt..."
+                                  aria-label="Szukaj zlecenia ZL"
+                                  className="mb-2 w-full rounded-md border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                />
+                                <div className="max-h-52 overflow-y-auto">
+                                {filteredZlOrders.length ? filteredZlOrders.map((availableOrder) => {
+                                  const checked = row.numeryZl.some((zl) => isSameOrderNumber(zl, availableOrder.orderNumber));
+                                  return (
+                                    <label key={availableOrder.id} className="flex cursor-pointer items-start gap-2 rounded px-2 py-1.5 hover:bg-blue-50">
+                                      <input
+                                        type="checkbox"
+                                        className="mt-0.5 accent-blue-600"
+                                        checked={checked}
+                                        onChange={(e) => {
+                                          const unmatched = row.numeryZl.filter((zl) => !orders.some((existing) => isSameOrderNumber(existing.orderNumber, zl)));
+                                          const selected = row.numeryZl.filter((zl) => orders.some((existing) => isSameOrderNumber(existing.orderNumber, zl)) && !isSameOrderNumber(availableOrder.orderNumber, zl));
+                                          const nextNumbers = e.target.checked ? [...selected, availableOrder.orderNumber, ...unmatched] : [...selected, ...unmatched];
+                                          const uniqueNumbers = Array.from(new Set(nextNumbers));
+                                          const linked = orders.filter((o) => uniqueNumbers.some((zl) => isSameOrderNumber(o.orderNumber, zl)));
+                                          patch('numeryZl', uniqueNumbers);
+                                          patch('kontrahentRealizacje', linked.map((o) => `${o.orderNumber} — ${o.client?.trim() || 'kontrahent nieuzupełniony'}`).join('\n'));
+                                        }}
+                                      />
+                                      <span className="min-w-0 flex-1">
+                                        <span className="block font-mono text-[11px] font-bold text-blue-800">{availableOrder.orderNumber}</span>
+                                        <span className="block break-words text-[11px] text-slate-600">{availableOrder.client || 'Brak kontrahenta'}{availableOrder.projectName ? ` · ${availableOrder.projectName}` : ''}</span>
+                                      </span>
+                                    </label>
+                                  );
+                                }) : <p className="px-2 py-2 text-xs text-slate-500">{orders.length ? 'Brak wyników wyszukiwania.' : 'Brak zleceń w aplikacji.'}</p>}
+                                </div>
+                                {row.numeryZl.some((zl) => !orders.some((o) => isSameOrderNumber(o.orderNumber, zl))) && (
+                                  <p className="mt-1 border-t border-slate-200 px-2 pt-2 text-[10px] text-amber-700">Zachowano również wcześniej wpisane numery ZL, których nie ma na liście zleceń.</p>
+                                )}
                               </div>
-                            ))}
-                          </div>
+                            </details>
+                          ) : doorOrd.numeryZl.length ? doorOrd.numeryZl.map((zl) => {
+                            const matchingOrder = orders.find((o) => isSameOrderNumber(o.orderNumber, zl));
+                            return <button key={zl} type="button" onClick={() => matchingOrder && onNavigateToOrder?.(matchingOrder.id)} title={matchingOrder ? `Otwórz zlecenie ${matchingOrder.projectName}` : `Brak aktywnego zlecenia ${zl}`} className={`rounded border px-1.5 py-0.5 font-mono text-[11px] ${matchingOrder ? 'border-blue-200 bg-blue-50 font-semibold text-blue-800 hover:bg-blue-100' : 'border-slate-200 bg-slate-100 text-slate-700'}`}>{zl}</button>;
+                          }) : '—'}
                         </div>
-                      )}
-                    </div>
-
-                    {/* Stopka karty */}
-                    <div className="p-3.5 bg-slate-50 border-t border-slate-100 rounded-b-2xl flex items-center justify-between gap-2">
-                      <button
-                        type="button"
-                        onClick={() => toggleExpand(doorOrd.id)}
-                        className="text-xs text-blue-600 hover:text-blue-800 font-bold cursor-pointer"
-                      >
-                        {isExpanded ? 'Zwiń historię ↑' : `Historia (${doorOrd.history?.length || 0}) ↓`}
-                      </button>
-
-                      <div className="flex items-center gap-2">
-                        {canManageDoors ? (
-                          <>
-                            {!doorOrd.terminDostawy ? (
-                              <button
-                                type="button"
-                                onClick={() => onQuickConfirmDelivery(doorOrd)}
-                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-lg shadow-2xs cursor-pointer flex items-center gap-1.5 transition-colors"
-                              >
-                                <CheckSquare className="w-3.5 h-3.5" />
-                                <span>Potwierdź dostawę</span>
-                              </button>
-                            ) : (
-                              <span className="text-xs text-emerald-700 font-bold">
-                                ✓ Potwierdzono
-                              </span>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => onEditDoorOrder(doorOrd)}
-                              className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold rounded-lg cursor-pointer transition-colors"
-                            >
-                              Edytuj
-                            </button>
-                          </>
-                        ) : (
-                          <span className="text-[11px] text-slate-400 italic">
-                            Tylko podgląd
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
+                      </td>
+                      <td className="min-w-0 border-r border-slate-100 px-2 py-2 align-top">
+                        <div className="space-y-1.5 text-[11px] leading-snug">
+                          {(() => {
+                            const linkedOrders = row.numeryZl.map((zl) => orders.find((o) => isSameOrderNumber(o.orderNumber, zl))).filter((o): o is Order => Boolean(o));
+                            const entries = linkedOrders.length
+                              ? linkedOrders.map((o) => `${o.orderNumber} — ${o.client?.trim() || 'kontrahent nieuzupełniony'}`)
+                              : (row.kontrahentRealizacje || '').split('\n').map((entry) => entry.trim()).filter(Boolean);
+                            return entries.length ? entries.map((entry, entryIndex) => (
+                              <div key={`${doorOrd.id}-kontrahent-${entryIndex}`} className="flex min-w-0 items-start gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-1">
+                                <span className="shrink-0 font-black text-blue-700">•</span>
+                                <span className="min-w-0 break-words text-slate-800">{entry}</span>
+                              </div>
+                            )) : <span className="text-slate-400">—</span>;
+                          })()}
+                        </div>
+                      </td>
+                      <td className={`min-w-0 border-r border-slate-100 px-1.5 py-2 font-mono ${isDelivered ? 'text-emerald-700' : 'text-slate-500'}`}>{canManageDoors ? <input aria-label="Termin dostawy" type="date" className={cellInput} value={row.terminDostawy || ''} onChange={(e) => patch('terminDostawy', e.target.value)} /> : doorOrd.terminDostawy ? formatDatePL(doorOrd.terminDostawy) : '—'}</td>
+                      <td className="border-r border-slate-100 px-2 py-2 leading-snug break-words"><div className="whitespace-pre-wrap break-words">{canManageDoors ? <textarea aria-label="Uwagi" className={cellInput + " resize-none overflow-hidden whitespace-pre-wrap break-words"} rows={2} ref={(element) => { if (element) { element.style.height = 'auto'; element.style.height = `${element.scrollHeight}px`; } }} value={row.uwagi || ''} onChange={(e) => patch('uwagi', e.target.value)} /> : doorOrd.uwagi || '—'}</div></td>
+                      <td className="min-w-0 px-1 py-2 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          {!canManageDoors ? <span className="text-[10px] text-slate-500">Podgląd</span> : <>
+                            {!isDelivered && <button type="button" onClick={() => onQuickConfirmDelivery(doorOrd)} title="Potwierdź dostawę" className="rounded p-1.5 text-emerald-700 hover:bg-emerald-100"><CheckSquare className="h-4 w-4" /></button>}
+                            <button type="button" onClick={() => setOrderToDelete(doorOrd)} title="Usuń" className="rounded p-1.5 text-rose-600 hover:bg-rose-100"><Trash2 className="h-4 w-4" /></button>
+                          </>}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* 5. MODAL POTWIERDZENIA USUNIĘCIA ZAMÓWIENIA DRZWI */}
       {orderToDelete && (

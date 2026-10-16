@@ -1,57 +1,34 @@
 import { Order } from '../types/enco';
 
-/**
- * Normalizuje numer zlecenia do jednolitego standardu:
- * - "Zlecenie 7", "zlecenie 7", "Zlecenie nr 7", "ZL 7", "zl-7", "zl7", "7" -> "ZL7"
- * - "ZL 08/2026", "Zlecenie 8/2026" -> "ZL8/2026"
- * - Usuwa zbędne spacje, zamienia na wielkie litery
- */
-export function normalizeOrderNumber(input: string): string {
+const currentYear = () => new Date().getFullYear();
+
+/** Normalizuje numer do formatu ZL1/2026. Brakujący rok uzupełnia podanym rokiem. */
+export function normalizeOrderNumber(input: string, defaultYear: number = currentYear()): string {
   if (!input) return '';
   const clean = input.trim();
-
-  // Dopasowanie do wzorców:
-  // "Zlecenie nr 7", "zlecenie 7", "zl 7", "zl-7", "zl/7", "nr 7", "#7"
-  const zlMatch = clean.match(/^(?:zlecenie\s*(?:nr|numer)?\.?\s*|zl\s*[-/.\s]?\s*|nr\s*|#\s*)(\d+)(.*)$/i);
-  if (zlMatch) {
-    const num = parseInt(zlMatch[1], 10);
-    const suffix = (zlMatch[2] || '').trim();
-    if (suffix) {
-      const cleanSuffix = suffix.replace(/^[\s-]+/, '');
-      const formattedSuffix = cleanSuffix.startsWith('/') ? cleanSuffix : `/${cleanSuffix}`;
-      return `ZL${num}${formattedSuffix}`.toUpperCase();
-    }
-    return `ZL${num}`;
+  const match = clean.match(/^(?:zlecenie\s*(?:nr|numer)?\.?\s*|zl\s*[-/.\s]?\s*|nr\s*|#\s*)(\d+)(.*)$/i);
+  if (match) {
+    const num = parseInt(match[1], 10);
+    const suffix = (match[2] || '').trim().replace(/^[\s-]+/, '');
+    const yearMatch = suffix.match(/^(?:\/\s*)?(\d{4})$/);
+    const year = yearMatch ? yearMatch[1] : String(defaultYear);
+    return `ZL${num}/${year}`;
   }
-
-  // Same cyfry, np. "7" -> "ZL7"
-  if (/^\d+$/.test(clean)) {
-    return `ZL${parseInt(clean, 10)}`;
-  }
-
-  // W innym wypadku, uppercase i pojedyncze spacje
+  if (/^\d+$/.test(clean)) return `ZL${parseInt(clean, 10)}/${defaultYear}`;
   return clean.toUpperCase().replace(/\s+/g, ' ');
 }
 
-/**
- * Sprawdza czy dwa numery zleceń odnoszą się do tego samego zlecenia
- * (np. "Zlecenie 7" i "ZL7" to to samo)
- */
+/** Numery są identyczne tylko wtedy, gdy zgadza się numer i rok. */
 export function isSameOrderNumber(a?: string, b?: string): boolean {
   if (!a || !b) return false;
-  const normA = normalizeOrderNumber(a);
-  const normB = normalizeOrderNumber(b);
-  if (normA && normB && normA === normB) return true;
+  return normalizeOrderNumber(a) === normalizeOrderNumber(b);
+}
 
-  // Sprawdzenie samego numeru liczbowego dla formatów ZL
-  const numA = normA.match(/^ZL(\d+)/)?.[1];
-  const numB = normB.match(/^ZL(\d+)/)?.[1];
-  if (numA && numB && numA === numB) {
-    // Jeśli jeden to ZL7 a drugi to ZL7/2026 lub Zlecenie 7, uznajemy za potencjalny konflikt
-    return normA === normB || normA.replace(/\/[0-9]+/, '') === normB.replace(/\/[0-9]+/, '');
-  }
-
-  return false;
+export function getOrderYear(order: Pick<Order, 'orderNumber' | 'createdAt'>): number {
+  const explicitYear = String(order.orderNumber || '').match(/\/(\d{4})$/)?.[1];
+  if (explicitYear) return Number(explicitYear);
+  const createdYear = order.createdAt ? new Date(order.createdAt).getFullYear() : NaN;
+  return Number.isFinite(createdYear) ? createdYear : currentYear();
 }
 
 export interface AvailableOrderItem {
@@ -61,102 +38,62 @@ export interface AvailableOrderItem {
   isNext: boolean;
 }
 
-/**
- * Zwraca listę uporządkowanych standardowych numerów ZL (np. ZL1 .. ZL30)
- * z informacją który jest wolny, który zajęty (i przez kogo) oraz który jest kolejnym wolnym.
- */
-export function getOrderNumbersList(existingOrders: Order[] = [], count = 30): {
+/** Lista numerów ZL dla wybranego roku; numeracja jest niezależna dla każdego roku. */
+export function getOrderNumbersList(existingOrders: Order[] = [], count = 30, year: number = currentYear()): {
   items: AvailableOrderItem[];
   nextAvailable: string;
   occupiedMap: Map<string, Order>;
 } {
   const occupiedMap = new Map<string, Order>();
   let maxNumber = 0;
-
   existingOrders.forEach((ord) => {
     if (!ord.orderNumber) return;
-    const norm = normalizeOrderNumber(ord.orderNumber);
+    const norm = normalizeOrderNumber(ord.orderNumber, getOrderYear(ord));
+    if (!norm.endsWith(`/${year}`)) return;
     occupiedMap.set(norm, ord);
-
-    // Wyciągnij liczbę
-    const numMatch = norm.match(/^ZL(\d+)/);
-    if (numMatch) {
-      const parsed = parseInt(numMatch[1], 10);
-      if (parsed > maxNumber) {
-        maxNumber = parsed;
-      }
-    }
+    const numMatch = norm.match(/^ZL(\d+)\//);
+    if (numMatch) maxNumber = Math.max(maxNumber, parseInt(numMatch[1], 10));
   });
 
-  // Znajdź pierwszy wolny numer od 1 w górę
   let nextFreeNum = 1;
-  while (occupiedMap.has(`ZL${nextFreeNum}`)) {
-    nextFreeNum++;
-  }
-  const nextAvailable = `ZL${nextFreeNum}`;
-
-  // Wygeneruj listę standardowych numerów ZL
+  while (occupiedMap.has(`ZL${nextFreeNum}/${year}`)) nextFreeNum++;
+  const nextAvailable = `ZL${nextFreeNum}/${year}`;
   const totalCount = Math.max(maxNumber + 10, count, 20);
   const items: AvailableOrderItem[] = [];
-
   for (let i = 1; i <= totalCount; i++) {
-    const key = `ZL${i}`;
+    const key = `ZL${i}/${year}`;
     const occupiedOrder = occupiedMap.get(key);
     items.push({
       number: key,
       isOccupied: !!occupiedOrder,
-      occupiedBy: occupiedOrder
-        ? `${occupiedOrder.client || 'Klient'} · ${occupiedOrder.projectName || 'Projekt'}`
-        : undefined,
+      occupiedBy: occupiedOrder ? `${occupiedOrder.client || 'Klient'} · ${occupiedOrder.projectName || 'Projekt'}` : undefined,
       isNext: key === nextAvailable,
     });
   }
-
-  // Dodaj również niestandardowe numery istniejące w systemie, jeśli nie są standardowym ZL{i}
   existingOrders.forEach((ord) => {
-    const norm = normalizeOrderNumber(ord.orderNumber);
-    if (!items.some((it) => it.number === norm)) {
-      items.push({
-        number: norm,
-        isOccupied: true,
-        occupiedBy: `${ord.client || 'Klient'} · ${ord.projectName || 'Projekt'}`,
-        isNext: false,
-      });
+    const norm = normalizeOrderNumber(ord.orderNumber, getOrderYear(ord));
+    if (norm.endsWith(`/${year}`) && !items.some((it) => it.number === norm)) {
+      items.push({ number: norm, isOccupied: true, occupiedBy: `${ord.client || 'Klient'} · ${ord.projectName || 'Projekt'}`, isNext: false });
     }
   });
-
   return { items, nextAvailable, occupiedMap };
 }
 
-/**
- * Waliduje numer zlecenia pod kątem unikalności i poprawności
- */
+/** Waliduje unikalność pełnego numeru, łącznie z rokiem. */
 export function validateOrderNumber(
   input: string,
   existingOrders: Order[] = [],
-  excludeOrderId?: string
-): {
-  isValid: boolean;
-  normalized: string;
-  error?: string;
-  duplicateOrder?: Order;
-} {
+  excludeOrderId?: string,
+  defaultYear: number = currentYear()
+): { isValid: boolean; normalized: string; error?: string; duplicateOrder?: Order } {
   if (!input || !input.trim()) {
-    return {
-      isValid: false,
-      normalized: '',
-      error: 'Wybierz lub podaj numer zlecenia.',
-    };
+    return { isValid: false, normalized: '', error: 'Wybierz lub podaj numer zlecenia.' };
   }
-
-  const normalized = normalizeOrderNumber(input);
-
-  // Sprawdź czy numer nie koliduje z żadnym istniejącym zleceniem
+  const normalized = normalizeOrderNumber(input, defaultYear);
   const duplicate = existingOrders.find((o) => {
     if (excludeOrderId && o.id === excludeOrderId) return false;
-    return isSameOrderNumber(o.orderNumber, normalized);
+    return isSameOrderNumber(normalizeOrderNumber(o.orderNumber, getOrderYear(o)), normalized);
   });
-
   if (duplicate) {
     return {
       isValid: false,
@@ -165,9 +102,5 @@ export function validateOrderNumber(
       error: `Numer zlecenia ${normalized} jest już zajęty przez: ${duplicate.client} (${duplicate.projectName}). Duplikaty są zablokowane.`,
     };
   }
-
-  return {
-    isValid: true,
-    normalized,
-  };
+  return { isValid: true, normalized };
 }

@@ -6,19 +6,24 @@ import {
   DoorOrder,
   checkDoorOrderOverdue,
   formatDatePL,
+  fetchCustomObudowaVariantsFromServer,
+  setCustomObudowaVariants,
 } from './types/enco';
 import {
   loadOrders,
   saveOrders,
   createNewOrder,
-  resetToDemoOrders,
   loadDoorOrders,
   saveDoorOrders,
   fetchOrdersFromServer,
   saveOrdersToServer,
+  saveSingleOrderToServer,
+  hasPendingOrderChanges,
+  hasPendingDoorOrderChanges,
+  setServerOrdersSnapshot,
+  setServerDoorOrdersSnapshot,
   fetchDoorOrdersFromServer,
   saveDoorOrdersToServer,
-  resetServerAndLocalData,
 } from './services/storageService';
 import { Header } from './components/Header';
 import { DashboardView } from './components/DashboardView';
@@ -31,7 +36,10 @@ import { EditItemModal } from './components/EditItemModal';
 import { RoleMatrixModal } from './components/RoleMatrixModal';
 import { PasswordAuthModal } from './components/PasswordAuthModal';
 import { DoorOrderDetailView } from './components/DoorOrderDetailView';
-import { CheckCircle2, AlertTriangle, Info } from 'lucide-react';
+import { SNOrdersView } from './components/SNOrdersView';
+import { CalendarView } from './components/CalendarView';
+import { CustomerDatabaseModal } from './components/CustomerDatabaseModal';
+import { CheckCircle2, AlertTriangle, Info, Archive, RotateCcw, Search } from 'lucide-react';
 import { validateOrderNumber } from './utils/orderNumberUtils';
 import {
   UserRoleId,
@@ -42,13 +50,22 @@ import {
 } from './types/userRole';
 
 export default function App() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
-  const [activeModule, setActiveModule] = useState<'orders' | 'doors'>(() => {
+  const [archiveSearch, setArchiveSearch] = useState('');
+  const [activeModule, setActiveModule] = useState<'orders' | 'doors' | 'sn' | 'calendar'>(() => {
     const path = window.location.pathname;
+    if (path === '/kalendarz') return 'calendar';
+    if (path === '/rozdzielnice-sn') return 'sn';
     return path === '/drzwi' || path.startsWith('/drzwi/') ? 'doors' : 'orders';
   });
   const [orders, setOrders] = useState<Order[]>(() => loadOrders());
   const [doorOrders, setDoorOrders] = useState<DoorOrder[]>(() => loadDoorOrders());
+  // Refs expose the newest local copies to async save/refresh callbacks.
+  const ordersRef = useRef<Order[]>(orders);
+  const doorOrdersRef = useRef<DoorOrder[]>(doorOrders);
+  useEffect(() => { ordersRef.current = orders; }, [orders]);
+  useEffect(() => { doorOrdersRef.current = doorOrders; }, [doorOrders]);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(() => {
     const match = window.location.pathname.match(/^\/zlecenia\/([^/]+)$/);
     return match ? decodeURIComponent(match[1]) : null;
@@ -61,7 +78,17 @@ export default function App() {
   const navigate = (path: string) => {
     if (window.location.pathname !== path) window.history.pushState({}, '', path);
     setCurrentPath(path);
-    if (path === '/drzwi' || path.startsWith('/drzwi/')) {
+    if (path === '/kalendarz') {
+      setActiveModule('calendar');
+      setSelectedOrderId(null);
+      sessionStorage.setItem('enco_active_module', 'calendar');
+      sessionStorage.removeItem('enco_selected_order_id');
+    } else if (path === '/rozdzielnice-sn') {
+      setActiveModule('sn');
+      setSelectedOrderId(null);
+      sessionStorage.setItem('enco_active_module', 'sn');
+      sessionStorage.removeItem('enco_selected_order_id');
+    } else if (path === '/drzwi' || path.startsWith('/drzwi/')) {
       setActiveModule('doors');
       setSelectedOrderId(null);
       sessionStorage.setItem('enco_active_module', 'doors');
@@ -81,7 +108,13 @@ export default function App() {
     const handlePopState = () => {
       const path = window.location.pathname;
       setCurrentPath(path);
-      if (path === '/drzwi' || path.startsWith('/drzwi/')) {
+      if (path === '/kalendarz') {
+        setActiveModule('calendar');
+        setSelectedOrderId(null);
+      } else if (path === '/rozdzielnice-sn') {
+        setActiveModule('sn');
+        setSelectedOrderId(null);
+      } else if (path === '/drzwi' || path.startsWith('/drzwi/')) {
         setActiveModule('doors');
         setSelectedOrderId(null);
       } else {
@@ -137,6 +170,7 @@ export default function App() {
 
   // Modals state
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
+  const [isCustomerDatabaseOpen, setIsCustomerDatabaseOpen] = useState(false);
   const [isEditOrderModalOpen, setIsEditOrderModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<OrderItem | null>(null);
 
@@ -159,43 +193,71 @@ export default function App() {
   };
 
   const [hasPendingChanges, setHasPendingChanges] = useState(false);
+  const [isSavingChanges, setIsSavingChanges] = useState(false);
   const pendingOrdersRef = useRef(false);
   const pendingDoorOrdersRef = useRef(false);
+  const refreshRequestIdRef = useRef(0);
   // Śledzi wyłącznie lokalnie otwarty formularz.
   const editingItemRef = useRef(false);
 
-  // Jedyny mechanizm pobierania danych: start strony albo jawne działanie użytkownika.
+  // Server data is applied only at startup or after the user clicks ODŚWIEŻ.
+  // The latest request wins; background/older requests cannot overwrite newer local state.
   const refreshDataFromServer = async (options?: { orders?: boolean; doors?: boolean; discardPending?: boolean; showMessage?: boolean }) => {
-    const loadOrders = options?.orders !== false;
-    const loadDoors = options?.doors !== false;
-    const [srvOrders, srvDoors] = await Promise.all([
-      loadOrders ? fetchOrdersFromServer() : Promise.resolve(null),
-      loadDoors ? fetchDoorOrdersFromServer() : Promise.resolve(null),
+    const requestId = ++refreshRequestIdRef.current;
+    const loadServerOrders = options?.orders !== false;
+    const loadServerDoors = options?.doors !== false;
+    const [srvOrders, srvDoors, srvCustomObudowaVariants] = await Promise.all([
+      loadServerOrders ? fetchOrdersFromServer() : Promise.resolve(null),
+      loadServerDoors ? fetchDoorOrdersFromServer() : Promise.resolve(null),
+      fetchCustomObudowaVariantsFromServer(),
     ]);
 
-    if (srvOrders) setOrders(srvOrders);
-    if (srvDoors) setDoorOrders(srvDoors);
+    // Ignore an older request if a later manual refresh has already started.
+    if (requestId !== refreshRequestIdRef.current) return;
 
+    // Do not advance the baseline for a module with unsaved local edits.
+    // Otherwise a navigation refresh could silently lose track of those edits.
+    const applyOrders = Boolean(srvOrders) &&
+      (options?.discardPending === true || !pendingOrdersRef.current);
+    const applyDoors = Boolean(srvDoors) &&
+      (options?.discardPending === true || !pendingDoorOrdersRef.current);
+
+    if (srvOrders && applyOrders) {
+      setServerOrdersSnapshot(srvOrders);
+      setOrders(srvOrders);
+      ordersRef.current = srvOrders;
+      saveOrders(srvOrders);
+    }
+    if (srvDoors && applyDoors) {
+      setServerDoorOrdersSnapshot(srvDoors);
+      setDoorOrders(srvDoors);
+      doorOrdersRef.current = srvDoors;
+      saveDoorOrders(srvDoors);
+    }
+    if (srvCustomObudowaVariants) setCustomObudowaVariants(srvCustomObudowaVariants);
+
+    // A failed refresh must not clear the unsaved indicator or discard local work.
     if (options?.discardPending) {
-      if (loadOrders) pendingOrdersRef.current = false;
-      if (loadDoors) pendingDoorOrdersRef.current = false;
+      if (loadServerOrders && srvOrders) pendingOrdersRef.current = false;
+      if (loadServerDoors && srvDoors) pendingDoorOrdersRef.current = false;
       setHasPendingChanges(pendingOrdersRef.current || pendingDoorOrdersRef.current);
     }
 
     if (options?.showMessage) {
-      if ((loadOrders && !srvOrders) || (loadDoors && !srvDoors)) {
-        showToast('Nie udało się pobrać wszystkich danych z serwera.', 'warning');
+      if ((loadServerOrders && !srvOrders) || (loadServerDoors && !srvDoors) || !srvCustomObudowaVariants) {
+        showToast('Nie udało się pobrać wszystkich danych z serwera. Niezapisane zmiany pozostają lokalnie.', 'warning');
       } else {
         showToast('Dane odświeżone z serwera.', 'success');
       }
     }
   };
 
-  // Brak synchronizacji automatycznej: pobieranie danych tylko po wejściu na stronę
-  // albo po wywołaniu refreshDataFromServer przez użytkownika.
+  // Re-fetch only for this browser tab on first load and on actual URL changes.
+  // This also covers browser Back/Forward, because popstate updates currentPath.
+  // A save or a change elsewhere on the server never changes currentPath.
   useEffect(() => {
     void refreshDataFromServer();
-  }, []);
+  }, [currentPath]);
 
   // Keep edits local until the user explicitly saves them.
   const markChangesPending = () => setHasPendingChanges(true);
@@ -218,39 +280,61 @@ export default function App() {
     const latestOrders = orders.map((current) => current.id === orderToSave.id ? orderToSave : current);
     saveOrders(latestOrders);
     setOrders(latestOrders);
-    const saved = await saveOrdersToServer(latestOrders);
-    if (saved) {
-      pendingOrdersRef.current = false;
-      setHasPendingChanges(pendingDoorOrdersRef.current);
+    ordersRef.current = latestOrders;
+    pendingOrdersRef.current = true;
+    setHasPendingChanges(true);
 
-      // Nie pobieraj ponownie danych po zapisie: zachowaj lokalny widok użytkownika.
-      showToast(`Zapisano zmiany na serwerze. Lokalny widok zlecenia ${orderToSave.orderNumber} pozostaje bez zmian.`, 'success');
+    // Zapis pojedynczego zlecenia nie może wysłać do serwera innych
+    // zleceń, które w tej karcie są jeszcze niezapisane.
+    const saved = await saveSingleOrderToServer(orderToSave);
+    pendingOrdersRef.current = hasPendingOrderChanges(ordersRef.current);
+    setHasPendingChanges(pendingOrdersRef.current || pendingDoorOrdersRef.current);
+
+    if (saved) {
+      showToast(`Zapisano zlecenie ${orderToSave.orderNumber} na serwerze. Pozostałe lokalne zmiany nie zostały wysłane.`, 'success');
     } else {
-      showToast('Nie udało się zapisać zmian na serwerze. Zmiany pozostają lokalnie — spróbuj ponownie.', 'warning');
+      showToast('Nie udało się zapisać zlecenia na serwerze. Zmiany pozostają lokalnie — spróbuj ponownie.', 'warning');
     }
   };
 
   const handleSaveAllChanges = async () => {
+    if (isSavingChanges || !hasPendingChanges) return;
+    setIsSavingChanges(true);
+    const ordersAtClick = orders;
+    const doorsAtClick = doorOrders;
+    try {
     const [ordersSaved, doorsSaved] = await Promise.all([
-      pendingOrdersRef.current ? saveOrdersToServer(orders) : Promise.resolve(true),
-      pendingDoorOrdersRef.current ? saveDoorOrdersToServer(doorOrders) : Promise.resolve(true),
+      pendingOrdersRef.current ? saveOrdersToServer(ordersAtClick) : Promise.resolve(true),
+      pendingDoorOrdersRef.current ? saveDoorOrdersToServer(doorsAtClick) : Promise.resolve(true),
     ]);
 
+    // Recalculate against the snapshot actually saved. If the user edited more
+    // data while the request was in flight, those newer edits remain pending.
+    if (ordersSaved) pendingOrdersRef.current = hasPendingOrderChanges(ordersRef.current);
+    if (doorsSaved) pendingDoorOrdersRef.current = hasPendingDoorOrderChanges(doorOrdersRef.current);
+    setHasPendingChanges(pendingOrdersRef.current || pendingDoorOrdersRef.current);
+
     if (ordersSaved && doorsSaved) {
-      pendingOrdersRef.current = false;
-      pendingDoorOrdersRef.current = false;
-      setHasPendingChanges(false);
-      // Zapis nie aktualizuje lokalnej kopii danymi innych użytkowników.
-      showToast('Zmiany zapisane na serwerze. Lokalny widok nie został odświeżony.', 'success');
+      if (pendingOrdersRef.current || pendingDoorOrdersRef.current) {
+        showToast('Zapisano poprzedni zestaw zmian. Nowsze zmiany nadal pozostają lokalne — zapisz je ponownie.', 'info');
+      } else {
+        showToast('Zmiany zapisane na serwerze. Lokalny widok nie został odświeżony.', 'success');
+      }
     } else {
-      showToast('Nie udało się zapisać wszystkich zmian na serwerze. Dane pozostają w pamięci lokalnej — spróbuj ponownie.', 'warning');
+      showToast('Nie udało się zapisać wszystkich zmian na serwerze. Dane pozostają lokalnie — spróbuj ponownie.', 'warning');
+    }
+    } finally {
+      setIsSavingChanges(false);
     }
   };
 
-  const selectedOrder = orders.find((o) => o.id === selectedOrderId) || null;
+  const archiveActive = currentPath === '/archiwum' || currentPath.startsWith('/archiwum/');
+  const activeOrders = orders.filter((o) => !o.archivedAt);
+  const archivedOrders = orders.filter((o) => Boolean(o.archivedAt));
+  const selectedOrder = orders.find((o) => o.id === selectedOrderId && Boolean(o.archivedAt) === archiveActive) || null;
 
   // Problem orders count for header badge
-  const problemOrdersCount = orders.filter((o) => o.status === 'PROBLEM').length;
+  const problemOrdersCount = activeOrders.filter((o) => o.status === 'PROBLEM').length;
 
   // Door overdue count
   const doorOverdueCount = doorOrders.filter(
@@ -284,6 +368,11 @@ export default function App() {
   const handleCreateOrder = (params: {
     orderNumber: string;
     client: string;
+    customerId?: string;
+    contactId?: string;
+    contactName?: string;
+    contactEmail?: string;
+    contactPhone?: string;
     projectName: string;
     stationSize: string;
     departureDate: string;
@@ -294,7 +383,7 @@ export default function App() {
       showToast(`Profil „${currentProfile.name}” nie ma uprawnień do tworzenia zleceń`, 'warning');
       return;
     }
-    const val = validateOrderNumber(params.orderNumber, orders);
+    const val = validateOrderNumber(params.orderNumber, orders, undefined, new Date().getFullYear());
     if (!val.isValid) {
       showToast(val.error || 'Numer zlecenia jest zajęty', 'warning');
       return;
@@ -307,8 +396,8 @@ export default function App() {
     updateOrdersState(updated);
     sessionStorage.setItem('enco_active_module', 'orders');
     sessionStorage.setItem('enco_selected_order_id', newOrd.id);
-    setActiveModule('orders');
-    setSelectedOrderId(newOrd.id);
+    // Każde nowe zlecenie dostaje od razu własną podstronę i adres URL.
+    navigate(`/zlecenia/${encodeURIComponent(newOrd.id)}`);
     showToast(`Utworzono zlecenie ${newOrd.orderNumber} (${newOrd.projectName})`, 'success');
   };
 
@@ -361,6 +450,13 @@ export default function App() {
     showToast('Zlecenie zostało usunięte', 'info');
   };
 
+  const handleToggleArchive = (order: Order) => {
+    const archived = !order.archivedAt;
+    const updated: Order = { ...order, archivedAt: archived ? new Date().toISOString() : null, updatedAt: new Date().toISOString() };
+    void handleSaveOrderChanges(updated);
+    navigate(archived ? '/archiwum' : '/zlecenia');
+  };
+
   const handleCancelItemEdit = () => {
     // Anulowanie zamyka formularz bez pobierania danych z serwera.
     editingItemRef.current = false;
@@ -409,8 +505,21 @@ export default function App() {
     } else {
       updated = [savedDoorOrder, ...doorOrders];
       showToast(`Dodano nowe zamówienie drzwi: ${savedDoorOrder.numerDokumentu}`, 'success');
+      // Nowe zamówienie drzwi od razu otwiera własną podstronę.
+      navigate(`/drzwi/${encodeURIComponent(savedDoorOrder.id)}`);
     }
     updateDoorOrdersState(updated);
+  };
+
+  const handleSaveDoorOrdersBulk = (savedDoorOrders: DoorOrder[]) => {
+    if (!currentProfile.canManageDoors) {
+      showToast(`Profil „${currentProfile.name}” nie posiada uprawnień do edycji drzwi`, 'warning');
+      return;
+    }
+    const updates = new Map(savedDoorOrders.map((order) => [order.id, order]));
+    const updated = doorOrders.map((order) => updates.get(order.id) || order);
+    updateDoorOrdersState(updated);
+    showToast(`Zapisano zmiany w ${savedDoorOrders.length} zamówieniach drzwi`, 'success');
   };
 
   const handleDeleteDoorOrder = (doorOrderId: string) => {
@@ -451,30 +560,25 @@ export default function App() {
     handleSaveDoorOrder(updatedOrder);
   };
 
-  const handleResetData = async () => {
-    if (!currentProfile.canResetDemo) {
-      showToast('Tylko profil Administratora może przywrócić dane demonstracyjne', 'warning');
-      return;
-    }
-    const res = await resetServerAndLocalData();
-    setOrders(res.orders);
-    setDoorOrders(res.doorOrders);
-    sessionStorage.removeItem('enco_selected_order_id');
-    setSelectedOrderId(null);
-    showToast('Przywrócono przykładowe dane testowe zleceń i drzwi (zsynchronizowano z serwerem)', 'info');
-  };
-
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col font-sans">
       {/* Top Bar */}
       <Header
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={() => setSidebarOpen((open) => !open)}
         onNewOrder={() => setIsNewOrderModalOpen(true)}
         onNewDoorOrder={() => {
           setEditingDoorOrder(null);
           setIsDoorOrderModalOpen(true);
         }}
-        onResetData={handleResetData}
         onRefresh={() => void refreshDataFromServer({ discardPending: true, showMessage: true })}
+        hasPendingChanges={hasPendingChanges}
+        isSavingChanges={isSavingChanges}
+        onSaveChanges={() => void handleSaveAllChanges()}
+        onOpenArchive={() => navigate('/archiwum')}
+        onOpenCustomers={() => setIsCustomerDatabaseOpen(true)}
+        archiveActive={archiveActive}
+        archiveCount={archivedOrders.length}
         activeTab={filterTab}
         onSelectTab={(tab) => {
           setFilterTab(tab);
@@ -482,7 +586,7 @@ export default function App() {
         }}
         problemCount={problemOrdersCount}
         activeModule={activeModule}
-        onSelectModule={(mod) => navigate(mod === 'doors' ? '/drzwi' : '/zlecenia')}
+        onSelectModule={(mod) => navigate(mod === 'doors' ? '/drzwi' : mod === 'sn' ? '/rozdzielnice-sn' : mod === 'calendar' ? '/kalendarz' : '/zlecenia')}
         doorOrdersCount={doorOrders.length}
         doorOverdueCount={doorOverdueCount}
         currentProfile={currentProfile}
@@ -491,28 +595,14 @@ export default function App() {
       />
 
       {/* Main Viewport */}
-      <main className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 ${
-        activeModule === 'doors' ? 'max-w-full xl:max-w-[1600px]' : 'max-w-7xl'
+      <main className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 transition-[padding] duration-200 ${sidebarOpen ? 'lg:pl-[clamp(236px,calc(16vw+16px),296px)]' : ''} ${
+        activeModule === 'doors' ? 'max-w-full 2xl:max-w-[1800px]' : 'max-w-[1800px]'
       }`}>
-        <div className="flex items-center justify-between gap-3 mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-2xs">
-          <div className="text-xs text-slate-600">
-            {hasPendingChanges ? 'Masz niezapisane zmiany.' : 'Wszystkie zmiany są zapisane.'}
-          </div>
-          <button
-            type="button"
-            onClick={handleSaveAllChanges}
-            disabled={!hasPendingChanges}
-            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-colors ${
-              hasPendingChanges
-                ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
-                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-            }`}
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            Zapisz zmiany
-          </button>
-        </div>
-        {activeModule === 'doors' ? (
+        {activeModule === 'calendar' ? (
+          <CalendarView orders={activeOrders} onSelectOrder={handleSelectOrder} />
+        ) : activeModule === 'sn' ? (
+          <SNOrdersView orders={orders} currentProfile={currentProfile} onNavigateToOrder={handleSelectOrder} />
+        ) : activeModule === 'doors' ? (
           selectedDoorOrderId ? (
             (() => {
               const doorOrder = doorOrders.find((item) => item.id === selectedDoorOrderId);
@@ -532,6 +622,8 @@ export default function App() {
               setEditingDoorOrder(doorOrd);
               setIsDoorOrderModalOpen(true);
             }}
+            onSaveDoorOrderDirect={handleSaveDoorOrder}
+            onSaveDoorOrdersBulk={handleSaveDoorOrdersBulk}
             onDeleteDoorOrder={handleDeleteDoorOrder}
             onQuickConfirmDelivery={handleQuickConfirmDelivery}
             onNavigateToOrder={(ordId) => navigate(`/zlecenia/${encodeURIComponent(ordId)}`)}
@@ -542,7 +634,9 @@ export default function App() {
           <OrderDetailView
             order={selectedOrder}
             doorOrders={doorOrders}
-            onBack={handleBackToDashboard}
+            onBack={archiveActive ? () => navigate('/archiwum') : handleBackToDashboard}
+            onArchive={() => handleToggleArchive(selectedOrder)}
+            isArchived={Boolean(selectedOrder.archivedAt)}
             onUpdateOrderStatus={handleUpdateOrderStatus}
             onSaveOrderChanges={handleSaveOrderChanges}
             onOpenEditOrderModal={() => setIsEditOrderModalOpen(true)}
@@ -564,9 +658,25 @@ export default function App() {
             }}
             currentProfile={currentProfile}
           />
+        ) : archiveActive ? (
+          <section className="space-y-4">
+            <div className="flex items-center gap-3"><Archive className="w-6 h-6 text-slate-600" /><h1 className="text-xl font-bold">Archiwum zleceń</h1><span className="text-sm text-slate-500">({archivedOrders.length})</span></div>
+            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" /><input value={archiveSearch} onChange={(e) => setArchiveSearch(e.target.value)} placeholder="Szukaj w archiwum: numer, klient, projekt..." className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm" /></div>
+            <div className="rounded-xl border border-slate-200 bg-white divide-y divide-slate-100 overflow-hidden">
+              {archivedOrders.filter((o) => [o.orderNumber, o.client, o.projectName, o.stationSize].some((v) => v.toLowerCase().includes(archiveSearch.toLowerCase().trim()))).map((o) => (
+                <div key={o.id} className="flex flex-wrap items-center gap-3 p-4 hover:bg-slate-50">
+                  <button type="button" onClick={() => navigate(`/archiwum/${encodeURIComponent(o.id)}`)} className="flex-1 min-w-0 text-left">
+                    <span className="font-bold text-blue-700">{o.orderNumber}</span><span className="ml-3 text-sm text-slate-700">{o.projectName}</span><p className="text-xs text-slate-500 mt-1">{o.client} · {o.stationSize}</p>
+                  </button>
+                  <button type="button" onClick={() => handleToggleArchive(o)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold hover:bg-slate-100"><RotateCcw className="w-4 h-4" />Przywróć</button>
+                </div>
+              ))}
+              {archivedOrders.length === 0 && <p className="p-8 text-center text-slate-500">Archiwum jest puste.</p>}
+            </div>
+          </section>
         ) : (
           <DashboardView
-            orders={orders}
+            orders={activeOrders}
             onSelectOrder={handleSelectOrder}
             onNewOrder={() => setIsNewOrderModalOpen(true)}
             filterTab={filterTab}
@@ -593,6 +703,8 @@ export default function App() {
       </footer>
 
       {/* Modals */}
+      <CustomerDatabaseModal isOpen={isCustomerDatabaseOpen} onClose={() => setIsCustomerDatabaseOpen(false)} />
+
       <NewOrderModal
         isOpen={isNewOrderModalOpen}
         onClose={() => setIsNewOrderModalOpen(false)}
@@ -612,6 +724,7 @@ export default function App() {
 
       <EditItemModal
         item={editingItem}
+        orderItems={selectedOrder?.items || []}
         doorOrders={doorOrders}
         isOpen={Boolean(editingItem)}
         onClose={() => {

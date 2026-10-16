@@ -52,7 +52,8 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
 
   // Ensure persistent data directory and uploads root exist
-  const DATA_DIR = path.resolve(__dirname, 'data_store');
+  // Configure DATA_DIR to a persistent mounted directory in hosted deployments.
+  const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(__dirname, 'data_store'));
   const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 
   if (!fs.existsSync(DATA_DIR)) {
@@ -64,6 +65,9 @@ async function startServer() {
 
   const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
   const DOORS_FILE = path.join(DATA_DIR, 'door_orders.json');
+  const OBUDOWA_VARIANTS_FILE = path.join(DATA_DIR, 'obudowa_variants.json');
+  const SN_SWITCHGEAR_FILE = path.join(DATA_DIR, 'sn_switchgear.json');
+  const DOOR_CATALOG_FILE = path.join(DATA_DIR, 'door_catalog.json');
 
   // Seed initial data if files do not exist
   let currentOrders = INITIAL_ORDERS;
@@ -89,6 +93,63 @@ async function startServer() {
       console.log('Seeded initial door orders into data_store/door_orders.json');
     } catch (e) {
       console.error('Failed to seed door orders file:', e);
+    }
+  }
+
+  // Shared SN switchgear inventory, stored separately from order records.
+  if (!fs.existsSync(SN_SWITCHGEAR_FILE)) {
+    const initialSNSwitchgear = [
+      { id: 'sn_rm_001', type: 'RM_AIRSET', category: 'DELIVERED', rodzaj: 'RM AirSet 24kV20kA NE-IIQ + napędy; wys. 1,625', ilosc: 1, terminDostawy: 'dostarczono', nrZamowienia: 'ZD/88/2025', projekt: 'Rozdzielnica na targi, przyjechała bez napędu w polu Q (Bakałarzewska)', lokalizacja: 'BAKAŁARZEWSKA' },
+      { id: 'sn_rm_002', type: 'RM_AIRSET', category: 'DELIVERED', rodzaj: 'RM AirSet 24kV20kA NE-IIQ + napędy; wys. 1,625', ilosc: 1, terminDostawy: 'dostarczono', nrZamowienia: 'ZD/88/2025', projekt: 'GRABÓWKA - będzie demontaż', lokalizacja: 'GRABÓWKA' },
+      { id: 'sn_rm_003', type: 'RM_AIRSET', category: 'DELIVERED', rodzaj: 'RM AirSet 24kV20kA NE-IIQ + napędy; wys. 1,625', ilosc: 1, terminDostawy: 'dostarczono', nrZamowienia: 'ZD/88/2025', projekt: 'UTRATA SUWAŁKI', lokalizacja: 'SUWAŁKI' },
+      { id: 'sn_rm_004', type: 'RM_AIRSET', category: 'DELIVERED', rodzaj: 'RM AirSet 24kV20kA NE-IIQ + napędy; wys. 1,625', ilosc: 1, terminDostawy: 'dostarczono', nrZamowienia: 'ZD/88/2025', projekt: 'UTRATA SUWAŁKI', lokalizacja: 'SUWAŁKI' },
+      { id: 'sn_rm_005', type: 'RM_AIRSET', category: 'DELIVERED', rodzaj: 'RM AirSet 24kV20kA NE-IIQ + napędy; wys. 1,625', ilosc: 1, terminDostawy: 'dostarczono', nrZamowienia: 'ZD/88/2025', projekt: 'HOŻA AUGUSTÓW', lokalizacja: 'AUGUSTÓW' },
+      { id: 'sn_rm_006', type: 'RM_AIRSET', category: 'DELIVERED', rodzaj: 'RM AirSet 24kV20kA NE-IIQ + napędy; wys. 1,625', ilosc: 1, terminDostawy: 'dostarczono', nrZamowienia: 'ZD/88/2025', projekt: 'RAJGRODZKA AUGUSTÓW', lokalizacja: 'AUGUSTÓW' },
+      { id: 'sn_rm_007', type: 'RM_AIRSET', category: 'DELIVERED', rodzaj: 'RM AirSet 24kV20kA NE-IIIQ + napędy; wys. 1,625', ilosc: 1, terminDostawy: 'dostarczono', nrZamowienia: 'ZD/88/2025', projekt: 'RAJSK HAĆKI', lokalizacja: 'RAJSK' },
+    ];
+    try {
+      fs.writeFileSync(SN_SWITCHGEAR_FILE, JSON.stringify(initialSNSwitchgear, null, 2), 'utf-8');
+      console.log('Initialized SN switchgear inventory in data_store/sn_switchgear.json');
+    } catch (e) {
+      console.error('Failed to initialize SN switchgear inventory:', e);
+    }
+  }
+
+  // Shared custom enclosure sizes are configuration data, not browser-local data.
+  if (!fs.existsSync(OBUDOWA_VARIANTS_FILE)) {
+    try {
+      fs.writeFileSync(OBUDOWA_VARIANTS_FILE, JSON.stringify([], null, 2), 'utf-8');
+      console.log('Initialized shared custom enclosure sizes in data_store/obudowa_variants.json');
+    } catch (e) {
+      console.error('Failed to initialize shared enclosure sizes file:', e);
+    }
+  }
+
+  // Shared door-hardware catalogue, seeded from the provided ENCO combination list.
+  const INITIAL_DOOR_CATALOG = [
+    { id: 'door_nz_1', grupa: 'NZ', numer: '1', wymiarZewnetrzny: '1775x1640', swiatloOtworu: '1660x1530', kolor: 'Białe', kraty: '2xkrata', opis: 'Zewnętrzne zawiasy' },
+    { id: 'door_nz_2', grupa: 'NZ', numer: '2', wymiarZewnetrzny: '1830x1315', swiatloOtworu: '1770x1185', kolor: '8014?', kraty: 'pełne', opis: 'Zewnętrzne plastikowe zawiasy, dziwny zamek' },
+    { id: 'door_nz_3', grupa: 'NZ', numer: '3', wymiarZewnetrzny: '1280x1230', swiatloOtworu: '1130x1080', kolor: '8017?', kraty: 'pełne', opis: 'Brak blokady otwarcia skrzydła drzwiowego' },
+    { id: 'door_nz_4', grupa: 'NZ', numer: '4', wymiarZewnetrzny: '2795x1335', swiatloOtworu: '2647x1180', kolor: 'Niebieskie', kraty: '2xkrata', opis: '' },
+    { id: 'door_nz_5', grupa: 'NZ', numer: '5', wymiarZewnetrzny: '2285x1680', swiatloOtworu: '2134x1528', kolor: 'Niebieskie', kraty: 'pełne', opis: '' },
+    { id: 'door_nz_6', grupa: 'NZ', numer: '6', wymiarZewnetrzny: '2130x1335', swiatloOtworu: '2063x1185', kolor: '8014?', kraty: 'pełne', opis: '' },
+    { id: 'door_nz_7', grupa: 'NZ', numer: '7', wymiarZewnetrzny: '2285x1335', swiatloOtworu: '2225x1185', kolor: '8014?', kraty: 'pełne', opis: '' },
+    { id: 'door_nz_8', grupa: 'NZ', numer: '8', wymiarZewnetrzny: '1825x1335', swiatloOtworu: '1765x1185', kolor: '8014?', kraty: '1xpełne - lew.; 1x krata - praw.', opis: '' },
+    { id: 'door_nz_bek_1', grupa: 'NZ — rama BEK', numer: '1', wymiarZewnetrzny: '2090x1395', swiatloOtworu: '1975x1283', kolor: '8014?', kraty: 'pełne', opis: 'Zewnętrzne zawiasy' },
+    { id: 'door_nz_bek_2', grupa: 'NZ — rama BEK', numer: '2', wymiarZewnetrzny: '1785x1395', swiatloOtworu: '1675x1283', kolor: '8014?', kraty: '1xpełne - lew.; 1x krata - praw.', opis: 'Zewnętrzne zawiasy' },
+    { id: 'door_bek_1', grupa: 'BEK', numer: '1', wymiarZewnetrzny: '2197x1066', swiatloOtworu: '2100x950', kolor: '8014?', kraty: '2xkrata', opis: 'Prawe' },
+    { id: 'door_bek_2', grupa: 'BEK', numer: '2', wymiarZewnetrzny: '2197x1285', swiatloOtworu: '2100x1170', kolor: '8014?', kraty: '2xkrata', opis: 'Lewe, brak zamku' },
+    { id: 'door_bek_3', grupa: 'BEK', numer: '3', wymiarZewnetrzny: '2197x1285', swiatloOtworu: '2100x1170', kolor: '8014?', kraty: '2xkrata', opis: 'Lewe' },
+    { id: 'door_bek_4', grupa: 'BEK', numer: '4', wymiarZewnetrzny: '2197x1066', swiatloOtworu: '2100x950', kolor: '8014?', kraty: '2xkrata', opis: 'Prawe' },
+    { id: 'door_bek_8', grupa: 'BEK', numer: '8', wymiarZewnetrzny: '', swiatloOtworu: '950x2100', kolor: '8014', kraty: '2xkrata', opis: 'Lewe' },
+  ];
+
+  if (!fs.existsSync(DOOR_CATALOG_FILE)) {
+    try {
+      fs.writeFileSync(DOOR_CATALOG_FILE, JSON.stringify(INITIAL_DOOR_CATALOG, null, 2), 'utf-8');
+      console.log('Initialized shared door hardware catalogue in data_store/door_catalog.json');
+    } catch (e) {
+      console.error('Failed to initialize door hardware catalogue:', e);
     }
   }
 
@@ -214,46 +275,69 @@ async function startServer() {
   // Static route to serve uploaded files directly
   app.use('/uploads', express.static(UPLOADS_DIR));
 
-  // SSE (Server-Sent Events) clients for real-time live synchronization
-  let sseClients: { id: number; res: express.Response }[] = [];
-  let nextClientId = 1;
-
-  // Automatyczne powiadomienia SSE są celowo wyłączone.
-  // Pozostali użytkownicy nie otrzymują zmian ani sygnałów resetowania na żywo.
-  function broadcastSSE(_type: 'orders' | 'doorOrders' | 'reset', _data: any, _originId?: string) {
-    // Intentionally disabled: each user refreshes data only through their own actions.
+  // Zapis atomowy: awaria procesu podczas zapisu nie zostawi uciętego pliku JSON.
+  function writeJsonAtomically(filePath: string, data: unknown) {
+    const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+    fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), 'utf-8');
+    fs.renameSync(tempPath, filePath);
   }
 
-  // 1. SSE Stream for Real-time Synchronization across all connected browsers
-  app.get('/api/realtime/stream', (req, res) => {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache, no-transform');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
-    res.flushHeaders();
+  // Shared JSON storage API. Clients read on startup or explicit manual refresh only.
+  // Wspólna baza firm i osób kontaktowych.
+  const CUSTOMERS_FILE = path.join(DATA_DIR, 'customers.json');
+  if (!fs.existsSync(CUSTOMERS_FILE)) writeJsonAtomically(CUSTOMERS_FILE, []);
 
-    const clientId = nextClientId++;
-    sseClients.push({ id: clientId, res });
-
-    // Send initial handshake ping
-    res.write(`data: ${JSON.stringify({ type: 'connected', clientId, timestamp: Date.now() })}\n\n`);
-
-    // Keepalive heartbeat every 20 seconds
-    const heartbeat = setInterval(() => {
-      try {
-        res.write(': keepalive\n\n');
-      } catch (e) {
-        clearInterval(heartbeat);
+  app.get('/api/customers', (_req, res) => {
+    try { const parsed = JSON.parse(fs.readFileSync(CUSTOMERS_FILE, 'utf-8')); return res.json({ success: true, customers: Array.isArray(parsed) ? parsed : [] }); }
+    catch (err) { console.error('Error reading customer database:', err); return res.status(500).json({ success: false, error: 'Błąd odczytu bazy klientów' }); }
+  });
+  app.post('/api/customers', (req, res) => {
+    try {
+      const incoming = req.body?.customer;
+      if (!incoming || !incoming.id || !String(incoming.name || '').trim()) return res.status(400).json({ success: false, error: 'Wymagane jest ID i nazwa firmy' });
+      const parsed = JSON.parse(fs.readFileSync(CUSTOMERS_FILE, 'utf-8'));
+      const customers: any[] = Array.isArray(parsed) ? parsed : [];
+      const index = customers.findIndex((item: any) => String(item.id) === String(incoming.id));
+      if (index < 0) customers.push({ ...incoming, contacts: Array.isArray(incoming.contacts) ? incoming.contacts : [] });
+      else {
+        const existing = customers[index]; const contacts = Array.isArray(existing.contacts) ? [...existing.contacts] : [];
+        (Array.isArray(incoming.contacts) ? incoming.contacts : []).forEach((contact: any) => {
+          if (!contact?.id || !String(contact.name || '').trim()) return;
+          const ci = contacts.findIndex((entry: any) => String(entry.id) === String(contact.id));
+          if (ci < 0) contacts.push(contact); else contacts[ci] = contact;
+        });
+        customers[index] = { ...existing, ...incoming, contacts };
       }
-    }, 20000);
-
-    req.on('close', () => {
-      clearInterval(heartbeat);
-      sseClients = sseClients.filter((c) => c.id !== clientId);
-    });
+      writeJsonAtomically(CUSTOMERS_FILE, customers);
+      return res.json({ success: true, customers, timestamp: Date.now() });
+    } catch (err) { console.error('Error saving customer database:', err); return res.status(500).json({ success: false, error: 'Błąd zapisu bazy klientów' }); }
   });
 
-  // 2. Orders API
+  app.put('/api/customers/:customerId', (req, res) => {
+    try {
+      const incoming = req.body?.customer;
+      if (!incoming || String(incoming.id) !== String(req.params.customerId) || !String(incoming.name || '').trim()) return res.status(400).json({ success: false, error: 'Nieprawidłowe dane firmy' });
+      const parsed = JSON.parse(fs.readFileSync(CUSTOMERS_FILE, 'utf-8'));
+      const customers: any[] = Array.isArray(parsed) ? parsed : [];
+      const index = customers.findIndex((item: any) => String(item.id) === String(req.params.customerId));
+      if (index < 0) return res.status(404).json({ success: false, error: 'Nie znaleziono firmy' });
+      customers[index] = { ...incoming, contacts: Array.isArray(incoming.contacts) ? incoming.contacts : [] };
+      writeJsonAtomically(CUSTOMERS_FILE, customers);
+      return res.json({ success: true, customers, timestamp: Date.now() });
+    } catch (err) { console.error('Error updating customer:', err); return res.status(500).json({ success: false, error: 'Błąd aktualizacji firmy' }); }
+  });
+  app.delete('/api/customers/:customerId', (req, res) => {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(CUSTOMERS_FILE, 'utf-8'));
+      const customers: any[] = Array.isArray(parsed) ? parsed : [];
+      const updated = customers.filter((item: any) => String(item.id) !== String(req.params.customerId));
+      if (updated.length === customers.length) return res.status(404).json({ success: false, error: 'Nie znaleziono firmy' });
+      writeJsonAtomically(CUSTOMERS_FILE, updated);
+      return res.json({ success: true, customers: updated, timestamp: Date.now() });
+    } catch (err) { console.error('Error deleting customer:', err); return res.status(500).json({ success: false, error: 'Błąd usuwania firmy' }); }
+  });
+
+  // 1. Orders API
   app.get('/api/orders', (req, res) => {
     try {
       if (fs.existsSync(ORDERS_FILE)) {
@@ -270,7 +354,7 @@ async function startServer() {
 
   app.post('/api/orders', (req, res) => {
     try {
-      const { orders, originId, merge, deletedIds } = req.body;
+      const { orders, merge, deletedIds } = req.body;
       if (!Array.isArray(orders)) {
         return res.status(400).json({ success: false, error: 'Nieprawidłowy format listy zleceń' });
       }
@@ -297,14 +381,58 @@ async function startServer() {
         if (ord.orderNumber) ensureOrderFolders(ord.orderNumber, ord.projectName);
       });
 
-      fs.writeFileSync(ORDERS_FILE, JSON.stringify(ordersToSave, null, 2), 'utf-8');
+      writeJsonAtomically(ORDERS_FILE, ordersToSave);
       currentOrders = ordersToSave;
-      broadcastSSE('orders', ordersToSave, originId);
 
-      return res.json({ success: true, count: ordersToSave.length, timestamp: Date.now() });
+      return res.json({ success: true, count: ordersToSave.length, orders: ordersToSave, timestamp: Date.now() });
     } catch (err) {
       console.error('Error writing orders file:', err);
       return res.status(500).json({ success: false, error: 'Błąd zapisu zleceń na serwerze' });
+    }
+  });
+
+  // 2.5. Shared SN switchgear inventory API. Records are independent stock/inventory rows,
+  // while order links are entered in the Nr zamówienia / Projekt fields.
+  app.get('/api/sn-switchgear', (_req, res) => {
+    try {
+      const raw = fs.readFileSync(SN_SWITCHGEAR_FILE, 'utf-8');
+      const records = JSON.parse(raw);
+      if (!Array.isArray(records)) return res.status(500).json({ success: false, error: 'Nieprawidłowy format zestawienia rozdzielnic SN' });
+      return res.json({ success: true, records, timestamp: Date.now() });
+    } catch (err) {
+      console.error('Error reading SN switchgear inventory:', err);
+      return res.status(500).json({ success: false, error: 'Błąd odczytu zestawienia rozdzielnic SN' });
+    }
+  });
+
+  app.post('/api/sn-switchgear', (req, res) => {
+    try {
+      const incoming = req.body?.records;
+      const deletedIds = Array.isArray(req.body?.deletedIds) ? req.body.deletedIds.map((id: any) => String(id)) : [];
+      if (!Array.isArray(incoming)) return res.status(400).json({ success: false, error: 'Nieprawidłowy format rekordów SN' });
+      const raw = fs.readFileSync(SN_SWITCHGEAR_FILE, 'utf-8');
+      const parsed = JSON.parse(raw);
+      const current: any[] = Array.isArray(parsed) ? parsed : [];
+      const deleted = new Set(deletedIds);
+      const merged = current.filter((record: any) => !deleted.has(String(record.id)));
+      incoming.forEach((record: any) => {
+        if (!record || !record.id) return;
+        const normalized = {
+          ...record,
+          id: String(record.id),
+          type: ['SIEMENS', 'XIRIA', 'RM_AIRSET', 'RM_AIRSET_STOEN'].includes(record.type) ? record.type : 'RM_AIRSET',
+          category: ['DELIVERED', 'TO_DELIVER', 'WAREHOUSE'].includes(record.category) ? record.category : 'TO_DELIVER',
+          ilosc: Math.max(0, Number(record.ilosc) || 0),
+        };
+        const index = merged.findIndex((existing: any) => String(existing.id) === normalized.id);
+        if (index >= 0) merged[index] = normalized;
+        else merged.push(normalized);
+      });
+      writeJsonAtomically(SN_SWITCHGEAR_FILE, merged);
+      return res.json({ success: true, records: merged, timestamp: Date.now() });
+    } catch (err) {
+      console.error('Error saving SN switchgear inventory:', err);
+      return res.status(500).json({ success: false, error: 'Błąd zapisu zestawienia rozdzielnic SN' });
     }
   });
 
@@ -325,7 +453,7 @@ async function startServer() {
 
   app.post('/api/door-orders', (req, res) => {
     try {
-      const { doorOrders, originId, merge, deletedIds } = req.body;
+      const { doorOrders, merge, deletedIds } = req.body;
       if (!Array.isArray(doorOrders)) {
         return res.status(400).json({ success: false, error: 'Nieprawidłowy format zamówień drzwi' });
       }
@@ -346,13 +474,109 @@ async function startServer() {
         else doorOrdersToSave.push(incoming);
       });
 
-      fs.writeFileSync(DOORS_FILE, JSON.stringify(doorOrdersToSave, null, 2), 'utf-8');
-      broadcastSSE('doorOrders', doorOrdersToSave, originId);
+      writeJsonAtomically(DOORS_FILE, doorOrdersToSave);
 
-      return res.json({ success: true, count: doorOrdersToSave.length, timestamp: Date.now() });
+      return res.json({ success: true, count: doorOrdersToSave.length, doorOrders: doorOrdersToSave, timestamp: Date.now() });
     } catch (err) {
       console.error('Error writing door orders file:', err);
       return res.status(500).json({ success: false, error: 'Błąd zapisu zamówień drzwi na serwerze' });
+    }
+  });
+
+  // Shared door hardware catalogue. Saving replaces the current catalogue with the edited list.
+  app.get('/api/door-catalog', (_req, res) => {
+    try {
+      const raw = fs.readFileSync(DOOR_CATALOG_FILE, 'utf-8');
+      const variants = JSON.parse(raw);
+      if (!Array.isArray(variants)) return res.status(500).json({ success: false, error: 'Nieprawidłowy format katalogu ślusarki' });
+      return res.json({ success: true, variants, timestamp: Date.now() });
+    } catch (err) {
+      console.error('Error reading door hardware catalogue:', err);
+      return res.status(500).json({ success: false, error: 'Błąd odczytu katalogu ślusarki' });
+    }
+  });
+
+  app.post('/api/door-catalog', (req, res) => {
+    try {
+      const { variants } = req.body || {};
+      if (!Array.isArray(variants) || variants.some((item: any) =>
+        !item || typeof item.id !== 'string' || typeof item.grupa !== 'string' ||
+        !['NZ', 'NZ — rama BEK', 'BEK'].includes(item.grupa)
+      )) {
+        return res.status(400).json({ success: false, error: 'Nieprawidłowe dane katalogu ślusarki' });
+      }
+      const ids = new Set<string>();
+      for (const item of variants) {
+        if (ids.has(item.id)) return res.status(400).json({ success: false, error: 'Każda kombinacja musi mieć unikalny identyfikator' });
+        ids.add(item.id);
+      }
+      writeJsonAtomically(DOOR_CATALOG_FILE, variants);
+      return res.json({ success: true, variants, timestamp: Date.now() });
+    } catch (err) {
+      console.error('Error saving door hardware catalogue:', err);
+      return res.status(500).json({ success: false, error: 'Błąd zapisu katalogu ślusarki' });
+    }
+  });
+
+  // Shared custom enclosure-size catalogue. Changes reach other screens only on their next manual refresh.
+  app.get('/api/obudowa-variants', (_req, res) => {
+    try {
+      const raw = fs.readFileSync(OBUDOWA_VARIANTS_FILE, 'utf-8');
+      const variants = JSON.parse(raw);
+      if (!Array.isArray(variants)) {
+        return res.status(500).json({ success: false, error: 'Nieprawidłowy format katalogu rozmiarów obudów' });
+      }
+      return res.json({ success: true, variants, timestamp: Date.now() });
+    } catch (err) {
+      console.error('Error reading shared enclosure sizes:', err);
+      return res.status(500).json({ success: false, error: 'Błąd odczytu katalogu rozmiarów obudów' });
+    }
+  });
+
+  app.post('/api/obudowa-variants', (req, res) => {
+    try {
+      const incoming = req.body?.variant;
+      const type = incoming?.type;
+      const name = typeof incoming?.name === 'string' ? incoming.name.trim() : '';
+      const width = Number(incoming?.width);
+      const depth = Number(incoming?.depth);
+      const height = Number(incoming?.height);
+
+      if (
+        !incoming ||
+        (type !== 'BEK' && type !== 'NZ') ||
+        !name ||
+        !Number.isFinite(width) || width <= 0 ||
+        !Number.isFinite(depth) || depth <= 0 ||
+        !Number.isFinite(height) || height <= 0
+      ) {
+        return res.status(400).json({ success: false, error: 'Nieprawidłowe dane niestandardowego rozmiaru obudowy' });
+      }
+
+      const raw = fs.readFileSync(OBUDOWA_VARIANTS_FILE, 'utf-8');
+      const parsed = JSON.parse(raw);
+      const variants: any[] = Array.isArray(parsed) ? parsed : [];
+      const normalized = {
+        ...incoming,
+        id: String(incoming.id || `custom_${type.toLowerCase()}_${Date.now()}`),
+        type,
+        name,
+        width,
+        depth,
+        height,
+        isCustom: true,
+      };
+      const index = variants.findIndex((variant: any) =>
+        variant.type === type && String(variant.name).toLocaleLowerCase() === name.toLocaleLowerCase()
+      );
+      if (index >= 0) variants[index] = normalized;
+      else variants.push(normalized);
+
+      writeJsonAtomically(OBUDOWA_VARIANTS_FILE, variants);
+      return res.json({ success: true, variants, timestamp: Date.now() });
+    } catch (err) {
+      console.error('Error saving shared enclosure size:', err);
+      return res.status(500).json({ success: false, error: 'Błąd zapisu katalogu rozmiarów obudów' });
     }
   });
 
@@ -594,15 +818,12 @@ async function startServer() {
   // 5. Reset to Demo Data
   app.post('/api/reset-data', (req, res) => {
     try {
-      fs.writeFileSync(ORDERS_FILE, JSON.stringify(INITIAL_ORDERS, null, 2), 'utf-8');
-      fs.writeFileSync(DOORS_FILE, JSON.stringify(INITIAL_DOOR_ORDERS, null, 2), 'utf-8');
+      writeJsonAtomically(ORDERS_FILE, INITIAL_ORDERS);
+      writeJsonAtomically(DOORS_FILE, INITIAL_DOOR_ORDERS);
 
       currentOrders = INITIAL_ORDERS;
       initAllFoldersAndSeedFiles();
 
-      broadcastSSE('orders', INITIAL_ORDERS);
-      broadcastSSE('doorOrders', INITIAL_DOOR_ORDERS);
-      broadcastSSE('reset', {});
 
       return res.json({ success: true, orders: INITIAL_ORDERS, doorOrders: INITIAL_DOOR_ORDERS });
     } catch (err) {
@@ -615,7 +836,6 @@ async function startServer() {
   app.get('/api/health', (req, res) => {
     res.json({
       status: 'ok',
-      activeSseConnections: sseClients.length,
       storageUploadsDir: 'data_store/uploads',
       timestamp: Date.now(),
     });

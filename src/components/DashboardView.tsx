@@ -149,51 +149,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Active Profile Scope Banner */}
-      <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs ${
-        profile.id === 'ogolny'
-          ? 'bg-slate-100/90 border-slate-300 text-slate-800'
-          : profile.id === 'admin'
-          ? 'bg-purple-50/70 border-purple-200 text-purple-950'
-          : profile.id === 'dzial_handlowy'
-          ? 'bg-blue-50/70 border-blue-200 text-blue-950'
-          : profile.id === 'logistyka'
-          ? 'bg-amber-50/70 border-amber-200 text-amber-950'
-          : profile.id === 'pyskowice'
-          ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
-          : 'bg-cyan-50/70 border-cyan-200 text-cyan-950'
-      }`}>
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">{profile.avatar}</span>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Aktywne konto użytkownika:
-              </span>
-              <span className={`text-xs font-black px-2 py-0.5 rounded ${profile.badgeBg} text-white`}>
-                {profile.name}
-              </span>
-              <span className="text-xs text-slate-500 font-medium hidden md:inline">
-                ({profile.department})
-              </span>
-            </div>
-            <p className="text-xs font-semibold text-slate-800 mt-0.5">
-              {profile.editScopeSummary}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0 text-xs">
-          <span className={`px-2.5 py-1 rounded-lg border font-mono font-bold text-[11px] ${
-            profile.canDownload
-              ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
-              : 'bg-rose-100 text-rose-800 border-rose-200'
-          }`}>
-            {profile.canDownload ? '✓ Pobieranie: Włączone' : '✕ Pobieranie: Zablokowane'}
-          </span>
-        </div>
-      </div>
-
       {/* Control Center Summary Bar */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <div className="bg-white p-4 rounded-xl border border-slate-200 border-l-4 border-l-slate-400 shadow-2xs">
