@@ -466,7 +466,7 @@ export function createNewOrder(params: {
 }): Order {
   const id = `ord_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const now = new Date().toISOString();
-  const items = createDefaultItemsForOrder(id);
+  const items = createDefaultItemsForOrder(id, params.stationSize.trim());
   const status = calculateOrderStatus(items);
 
   const newOrder: Order = {
