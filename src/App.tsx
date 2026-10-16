@@ -181,6 +181,7 @@ export default function App() {
   };
 
   const [hasPendingChanges, setHasPendingChanges] = useState(false);
+  const [isSavingChanges, setIsSavingChanges] = useState(false);
   const pendingOrdersRef = useRef(false);
   const pendingDoorOrdersRef = useRef(false);
   const refreshRequestIdRef = useRef(0);
@@ -285,8 +286,11 @@ export default function App() {
   };
 
   const handleSaveAllChanges = async () => {
+    if (isSavingChanges || !hasPendingChanges) return;
+    setIsSavingChanges(true);
     const ordersAtClick = orders;
     const doorsAtClick = doorOrders;
+    try {
     const [ordersSaved, doorsSaved] = await Promise.all([
       pendingOrdersRef.current ? saveOrdersToServer(ordersAtClick) : Promise.resolve(true),
       pendingDoorOrdersRef.current ? saveDoorOrdersToServer(doorsAtClick) : Promise.resolve(true),
@@ -306,6 +310,9 @@ export default function App() {
       }
     } else {
       showToast('Nie udało się zapisać wszystkich zmian na serwerze. Dane pozostają lokalnie — spróbuj ponownie.', 'warning');
+    }
+    } finally {
+      setIsSavingChanges(false);
     }
   };
 
@@ -548,6 +555,9 @@ export default function App() {
           setIsDoorOrderModalOpen(true);
         }}
         onRefresh={() => void refreshDataFromServer({ discardPending: true, showMessage: true })}
+        hasPendingChanges={hasPendingChanges}
+        isSavingChanges={isSavingChanges}
+        onSaveChanges={() => void handleSaveAllChanges()}
         onOpenArchive={() => navigate('/archiwum')}
         archiveActive={archiveActive}
         archiveCount={archivedOrders.length}
@@ -570,26 +580,6 @@ export default function App() {
       <main className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 transition-[padding] duration-200 ${sidebarOpen ? 'lg:pl-[clamp(236px,calc(16vw+16px),296px)]' : ''} ${
         activeModule === 'doors' ? 'max-w-full xl:max-w-[1600px]' : 'max-w-7xl'
       }`}>
-        {activeModule !== 'sn' && (
-          <div className="flex items-center justify-between gap-3 mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-2xs">
-            <div className="text-xs text-slate-600">
-              {hasPendingChanges ? 'Masz niezapisane zmiany.' : 'Wszystkie zmiany są zapisane.'}
-            </div>
-            <button
-              type="button"
-              onClick={handleSaveAllChanges}
-              disabled={!hasPendingChanges}
-              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-colors ${
-                hasPendingChanges
-                  ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
-                  : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-              }`}
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              Zapisz zmiany
-            </button>
-          </div>
-        )}
         {activeModule === 'sn' ? (
           <SNOrdersView orders={orders} currentProfile={currentProfile} onNavigateToOrder={handleSelectOrder} />
         ) : activeModule === 'doors' ? (
