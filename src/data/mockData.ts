@@ -23,7 +23,7 @@ export function createDefaultItemsForOrder(orderId: string): OrderItem[] {
           iloscPol: '8',
           dataWystawieniaZlecenia: '',
           planowanaGotowoscTransportu: '',
-          wyposazenieDodatkowe: 'Rozłącznik główny 1000A + 8 odpływów listwowych NH2/400A',
+          wyposazenieDodatkowe: '',
         };
         break;
       case 'MOST':
