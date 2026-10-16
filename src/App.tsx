@@ -37,6 +37,7 @@ import { RoleMatrixModal } from './components/RoleMatrixModal';
 import { PasswordAuthModal } from './components/PasswordAuthModal';
 import { DoorOrderDetailView } from './components/DoorOrderDetailView';
 import { SNOrdersView } from './components/SNOrdersView';
+import { CalendarView } from './components/CalendarView';
 import { CheckCircle2, AlertTriangle, Info, Archive, RotateCcw, Search } from 'lucide-react';
 import { validateOrderNumber } from './utils/orderNumberUtils';
 import {
@@ -51,8 +52,9 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
   const [archiveSearch, setArchiveSearch] = useState('');
-  const [activeModule, setActiveModule] = useState<'orders' | 'doors' | 'sn'>(() => {
+  const [activeModule, setActiveModule] = useState<'orders' | 'doors' | 'sn' | 'calendar'>(() => {
     const path = window.location.pathname;
+    if (path === '/kalendarz') return 'calendar';
     if (path === '/rozdzielnice-sn') return 'sn';
     return path === '/drzwi' || path.startsWith('/drzwi/') ? 'doors' : 'orders';
   });
@@ -75,7 +77,12 @@ export default function App() {
   const navigate = (path: string) => {
     if (window.location.pathname !== path) window.history.pushState({}, '', path);
     setCurrentPath(path);
-    if (path === '/rozdzielnice-sn') {
+    if (path === '/kalendarz') {
+      setActiveModule('calendar');
+      setSelectedOrderId(null);
+      sessionStorage.setItem('enco_active_module', 'calendar');
+      sessionStorage.removeItem('enco_selected_order_id');
+    } else if (path === '/rozdzielnice-sn') {
       setActiveModule('sn');
       setSelectedOrderId(null);
       sessionStorage.setItem('enco_active_module', 'sn');
@@ -100,7 +107,10 @@ export default function App() {
     const handlePopState = () => {
       const path = window.location.pathname;
       setCurrentPath(path);
-      if (path === '/rozdzielnice-sn') {
+      if (path === '/kalendarz') {
+        setActiveModule('calendar');
+        setSelectedOrderId(null);
+      } else if (path === '/rozdzielnice-sn') {
         setActiveModule('sn');
         setSelectedOrderId(null);
       } else if (path === '/drzwi' || path.startsWith('/drzwi/')) {
@@ -568,7 +578,7 @@ export default function App() {
         }}
         problemCount={problemOrdersCount}
         activeModule={activeModule}
-        onSelectModule={(mod) => navigate(mod === 'doors' ? '/drzwi' : mod === 'sn' ? '/rozdzielnice-sn' : '/zlecenia')}
+        onSelectModule={(mod) => navigate(mod === 'doors' ? '/drzwi' : mod === 'sn' ? '/rozdzielnice-sn' : mod === 'calendar' ? '/kalendarz' : '/zlecenia')}
         doorOrdersCount={doorOrders.length}
         doorOverdueCount={doorOverdueCount}
         currentProfile={currentProfile}
@@ -580,7 +590,9 @@ export default function App() {
       <main className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 transition-[padding] duration-200 ${sidebarOpen ? 'lg:pl-[clamp(236px,calc(16vw+16px),296px)]' : ''} ${
         activeModule === 'doors' ? 'max-w-full 2xl:max-w-[1800px]' : 'max-w-[1800px]'
       }`}>
-        {activeModule === 'sn' ? (
+        {activeModule === 'calendar' ? (
+          <CalendarView orders={activeOrders} onSelectOrder={handleSelectOrder} />
+        ) : activeModule === 'sn' ? (
           <SNOrdersView orders={orders} currentProfile={currentProfile} onNavigateToOrder={handleSelectOrder} />
         ) : activeModule === 'doors' ? (
           selectedDoorOrderId ? (
