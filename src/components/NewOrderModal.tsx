@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { X, Plus, AlertCircle, Check, Sparkles } from 'lucide-react';
 import { Order } from '../types/enco';
+type CustomerContact = { id: string; name: string; position?: string; email?: string; phone?: string };
+type CustomerRecord = { id: string; name: string; nip?: string; contacts: CustomerContact[] };
 import {
   getOrderNumbersList,
   normalizeOrderNumber,
@@ -13,6 +15,11 @@ interface NewOrderModalProps {
   onSubmit: (data: {
     orderNumber: string;
     client: string;
+    customerId?: string;
+    contactId?: string;
+    contactName?: string;
+    contactEmail?: string;
+    contactPhone?: string;
     projectName: string;
     stationSize: string;
     departureDate: string;
@@ -32,6 +39,20 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
   const [selectedListNumber, setSelectedListNumber] = useState('');
   const [customNumber, setCustomNumber] = useState('');
   const [client, setClient] = useState('');
+  const [customers, setCustomers] = useState<CustomerRecord[]>([]);
+  const [customerId, setCustomerId] = useState('');
+  const [contactId, setContactId] = useState('');
+  const [showNewCustomer, setShowNewCustomer] = useState(false);
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerNip, setNewCustomerNip] = useState('');
+  const [showNewContact, setShowNewContact] = useState(false);
+  const [newContactName, setNewContactName] = useState('');
+  const [newContactPosition, setNewContactPosition] = useState('');
+  const [newContactEmail, setNewContactEmail] = useState('');
+  const [newContactPhone, setNewContactPhone] = useState('');
+  const [customerError, setCustomerError] = useState('');
+  const selectedCustomer = customers.find((item) => item.id === customerId);
+  const selectedContact = selectedCustomer?.contacts.find((item) => item.id === contactId);
   const [projectName, setProjectName] = useState('');
   const [stationSize, setStationSize] = useState('BEK 250/450');
   const [departureDate, setDepartureDate] = useState('');
@@ -49,9 +70,49 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
     return orderListItems.filter((it) => !it.isOccupied).slice(0, 3);
   }, [orderListItems]);
 
+
+  const loadCustomers = async () => {
+    try {
+      const response = await fetch('/api/customers');
+      const data = await response.json();
+      if (response.ok && data.success && Array.isArray(data.customers)) setCustomers(data.customers);
+      else setCustomerError('Nie udało się pobrać bazy klientów.');
+    } catch { setCustomerError('Nie udało się pobrać bazy klientów. Sprawdź połączenie z serwerem.'); }
+  };
+  const saveCustomer = async (customer: CustomerRecord): Promise<CustomerRecord> => {
+    const response = await fetch('/api/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customer }) });
+    const data = await response.json();
+    if (!response.ok || !data.success || !Array.isArray(data.customers)) throw new Error(data.error || 'Nie udało się zapisać firmy.');
+    setCustomers(data.customers);
+    return data.customers.find((item: CustomerRecord) => item.id === customer.id) as CustomerRecord;
+  };
+  const handleAddCustomer = async () => {
+    if (!newCustomerName.trim()) { setCustomerError('Wpisz nazwę firmy.'); return; }
+    const duplicate = customers.find((item) => item.name.trim().toLowerCase() === newCustomerName.trim().toLowerCase());
+    if (duplicate) { setCustomerId(duplicate.id); setClient(duplicate.name); setShowNewCustomer(false); setCustomerError('Firma już istnieje — wybrano ją z bazy.'); return; }
+    const customer: CustomerRecord = { id: 'customer_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), name: newCustomerName.trim(), nip: newCustomerNip.trim(), contacts: [] };
+    try {
+      const saved = await saveCustomer(customer);
+      setCustomerId(saved.id); setContactId(''); setClient(saved.name); setNewCustomerName(''); setNewCustomerNip(''); setShowNewCustomer(false); setCustomerError('');
+    } catch (error) { setCustomerError(error instanceof Error ? error.message : 'Nie udało się zapisać firmy.'); }
+  };
+  const handleAddContact = async () => {
+    if (!selectedCustomer) { setCustomerError('Najpierw wybierz firmę.'); return; }
+    if (!newContactName.trim()) { setCustomerError('Wpisz imię i nazwisko przedstawiciela.'); return; }
+    const contact: CustomerContact = { id: 'contact_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), name: newContactName.trim(), position: newContactPosition.trim(), email: newContactEmail.trim(), phone: newContactPhone.trim() };
+    try {
+      const saved = await saveCustomer({ ...selectedCustomer, contacts: [...selectedCustomer.contacts, contact] });
+      setCustomerId(saved.id); setContactId(contact.id); setNewContactName(''); setNewContactPosition(''); setNewContactEmail(''); setNewContactPhone(''); setShowNewContact(false); setCustomerError('');
+    } catch (error) { setCustomerError(error instanceof Error ? error.message : 'Nie udało się zapisać przedstawiciela.'); }
+  };
+
   // Inicjalizacja przy otwarciu okna
   useEffect(() => {
     if (isOpen) {
+      void loadCustomers();
+      setCustomerError('');
+      setShowNewCustomer(false);
+      setShowNewContact(false);
       setMode('list');
       setSelectedListNumber(nextAvailable);
       setCustomNumber('');
@@ -88,7 +149,12 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
 
     onSubmit({
       orderNumber: valResult.normalized,
-      client: client.trim(),
+      client: selectedCustomer?.name || client.trim(),
+      customerId: selectedCustomer?.id || '',
+      contactId: selectedContact?.id || '',
+      contactName: selectedContact?.name || '',
+      contactEmail: selectedContact?.email || '',
+      contactPhone: selectedContact?.phone || '',
       projectName: projectName.trim(),
       stationSize: stationSize.trim(),
       departureDate,
@@ -101,6 +167,8 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
     setSelectedListNumber(nextAvailable);
     setCustomNumber('');
     setClient('');
+    setCustomerId('');
+    setContactId('');
     setProjectName('');
     setStationSize('BEK 250/450');
     setDepartureDate('');
@@ -304,18 +372,17 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Klient <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              value={client}
-              onChange={(e) => setClient(e.target.value)}
-              placeholder="np. Tauron Dystrybucja S.A. / Enea / PGE"
-              className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
-            />
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3 sm:col-span-2">
+            <div className="flex items-center justify-between gap-2"><label className="text-xs font-bold text-slate-800">Klient / firma <span className="text-rose-500">*</span></label><button type="button" onClick={() => { setShowNewCustomer((v) => !v); setCustomerError(''); }} className="text-[11px] font-bold text-blue-700">+ Dodaj firmę</button></div>
+            <select required value={customerId} onChange={(e) => { const id = e.target.value; setCustomerId(id); const item = customers.find((customer) => customer.id === id); setClient(item?.name || ''); setContactId(''); setCustomerError(''); }} className="w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs"><option value="">Wybierz firmę z bazy…</option>{customers.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
+            {showNewCustomer && <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 rounded-lg border border-blue-200 bg-white p-3"><input value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} placeholder="Nazwa firmy *" className="rounded-lg border border-slate-300 px-3 py-2 text-xs sm:col-span-2" /><input value={newCustomerNip} onChange={(e) => setNewCustomerNip(e.target.value)} placeholder="NIP (opcjonalnie)" className="rounded-lg border border-slate-300 px-3 py-2 text-xs" /><button type="button" onClick={() => void handleAddCustomer()} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white sm:col-span-3">Zapisz firmę w bazie</button></div>}
+            {selectedCustomer && <div className="space-y-2 border-t border-slate-200 pt-3"><div className="flex items-center justify-between gap-2"><label className="text-xs font-semibold text-slate-700">Osoba kontaktowa</label><button type="button" onClick={() => { setShowNewContact((v) => !v); setCustomerError(''); }} className="text-[11px] font-bold text-blue-700">+ Dodaj przedstawiciela</button></div>
+              <select value={contactId} onChange={(e) => setContactId(e.target.value)} className="w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs"><option value="">Bez przypisanej osoby kontaktowej</option>{selectedCustomer.contacts.map((person) => <option key={person.id} value={person.id}>{person.name}{person.position ? ' — ' + person.position : ''}</option>)}</select>
+              {selectedContact && <p className="text-[11px] text-slate-600">{[selectedContact.email, selectedContact.phone].filter(Boolean).join(' · ')}</p>}
+              {showNewContact && <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-lg border border-blue-200 bg-white p-3"><input value={newContactName} onChange={(e) => setNewContactName(e.target.value)} placeholder="Imię i nazwisko *" className="rounded-lg border border-slate-300 px-3 py-2 text-xs" /><input value={newContactPosition} onChange={(e) => setNewContactPosition(e.target.value)} placeholder="Stanowisko" className="rounded-lg border border-slate-300 px-3 py-2 text-xs" /><input type="email" value={newContactEmail} onChange={(e) => setNewContactEmail(e.target.value)} placeholder="E-mail" className="rounded-lg border border-slate-300 px-3 py-2 text-xs" /><input value={newContactPhone} onChange={(e) => setNewContactPhone(e.target.value)} placeholder="Telefon" className="rounded-lg border border-slate-300 px-3 py-2 text-xs" /><button type="button" onClick={() => void handleAddContact()} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white sm:col-span-2">Zapisz przedstawiciela</button></div>}
+            </div>}
+            {customerError && <p className="text-[11px] text-rose-700">{customerError}</p>}
+            {customers.length === 0 && !showNewCustomer && <p className="text-[11px] text-slate-500">Baza jest pusta. Dodaj firmę, aby rozpocząć.</p>}
           </div>
 
           <div>
