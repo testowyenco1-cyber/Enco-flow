@@ -453,6 +453,11 @@ export async function resetServerAndLocalData(): Promise<{ orders: Order[]; door
 export function createNewOrder(params: {
   orderNumber: string;
   client: string;
+  customerId?: string;
+  contactId?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
   projectName: string;
   stationSize: string;
   departureDate: string;
@@ -468,6 +473,11 @@ export function createNewOrder(params: {
     id,
     orderNumber: params.orderNumber.trim(),
     client: params.client.trim(),
+    customerId: params.customerId || '',
+    contactId: params.contactId || '',
+    contactName: params.contactName || '',
+    contactEmail: params.contactEmail || '',
+    contactPhone: params.contactPhone || '',
     projectName: params.projectName.trim(),
     stationSize: params.stationSize.trim(),
     departureDate: params.departureDate,
