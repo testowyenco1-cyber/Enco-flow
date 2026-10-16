@@ -31,6 +31,8 @@ interface OrderDetailViewProps {
   order: Order;
   doorOrders?: DoorOrder[];
   onBack: () => void;
+  onArchive: () => void;
+  isArchived: boolean;
   onUpdateOrderStatus: (orderId: string, updatedOrder: Order) => void;
   onSaveOrderChanges: (order: Order) => void;
   onOpenEditOrderModal: () => void;
@@ -44,6 +46,8 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
   order,
   doorOrders = [],
   onBack,
+  onArchive,
+  isArchived,
   onUpdateOrderStatus,
   onSaveOrderChanges,
   onOpenEditOrderModal,
@@ -310,11 +314,16 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
           className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs hover:border-slate-300 transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Wróć do Centrum Zleceń</span>
+          <span>{isArchived ? 'Wróć do archiwum' : 'Wróć do Centrum Zleceń'}</span>
         </button>
 
-        <div className="text-xs text-slate-500 font-medium">
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={onArchive} className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">
+            {isArchived ? 'Przywróć z archiwum' : 'Archiwizuj zlecenie'}
+          </button>
+          <div className="text-xs text-slate-500 font-medium">
           Zlecenie: <span className="font-mono font-bold text-slate-900">{order.orderNumber}</span>
+          </div>
         </div>
       </div>
 
