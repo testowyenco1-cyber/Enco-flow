@@ -283,6 +283,36 @@ async function startServer() {
   }
 
   // Shared JSON storage API. Clients read on startup or explicit manual refresh only.
+  // Wspólna baza firm i osób kontaktowych.
+  const CUSTOMERS_FILE = path.join(DATA_DIR, 'customers.json');
+  if (!fs.existsSync(CUSTOMERS_FILE)) writeJsonAtomically(CUSTOMERS_FILE, []);
+
+  app.get('/api/customers', (_req, res) => {
+    try { const parsed = JSON.parse(fs.readFileSync(CUSTOMERS_FILE, 'utf-8')); return res.json({ success: true, customers: Array.isArray(parsed) ? parsed : [] }); }
+    catch (err) { console.error('Error reading customer database:', err); return res.status(500).json({ success: false, error: 'Błąd odczytu bazy klientów' }); }
+  });
+  app.post('/api/customers', (req, res) => {
+    try {
+      const incoming = req.body?.customer;
+      if (!incoming || !incoming.id || !String(incoming.name || '').trim()) return res.status(400).json({ success: false, error: 'Wymagane jest ID i nazwa firmy' });
+      const parsed = JSON.parse(fs.readFileSync(CUSTOMERS_FILE, 'utf-8'));
+      const customers: any[] = Array.isArray(parsed) ? parsed : [];
+      const index = customers.findIndex((item: any) => String(item.id) === String(incoming.id));
+      if (index < 0) customers.push({ ...incoming, contacts: Array.isArray(incoming.contacts) ? incoming.contacts : [] });
+      else {
+        const existing = customers[index]; const contacts = Array.isArray(existing.contacts) ? [...existing.contacts] : [];
+        (Array.isArray(incoming.contacts) ? incoming.contacts : []).forEach((contact: any) => {
+          if (!contact?.id || !String(contact.name || '').trim()) return;
+          const ci = contacts.findIndex((entry: any) => String(entry.id) === String(contact.id));
+          if (ci < 0) contacts.push(contact); else contacts[ci] = contact;
+        });
+        customers[index] = { ...existing, ...incoming, contacts };
+      }
+      writeJsonAtomically(CUSTOMERS_FILE, customers);
+      return res.json({ success: true, customers, timestamp: Date.now() });
+    } catch (err) { console.error('Error saving customer database:', err); return res.status(500).json({ success: false, error: 'Błąd zapisu bazy klientów' }); }
+  });
+
   // 1. Orders API
   app.get('/api/orders', (req, res) => {
     try {
