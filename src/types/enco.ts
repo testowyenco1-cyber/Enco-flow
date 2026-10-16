@@ -343,7 +343,8 @@ export interface Order {
   client: string;
   projectName: string;
   stationSize: string;
-  departureDate: string; // YYYY-MM-DD
+  departureDate: string; // Aktualnie planowany wyjazd (YYYY-MM-DD)
+  originalDepartureDate?: string; // Pierwotny termin z oferty, zachowywany przy zmianach planu (YYYY-MM-DD)
   generalNotes: string;
   additionalInfo?: string;
   status: OrderStatus;
