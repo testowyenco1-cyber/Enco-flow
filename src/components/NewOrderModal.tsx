@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X, Plus, AlertCircle, Check, Sparkles } from 'lucide-react';
 import { Order } from '../types/enco';
 type CustomerContact = { id: string; name: string; position?: string; email?: string; phone?: string };
-type CustomerRecord = { id: string; name: string; nip?: string; contacts: CustomerContact[] };
+type CustomerRecord = { id: string; name: string; nip?: string; address?: string; contacts: CustomerContact[] };
 import {
   getOrderNumbersList,
   normalizeOrderNumber,
@@ -45,6 +45,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
   const [showNewCustomer, setShowNewCustomer] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState('');
   const [newCustomerNip, setNewCustomerNip] = useState('');
+  const [newCustomerAddress, setNewCustomerAddress] = useState('');
   const [showNewContact, setShowNewContact] = useState(false);
   const [newContactName, setNewContactName] = useState('');
   const [newContactPosition, setNewContactPosition] = useState('');
@@ -90,10 +91,10 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
     if (!newCustomerName.trim()) { setCustomerError('Wpisz nazwę firmy.'); return; }
     const duplicate = customers.find((item) => item.name.trim().toLowerCase() === newCustomerName.trim().toLowerCase());
     if (duplicate) { setCustomerId(duplicate.id); setClient(duplicate.name); setShowNewCustomer(false); setCustomerError('Firma już istnieje — wybrano ją z bazy.'); return; }
-    const customer: CustomerRecord = { id: 'customer_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), name: newCustomerName.trim(), nip: newCustomerNip.trim(), contacts: [] };
+    const customer: CustomerRecord = { id: 'customer_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), name: newCustomerName.trim(), nip: newCustomerNip.trim(), address: newCustomerAddress.trim(), contacts: [] };
     try {
       const saved = await saveCustomer(customer);
-      setCustomerId(saved.id); setContactId(''); setClient(saved.name); setNewCustomerName(''); setNewCustomerNip(''); setShowNewCustomer(false); setCustomerError('');
+      setCustomerId(saved.id); setContactId(''); setClient(saved.name); setNewCustomerName(''); setNewCustomerNip(''); setNewCustomerAddress(''); setShowNewCustomer(false); setCustomerError('');
     } catch (error) { setCustomerError(error instanceof Error ? error.message : 'Nie udało się zapisać firmy.'); }
   };
   const handleAddContact = async () => {
@@ -375,7 +376,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3 sm:col-span-2">
             <div className="flex items-center justify-between gap-2"><label className="text-xs font-bold text-slate-800">Klient / firma <span className="text-rose-500">*</span></label><button type="button" onClick={() => { setShowNewCustomer((v) => !v); setCustomerError(''); }} className="text-[11px] font-bold text-blue-700">+ Dodaj firmę</button></div>
             <select required value={customerId} onChange={(e) => { const id = e.target.value; setCustomerId(id); const item = customers.find((customer) => customer.id === id); setClient(item?.name || ''); setContactId(''); setCustomerError(''); }} className="w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs"><option value="">Wybierz firmę z bazy…</option>{customers.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
-            {showNewCustomer && <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 rounded-lg border border-blue-200 bg-white p-3"><input value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} placeholder="Nazwa firmy *" className="rounded-lg border border-slate-300 px-3 py-2 text-xs sm:col-span-2" /><input value={newCustomerNip} onChange={(e) => setNewCustomerNip(e.target.value)} placeholder="NIP (opcjonalnie)" className="rounded-lg border border-slate-300 px-3 py-2 text-xs" /><button type="button" onClick={() => void handleAddCustomer()} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white sm:col-span-3">Zapisz firmę w bazie</button></div>}
+            {showNewCustomer && <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-lg border border-blue-200 bg-white p-3"><input value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} placeholder="Nazwa firmy *" className="rounded-lg border border-slate-300 px-3 py-2 text-xs" /><input value={newCustomerNip} onChange={(e) => setNewCustomerNip(e.target.value)} placeholder="NIP (opcjonalnie)" className="rounded-lg border border-slate-300 px-3 py-2 text-xs" /><input value={newCustomerAddress} onChange={(e) => setNewCustomerAddress(e.target.value)} placeholder="Adres siedziby (opcjonalnie)" className="rounded-lg border border-slate-300 px-3 py-2 text-xs sm:col-span-2" /><button type="button" onClick={() => void handleAddCustomer()} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white sm:col-span-2">Zapisz firmę w bazie</button></div>}
             {selectedCustomer && <div className="space-y-2 border-t border-slate-200 pt-3"><div className="flex items-center justify-between gap-2"><label className="text-xs font-semibold text-slate-700">Osoba kontaktowa</label><button type="button" onClick={() => { setShowNewContact((v) => !v); setCustomerError(''); }} className="text-[11px] font-bold text-blue-700">+ Dodaj przedstawiciela</button></div>
               <select value={contactId} onChange={(e) => setContactId(e.target.value)} className="w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs"><option value="">Bez przypisanej osoby kontaktowej</option>{selectedCustomer.contacts.map((person) => <option key={person.id} value={person.id}>{person.name}{person.position ? ' — ' + person.position : ''}</option>)}</select>
               {selectedContact && <p className="text-[11px] text-slate-600">{[selectedContact.email, selectedContact.phone].filter(Boolean).join(' · ')}</p>}
