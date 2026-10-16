@@ -337,6 +337,7 @@ export function checkReadinessOverdue(
 }
 
 export interface Order {
+  archivedAt?: string | null;
   id: string;
   orderNumber: string;
   client: string;
