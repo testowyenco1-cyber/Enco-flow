@@ -1,7 +1,20 @@
-import { Order, OrderItem, ITEM_DEFINITIONS, calculateOrderStatus } from '../types/enco';
+import { Order, OrderItem, ITEM_DEFINITIONS, calculateOrderStatus, getAllObudowaVariants, OBUDOWA_TYPES } from '../types/enco';
 
-export function createDefaultItemsForOrder(orderId: string): OrderItem[] {
+export function createDefaultItemsForOrder(orderId: string, stationSize = ''): OrderItem[] {
   const now = new Date().toISOString();
+  const stationMatch = stationSize.trim().match(/^(BEK|NZ)\s*(\d+(?:[.,]\d+)?)\s*\/\s*(\d+(?:[.,]\d+)?)/i);
+  const stationType = stationMatch ? stationMatch[1].toUpperCase() as 'BEK' | 'NZ' : null;
+  const stationWidth = stationMatch ? Number(stationMatch[2].replace(',', '.')) / 100 : undefined;
+  const stationDepth = stationMatch ? Number(stationMatch[3].replace(',', '.')) / 100 : undefined;
+  const normalizedStationSize = stationMatch
+    ? stationType + ' ' + stationMatch[2].replace(',', '.') + '/' + stationMatch[3].replace(',', '.')
+    : '';
+  const matchedVariant = stationType
+    ? getAllObudowaVariants().find((variant) =>
+        variant.type === stationType &&
+        variant.name.replace(/\s+/g, '').toUpperCase() === normalizedStationSize.replace(/\s+/g, '').toUpperCase()
+      )
+    : undefined;
   return ITEM_DEFINITIONS.map((def) => {
     let details: Record<string, any> = {};
 
@@ -102,17 +115,24 @@ export function createDefaultItemsForOrder(orderId: string): OrderItem[] {
           dataZakonczenia: '',
         };
         break;
-      case 'OBUDOWA':
+      case 'OBUDOWA': {
+        const enclosureType = stationType || 'BEK';
+        const defaultVariant = getAllObudowaVariants().find((variant) =>
+          variant.type === enclosureType && variant.name === (enclosureType === 'NZ' ? 'NZ 210/290' : 'BEK 250/350')
+        );
+        const hasParsedCustomSize = Boolean(stationMatch && !matchedVariant);
         details = {
-          typObudowy: 'BEK',
-          rozmiar: 'BEK 250/350',
-          szerokosc: 2.50,
-          glebokosc: 3.50,
-          wysokosc: 2.40,
-          typWysokosci: 'Wysokość wewnętrzna pomieszczeń',
-          dataGotowosci: '2026-10-25',
+          typObudowy: enclosureType,
+          rozmiar: matchedVariant?.name || (hasParsedCustomSize ? normalizedStationSize : defaultVariant?.name || (enclosureType === 'NZ' ? 'NZ 210/290' : 'BEK 250/350')),
+          ...(hasParsedCustomSize ? { isCustomSize: true } : {}),
+          szerokosc: matchedVariant?.width ?? (hasParsedCustomSize ? stationWidth : defaultVariant?.width ?? (enclosureType === 'NZ' ? 2.10 : 2.50)),
+          glebokosc: matchedVariant?.depth ?? (hasParsedCustomSize ? stationDepth : defaultVariant?.depth ?? (enclosureType === 'NZ' ? 2.90 : 3.50)),
+          wysokosc: matchedVariant?.height ?? defaultVariant?.height ?? OBUDOWA_TYPES[enclosureType].defaultHeight,
+          typWysokosci: OBUDOWA_TYPES[enclosureType].heightTypeLabel,
+          dataGotowosci: '',
         };
         break;
+      }
       case 'DATA_WYJAZDU':
         details = {
           dataTransportu: '',
