@@ -96,6 +96,88 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
   const isReadOnly = !canEditItemType(profile, item.type);
   const permHint = getItemPermissionHint(profile, item.type, item.name);
 
+  type TrackingField = { key: string; label: string; type: 'text' | 'date' | 'number' | 'checkbox'; placeholder?: string };
+  const extendedTrackingFields: TrackingField[] = (() => {
+    switch (item.type) {
+      case 'ROZDZIELNICA_SN':
+        return [
+          { key: 'dataZlecenia', label: 'Data zlecenia rozdzielnicy SN', type: 'date' },
+          { key: 'dostawca', label: 'Dostawca SN', type: 'text' },
+        ];
+      case 'ROZDZIELNICA_NN':
+        return [
+          { key: 'kategoria', label: 'Kategoria / nr zamówienia NN', type: 'text' },
+          { key: 'dostawca', label: 'Dostawca NN', type: 'text' },
+          { key: 'dataGotowosciFakt', label: 'Faktyczna data gotowości NN', type: 'date' },
+          { key: 'dataDostawyPlan', label: 'Planowana data dostawy NN', type: 'date' },
+          { key: 'dataPlDostawyPyskowice', label: 'Planowana dostawa NN do Pyskowic', type: 'date' },
+          { key: 'nnWPyskowicach', label: 'Rozdzielnica NN jest w Pyskowicach', type: 'checkbox' },
+        ];
+      case 'MOST':
+        return [
+          { key: 'dataZlecenia', label: 'Data zlecenia mostów SN', type: 'date' },
+          { key: 'dataGotowosci', label: 'Data gotowości mostów SN', type: 'date' },
+          { key: 'dataPlDostawyPyskowice', label: 'Planowana dostawa mostów SN do Pyskowic', type: 'date' },
+          { key: 'mostSNPyskowicach', label: 'Mosty SN są w Pyskowicach', type: 'checkbox' },
+        ];
+      case 'SZAFKA_TELEMECHANIKI':
+        return [
+          { key: 'dataGotowosciDokumentacji', label: 'Gotowość dokumentacji telemechaniki', type: 'date' },
+          { key: 'dokumentacjaWyslanaDoUzgodnienia', label: 'Dokumentacja wysłana do uzgodnienia', type: 'checkbox' },
+          { key: 'typSterownika', label: 'Typ sterownika', type: 'text' },
+          { key: 'dataZleceniaSzafy', label: 'Data zlecenia szafy', type: 'date' },
+          { key: 'dataOczekiwana', label: 'Oczekiwana data gotowości szafy', type: 'date' },
+          { key: 'dataGotowosci', label: 'Faktyczna data gotowości szafy', type: 'date' },
+          { key: 'dataPlDostawyPyskowice', label: 'Planowana dostawa telemechaniki do Pyskowic', type: 'date' },
+          { key: 'szafkaWPyskowicach', label: 'Szafka telemechaniki w Pyskowicach', type: 'checkbox' },
+          { key: 'akumulatorWPyskowicach', label: 'Akumulator w Pyskowicach', type: 'checkbox' },
+          { key: 'masztAntenaWPyskowicach', label: 'Maszt i antena w Pyskowicach', type: 'checkbox' },
+          { key: 'sensoryNapieciowe', label: 'Sensory napięciowe — typ / ilość', type: 'text' },
+          { key: 'dataPlDostawySensorowPyskowice', label: 'Planowana dostawa sensorów do Pyskowic', type: 'date' },
+          { key: 'sensoryNapiecioweWPyskowicach', label: 'Sensory napięciowe w Pyskowicach', type: 'checkbox' },
+        ];
+      case 'TABLICA_POMIAROWA':
+      case 'RPW':
+        return [
+          { key: 'kategoria', label: 'Kategoria', type: 'text' },
+          { key: 'dataZlecenia', label: 'Data zlecenia', type: 'date' },
+          { key: 'dataDostawyPlan', label: 'Planowana data dostawy', type: 'date' },
+          { key: 'dataGotowosciFakt', label: 'Faktyczna data gotowości', type: 'date' },
+          { key: 'dataPlDostawyPyskowice', label: 'Planowana dostawa do Pyskowic', type: 'date' },
+          { key: 'wPyskowicach', label: 'Element jest w Pyskowicach', type: 'checkbox' },
+        ];
+      case 'TRANSFORMATOR_POTRZEB_WLASNYCH':
+        return [
+          { key: 'va', label: 'Moc / VA', type: 'text', placeholder: 'np. 5000 VA' },
+          { key: 'dataDostawyPlan', label: 'Planowana data dostawy', type: 'date' },
+          { key: 'numerSeryjny', label: 'Numer seryjny', type: 'text' },
+          { key: 'dataPlDostawyPyskowice', label: 'Planowana dostawa do Pyskowic', type: 'date' },
+          { key: 'wPyskowicach', label: 'Transformator jest w Pyskowicach', type: 'checkbox' },
+        ];
+      case 'WSKAZNIKI_ZWARC':
+        return [
+          { key: 'typ', label: 'Typ wskaźników / centralki', type: 'text' },
+          { key: 'ilosc', label: 'Ilość', type: 'number' },
+          { key: 'dataZamowienia', label: 'Data zamówienia', type: 'date' },
+          { key: 'dataPlDostawyPyskowice', label: 'Planowana dostawa do Pyskowic', type: 'date' },
+          { key: 'wPyskowicach', label: 'Wskaźniki zwarć są w Pyskowicach', type: 'checkbox' },
+        ];
+      case 'POWYKONAWCZA':
+        return [
+          { key: 'wagaDTRWyslana', label: 'Waga i DTR wysłane', type: 'checkbox' },
+          { key: 'dataPrzekazaniaDokumentacji', label: 'Data przekazania dokumentacji powykonawczej', type: 'date' },
+        ];
+      case 'DATA_WYJAZDU':
+        return [
+          { key: 'kilometry', label: 'Kilometry transportu', type: 'number' },
+          { key: 'cenaTransportu', label: 'Cena transportu (PLN)', type: 'number' },
+          { key: 'numerFaktury', label: 'Numer faktury', type: 'text' },
+        ];
+      default:
+        return [];
+    }
+  })();
+
   const handleDetailChange = (key: string, val: any) => {
     setDetails((prev) => ({
       ...prev,
@@ -1284,6 +1366,43 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                       className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg"
                     />
                   </div>
+                </div>
+              </div>
+            )}
+
+            {extendedTrackingFields.length > 0 && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Dodatkowe dane procesu i dostawy</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {extendedTrackingFields.map((field) => (
+                    <div key={field.key} className={field.type === 'checkbox' ? 'flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5' : ''}>
+                      {field.type === 'checkbox' ? (
+                        <>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(details[field.key])}
+                            disabled={isReadOnly}
+                            onChange={(e) => handleDetailChange(field.key, e.target.checked)}
+                            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <label className="text-xs font-medium text-slate-700">{field.label}</label>
+                        </>
+                      ) : (
+                        <>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">{field.label}</label>
+                          <input
+                            type={field.type}
+                            value={details[field.key] ?? ''}
+                            disabled={isReadOnly}
+                            onChange={(e) => handleDetailChange(field.key, e.target.value)}
+                            placeholder={field.placeholder || ''}
+                            min={field.type === 'number' ? '0' : undefined}
+                            className="w-full min-w-0 text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white disabled:bg-slate-100 disabled:text-slate-500"
+                          />
+                        </>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
