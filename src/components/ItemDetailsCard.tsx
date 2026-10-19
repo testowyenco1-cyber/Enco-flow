@@ -295,7 +295,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         if (d.dataDostawyPlan) entries.push({ label: 'Planowana data dostawy', value: String(d.dataDostawyPlan).split('-').reverse().join('.') });
         if (d.dataGotowosciFakt) entries.push({ label: 'Faktyczna data gotowości', value: String(d.dataGotowosciFakt).split('-').reverse().join('.') });
         if (d.dataPlDostawyPyskowice) entries.push({ label: 'Planowana dostawa do Pyskowic', value: String(d.dataPlDostawyPyskowice).split('-').reverse().join('.') });
-        entries.push({ label: item.type === 'RPW' ? 'RPW w Pyskowicach' : 'Tablica pomiarowa w Pyskowicach', value: d.wPyskowicach ? 'Tak' : 'Nie' });
+        entries.push({ label: item.type === 'RPW' ? 'RPW w Pyskowicach' : 'Tablica pomiarowa w Pyskowicach', value: item.status === 'NOT_APPLICABLE' ? 'Nie dotyczy' : d.wPyskowicach ? 'Tak' : 'Nie' });
         break;
 
       case 'TRANSFORMATOR_POTRZEB_WLASNYCH':
@@ -303,7 +303,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         if (d.dataDostawyPlan) entries.push({ label: 'Planowana data dostawy', value: String(d.dataDostawyPlan).split('-').reverse().join('.') });
         if (d.numerSeryjny) entries.push({ label: 'Numer seryjny', value: String(d.numerSeryjny) });
         if (d.dataPlDostawyPyskowice) entries.push({ label: 'Planowana dostawa do Pyskowic', value: String(d.dataPlDostawyPyskowice).split('-').reverse().join('.') });
-        entries.push({ label: 'Transformator potrzeb własnych w Pyskowicach', value: d.wPyskowicach ? 'Tak' : 'Nie' });
+        entries.push({ label: 'Transformator potrzeb własnych w Pyskowicach', value: item.status === 'NOT_APPLICABLE' ? 'Nie dotyczy' : d.wPyskowicach ? 'Tak' : 'Nie' });
         break;
 
       case 'WSKAZNIKI_ZWARC':
@@ -311,7 +311,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         if (d.ilosc !== undefined && d.ilosc !== '') entries.push({ label: 'Ilość', value: String(d.ilosc) });
         if (d.dataZamowienia) entries.push({ label: 'Data zamówienia', value: String(d.dataZamowienia).split('-').reverse().join('.') });
         if (d.dataPlDostawyPyskowice) entries.push({ label: 'Planowana dostawa do Pyskowic', value: String(d.dataPlDostawyPyskowice).split('-').reverse().join('.') });
-        entries.push({ label: 'Wskaźniki zwarć w Pyskowicach', value: d.wPyskowicach ? 'Tak' : 'Nie' });
+        entries.push({ label: 'Wskaźniki zwarć w Pyskowicach', value: item.status === 'NOT_APPLICABLE' ? 'Nie dotyczy' : d.wPyskowicach ? 'Tak' : 'Nie' });
         break;
 
       case 'POWYKONAWCZA':
