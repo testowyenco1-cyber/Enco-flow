@@ -49,6 +49,9 @@ interface ObudowaFormProps {
     typObudowy?: string;
     rozmiar?: string;
     dataGotowosci?: string;
+    dataZlecenia?: string;
+    dataRysunkowAkceptacji?: string;
+    dataOczekiwana?: string;
     szerokosc?: number | string;
     glebokosc?: number | string;
     wysokosc?: number | string;
@@ -709,6 +712,25 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
           )}
         </div>
         <div className="pt-3 border-t border-slate-200 space-y-3">
+          <div className="flex items-center gap-2"><Calendar className="w-4 h-4 text-blue-600" /><h4 className="text-xs font-bold uppercase tracking-wide text-slate-800">Terminy obudowy i dokumentacji</h4></div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {([
+              ['dataZlecenia', 'Data zlecenia obudowy'],
+              ['dataRysunkowAkceptacji', 'Data akceptacji rysunków'],
+              ['dataOczekiwana', 'Oczekiwana data gotowości'],
+            ] as const).map(([key, label]) => (
+              <div key={key}>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">{label}</label>
+                <input
+                  type="date"
+                  value={String(initialData?.[key] || '')}
+                  disabled={isReadOnly}
+                  onChange={(e) => onAuxiliaryChange?.(key, e.target.value)}
+                  className="w-full min-w-0 text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white disabled:bg-slate-100"
+                />
+              </div>
+            ))}
+          </div>
           <div className="flex items-center gap-2"><Layers className="w-4 h-4 text-blue-600" /><h4 className="text-xs font-bold uppercase tracking-wide text-slate-800">Wyposażenie i kompletacja obudowy</h4></div>
           <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
             <div><span className="block text-xs font-semibold text-slate-700">Kolory</span><p className="text-xs text-slate-600 break-words">{colorsSummary || 'Brak uzupełnionych danych w punkcie KOLORY.'}</p></div>
