@@ -8,14 +8,15 @@ export type DepartmentOwnerKey = 'sales' | 'pyskowice' | 'logistics' | 'technica
 export interface DepartmentOwner {
   key: DepartmentOwnerKey;
   label: string;
+  shortLabel: string;
   className: string;
 }
 
 export const DEPARTMENT_OWNERS: Record<DepartmentOwnerKey, DepartmentOwner> = {
-  sales: { key: 'sales', label: 'Dział Handlowy', className: 'border-blue-200 bg-blue-50 text-blue-800' },
-  pyskowice: { key: 'pyskowice', label: 'Fabryka Pyskowice', className: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  logistics: { key: 'logistics', label: 'Dział Logistyki', className: 'border-amber-200 bg-amber-50 text-amber-800' },
-  technical: { key: 'technical', label: 'Techniczny · projektant DH', className: 'border-violet-200 bg-violet-50 text-violet-800' },
+  sales: { key: 'sales', label: 'Dział Handlowy (DH/MW)', shortLabel: 'DH / MW', className: 'border-blue-200 bg-blue-50 text-blue-800' },
+  pyskowice: { key: 'pyskowice', label: 'Fabryka Pyskowice', shortLabel: 'PYSKOWICE', className: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
+  logistics: { key: 'logistics', label: 'Dział Logistyki', shortLabel: 'LOGISTYKA', className: 'border-amber-200 bg-amber-50 text-amber-800' },
+  technical: { key: 'technical', label: 'Techniczny · projektant DH', shortLabel: 'TECHNICZNY', className: 'border-violet-200 bg-violet-50 text-violet-800' },
 };
 
 const FIELD_OWNERS: Record<string, Record<string, DepartmentOwnerKey>> = {
