@@ -16,6 +16,7 @@ import { X, Check, AlertCircle, CheckCircle2, Layers, Clock, AlertTriangle, Lock
 import { StatusSwitcher } from './StatusSwitcher';
 import { ObudowaForm, ObudowaFormData } from './ObudowaForm';
 import { UserRoleProfile, USER_PROFILES, canEditItemType, getItemPermissionHint } from '../types/userRole';
+import { getFieldDepartment } from '../utils/departmentOwnership';
 
 interface EditItemModalProps {
   item: OrderItem | null;
@@ -1369,35 +1370,44 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Dodatkowe dane procesu i dostawy</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {extendedTrackingFields.map((field) => (
-                    <div key={field.key} className={field.type === 'checkbox' ? 'flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5' : ''}>
-                      {field.type === 'checkbox' ? (
-                        <>
-                          <input
-                            type="checkbox"
-                            checked={Boolean(details[field.key])}
-                            disabled={isReadOnly}
-                            onChange={(e) => handleDetailChange(field.key, e.target.checked)}
-                            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <label className="text-xs font-medium text-slate-700">{field.label}</label>
-                        </>
-                      ) : (
-                        <>
-                          <label className="block text-xs font-medium text-slate-700 mb-1">{field.label}</label>
-                          <input
-                            type={field.type}
-                            value={details[field.key] ?? ''}
-                            disabled={isReadOnly}
-                            onChange={(e) => handleDetailChange(field.key, e.target.value)}
-                            placeholder={field.placeholder || ''}
-                            min={field.type === 'number' ? '0' : undefined}
-                            className="w-full min-w-0 text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white disabled:bg-slate-100 disabled:text-slate-500"
-                          />
-                        </>
-                      )}
-                    </div>
-                  ))}
+                  {extendedTrackingFields.map((field) => {
+                    const owner = getFieldDepartment(item.type, field.key);
+                    return (
+                      <div key={field.key} className={field.type === 'checkbox' ? 'flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5' : 'min-w-0'}>
+                        {field.type === 'checkbox' ? (
+                          <>
+                            <input
+                              type="checkbox"
+                              checked={Boolean(details[field.key])}
+                              disabled={isReadOnly}
+                              onChange={(e) => handleDetailChange(field.key, e.target.checked)}
+                              className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <div className="min-w-0">
+                              <label className="text-xs font-medium text-slate-700">{field.label}</label>
+                              {owner && <span className={`ml-2 inline-flex rounded border px-1.5 py-0.5 text-[9px] font-bold ${owner.className}`}>{owner.label}</span>}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <label className="mb-1 flex flex-wrap items-center gap-1.5 text-xs font-medium text-slate-700">
+                              <span>{field.label}</span>
+                              {owner && <span className={`inline-flex rounded border px-1.5 py-0.5 text-[9px] font-bold ${owner.className}`}>{owner.label}</span>}
+                            </label>
+                            <input
+                              type={field.type}
+                              value={details[field.key] ?? ''}
+                              disabled={isReadOnly}
+                              onChange={(e) => handleDetailChange(field.key, e.target.value)}
+                              placeholder={field.placeholder || ''}
+                              min={field.type === 'number' ? '0' : undefined}
+                              className="w-full min-w-0 text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white disabled:bg-slate-100 disabled:text-slate-500"
+                            />
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
