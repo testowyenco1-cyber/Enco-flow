@@ -77,6 +77,11 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
   const [orderDateInput, setOrderDateInput] = useState(item.orderDate || '');
   const [plannedDateInput, setPlannedDateInput] = useState(item.plannedDate || '');
   const [completedDateInput, setCompletedDateInput] = useState(item.completedDate || '');
+  const [isCompact, setIsCompact] = useState(item.status === 'NOT_APPLICABLE');
+
+  useEffect(() => {
+    setIsCompact(item.status === 'NOT_APPLICABLE');
+  }, [item.status]);
 
   useEffect(() => {
     setNotesInput(item.notes || '');
@@ -1102,7 +1107,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         </div>
 
         {/* Status switcher right in header */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <span className="text-xs text-slate-600 font-bold hidden sm:inline">Status:</span>
           <StatusSwitcher
             currentStatus={item.status}
@@ -1111,11 +1116,22 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
             readOnly={!canEdit}
             readOnlyNotice={permHint.reason}
           />
+          {item.status === 'NOT_APPLICABLE' && (
+            <button
+              type="button"
+              onClick={() => setIsCompact((compact) => !compact)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer"
+              aria-expanded={!isCompact}
+            >
+              {isCompact ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+              {isCompact ? 'Rozwiń' : 'Zwiń'}
+            </button>
+          )}
         </div>
       </div>
 
       {/* Body */}
-      <div className="p-5 space-y-4">
+      {!isCompact && <div className="p-5 space-y-4">
         {/* Technical Details Section */}
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -1234,7 +1250,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
             onOpenFolderManager={onOpenFolderManager}
           />
         </div>
-      </div>
+      </div>}
     </section>
   );
 };
