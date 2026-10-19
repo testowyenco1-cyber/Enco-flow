@@ -16,7 +16,7 @@ import { X, Check, AlertCircle, CheckCircle2, Layers, Clock, AlertTriangle, Lock
 import { StatusSwitcher } from './StatusSwitcher';
 import { ObudowaForm, ObudowaFormData } from './ObudowaForm';
 import { UserRoleProfile, USER_PROFILES, canEditItemType, getItemPermissionHint } from '../types/userRole';
-import { getFieldDepartment } from '../utils/departmentOwnership';
+import { getDepartmentsForItemType, getFieldDepartment } from '../utils/departmentOwnership';
 
 interface EditItemModalProps {
   item: OrderItem | null;
@@ -96,6 +96,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
   const profile = currentProfile || USER_PROFILES.admin;
   const isReadOnly = !canEditItemType(profile, item.type);
   const permHint = getItemPermissionHint(profile, item.type, item.name);
+  const departmentOwners = getDepartmentsForItemType(item.type);
 
   type TrackingField = { key: string; label: string; type: 'text' | 'date' | 'number' | 'checkbox'; placeholder?: string };
   const extendedTrackingFields: TrackingField[] = (() => {
@@ -346,6 +347,20 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
               readOnlyNotice={permHint.reason}
             />
           </div>
+
+          {departmentOwners.length > 0 && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+              <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">Podział procesu — działy</div>
+              <div className="flex flex-wrap gap-1.5">
+                {departmentOwners.map((owner) => (
+                  <span key={owner.key} className={`rounded border px-2 py-1 text-[10px] font-bold ${owner.className}`}>
+                    {owner.label}
+                  </span>
+                ))}
+              </div>
+              <p className="mt-1.5 text-[10px] text-slate-500">Oznaczenia wskazują obszar procesu, a nie konkretną osobę.</p>
+            </div>
+          )}
 
           <div className={isReadOnly ? 'pointer-events-none opacity-85 select-none' : ''}>
 
