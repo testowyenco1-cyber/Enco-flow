@@ -31,6 +31,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { UserRoleProfile, USER_PROFILES, canEditItemType, getItemPermissionHint } from '../types/userRole';
+import { getSummaryFieldDepartment } from '../utils/departmentOwnership';
 
 interface ItemDetailsCardProps {
   item: OrderItem;
@@ -505,12 +506,25 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
 
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-2 gap-x-4">
-        {entries.map((entry, idx) => (
-          <div key={idx} className="text-xs">
-            <span className="text-slate-500 font-medium block">{entry.label}:</span>
-            <span className="text-slate-900 font-semibold">{entry.value}</span>
-          </div>
-        ))}
+        {entries.map((entry, idx) => {
+          const owner = getSummaryFieldDepartment(item.type, entry.label);
+          return (
+            <div key={idx} className="min-w-0 text-xs">
+              <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
+                <span className="text-slate-500 font-medium">{entry.label}:</span>
+                {owner && (
+                  <span
+                    title={`Obszar prowadzący: ${owner.label}`}
+                    className={`inline-flex max-w-full rounded border px-1.5 py-0.5 text-[9px] font-bold leading-tight ${owner.className}`}
+                  >
+                    {owner.label}
+                  </span>
+                )}
+              </div>
+              <span className="break-words text-slate-900 font-semibold">{entry.value}</span>
+            </div>
+          );
+        })}
       </div>
     );
   };
