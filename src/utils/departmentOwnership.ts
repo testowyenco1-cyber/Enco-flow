@@ -27,7 +27,7 @@ const FIELD_OWNERS: Record<string, Record<string, DepartmentOwnerKey>> = {
   },
   OBUDOWA: {
     typObudowy: 'sales', rozmiar: 'sales', szerokosc: 'sales', glebokosc: 'sales', wysokosc: 'sales',
-    dataZlecenia: 'sales', dataRysunkowAkceptacji: 'sales', dataOczekiwana: 'sales', dataGotowosci: 'sales',
+    dataZlecenia: 'sales', dataRysunkowAkceptacji: 'sales', dataGotowosci: 'sales',
     przepustyNN: 'sales', przepustySN: 'sales',
     pokrywyNN: 'pyskowice', pokrywySN: 'pyskowice', wkladkiSN: 'pyskowice',
     pokrywyNNSaWPyskowicach: 'sales', pokrywySNSaWPyskowicach: 'sales', wkladkiSNSaWPyskowicach: 'sales',
@@ -91,7 +91,7 @@ const SUMMARY_LABEL_KEYS: Record<string, Record<string, string>> = {
   OBUDOWA: {
     'Typ obudowy': 'typObudowy', 'Rozmiar obudowy': 'rozmiar', 'Wymiary rzeczywiste': 'szerokosc',
     'Data gotowości': 'dataGotowosci', 'Data zlecenia obudowy': 'dataZlecenia',
-    'Data akceptacji rysunków': 'dataRysunkowAkceptacji', 'Oczekiwana data gotowości': 'dataOczekiwana',
+    'Data akceptacji rysunków': 'dataRysunkowAkceptacji',
     'Przepusty NN': 'przepustyNN', 'Przepusty SN': 'przepustySN',
     'Pokrywy NN': 'pokrywyNN', 'Pokrywy NN w Pyskowicach': 'pokrywyNNSaWPyskowicach',
     'Pokrywy SN': 'pokrywySN', 'Pokrywy SN w Pyskowicach': 'pokrywySNSaWPyskowicach',
