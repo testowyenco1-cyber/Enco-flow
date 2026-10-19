@@ -1000,6 +1000,14 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         initialData={item.details}
         itemStatus={item.status}
         orderPlannedDate={item.plannedDate}
+        onAuxiliaryChange={(key, value) => {
+          if (onUpdateDetails) {
+            onUpdateDetails({
+              ...item.details,
+              [key]: value,
+            });
+          }
+        }}
         onChange={(data) => {
           if (onUpdateDetails) {
             onUpdateDetails({
