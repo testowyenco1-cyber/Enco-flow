@@ -227,7 +227,11 @@ export function createDefaultItemsForOrder(orderId: string, stationSize = ''): O
       type: def.type,
       name: def.name,
       shortName: def.shortName,
-      status: 'NOT_ORDERED',
+      // These four equipment sections are optional; mark them N/A by default
+      // so adding tracker fields does not reopen already completed station orders.
+      status: ['TABLICA_POMIAROWA', 'RPW', 'TRANSFORMATOR_POTRZEB_WLASNYCH', 'WSKAZNIKI_ZWARC'].includes(def.type)
+        ? 'NOT_APPLICABLE'
+        : 'NOT_ORDERED',
       orderDate: '',
       plannedDate: '',
       completedDate: '',
