@@ -99,11 +99,6 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
   type TrackingField = { key: string; label: string; type: 'text' | 'date' | 'number' | 'checkbox'; placeholder?: string };
   const extendedTrackingFields: TrackingField[] = (() => {
     switch (item.type) {
-      case 'ROZDZIELNICA_SN':
-        return [
-          { key: 'dataZlecenia', label: 'Data zlecenia rozdzielnicy SN', type: 'date' },
-          { key: 'dostawca', label: 'Dostawca SN', type: 'text' },
-        ];
       case 'ROZDZIELNICA_NN':
         return [
           { key: 'kategoria', label: 'Kategoria / nr zamówienia NN', type: 'text' },
