@@ -50,7 +50,6 @@ interface ObudowaFormProps {
     rozmiar?: string;
     dataGotowosci?: string;
     dataZlecenia?: string;
-    dataRysunkowAkceptacji?: string;
     szerokosc?: number | string;
     glebokosc?: number | string;
     wysokosc?: number | string;
@@ -402,6 +401,10 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
   // Automatycznie pobieraj kolorystykę i opisy z pozostałych elementów tego samego zlecenia.
   const colorsItem = relatedItems.find((related) => related.type === 'KOLORY');
   const descriptionsItem = relatedItems.find((related) => related.type === 'OPISY');
+  const drawingApprovalDate = relatedItems.find((related) => related.type === 'RYS_AKCEPTACJA')?.details?.dataAkceptacji || '';
+  const drawingApprovalDateFormatted = drawingApprovalDate
+    ? String(drawingApprovalDate).split('-').reverse().join('.')
+    : 'Nie uzupełniono w sekcji RYS. AKCEPTACJA';
   const colorsDetails = colorsItem?.details || {};
   const descriptionsDetails = descriptionsItem?.details || {};
   const colorsSummary = [
@@ -713,21 +716,23 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
         <div className="pt-3 border-t border-slate-200 space-y-3">
           <div className="flex items-center gap-2"><Calendar className="w-4 h-4 text-blue-600" /><h4 className="text-xs font-bold uppercase tracking-wide text-slate-800">Terminy obudowy i dokumentacji</h4></div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {([
-              ['dataZlecenia', 'Data zlecenia obudowy'],
-              ['dataRysunkowAkceptacji', 'Data akceptacji rysunków'],
-            ] as const).map(([key, label]) => (
-              <div key={key}>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">{label}</label>
-                <input
-                  type="date"
-                  value={String(initialData?.[key] || '')}
-                  disabled={isReadOnly}
-                  onChange={(e) => onAuxiliaryChange?.(key, e.target.value)}
-                  className="w-full min-w-0 text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white disabled:bg-slate-100"
-                />
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Data zlecenia obudowy</label>
+              <input
+                type="date"
+                value={String(initialData?.dataZlecenia || '')}
+                disabled={isReadOnly}
+                onChange={(e) => onAuxiliaryChange?.('dataZlecenia', e.target.value)}
+                className="w-full min-w-0 text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white disabled:bg-slate-100"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Rysunki — data akceptacji</label>
+              <div className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700">
+                {drawingApprovalDateFormatted}
               </div>
-            ))}
+              <p className="mt-1 text-[10px] text-slate-500">Dane pobierane z sekcji RYS. AKCEPTACJA — bez dublowania daty.</p>
+            </div>
           </div>
           <div className="flex items-center gap-2"><Layers className="w-4 h-4 text-blue-600" /><h4 className="text-xs font-bold uppercase tracking-wide text-slate-800">Wyposażenie i kompletacja obudowy</h4></div>
           <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
