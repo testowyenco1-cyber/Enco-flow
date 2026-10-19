@@ -198,7 +198,6 @@ export function createDefaultItemsForOrder(orderId: string, stationSize = ''): O
           typWysokosci: OBUDOWA_TYPES[enclosureType].heightTypeLabel,
           dataZlecenia: '',
           dataRysunkowAkceptacji: '',
-          dataOczekiwana: '',
           dataGotowosci: '',
         };
         break;
