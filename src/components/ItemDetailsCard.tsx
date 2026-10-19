@@ -425,12 +425,25 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
           {children}
         </div>
       );
-      const Field = ({ label, value }: { label: string; value: React.ReactNode }) => (
-        <div className="min-w-0">
-          <span className="block text-[11px] font-medium text-slate-500">{label}</span>
-          <span className="block break-words text-xs font-semibold text-slate-900">{value}</span>
-        </div>
-      );
+      const Field = ({ label, value }: { label: string; value: React.ReactNode }) => {
+        const owner = getSummaryFieldDepartment(item.type, label);
+        return (
+          <div className="min-w-0">
+            <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-medium text-slate-500">{label}</span>
+              {owner && (
+                <span
+                  title={`Obszar prowadzący: ${owner.label}`}
+                  className={`inline-flex max-w-full rounded border px-1.5 py-0.5 text-[9px] font-bold leading-tight ${owner.className}`}
+                >
+                  {owner.label}
+                </span>
+              )}
+            </div>
+            <span className="block break-words text-xs font-semibold text-slate-900">{value}</span>
+          </div>
+        );
+      };
 
       return (
         <div className="divide-y divide-slate-200 text-xs">
