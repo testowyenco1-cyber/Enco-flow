@@ -459,6 +459,9 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
                     : displayValue(d.wymiary)
                 }
               />
+              <Field label="Data zlecenia obudowy" value={formatDate(d.dataZlecenia)} />
+              <Field label="Rysunki — data akceptacji" value={formatDate(drawingApprovalDate)} />
+              <Field label="Data oczekiwana" value={formatDate(d.dataGotowosci)} />
             </div>
           </Section>
 
