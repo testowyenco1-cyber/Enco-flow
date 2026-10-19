@@ -157,8 +157,6 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
           value: `${snConfig} (L: liniowe, T: transformatorowe)`,
         });
         if (d.numerSeryjny) entries.push({ label: 'Numer seryjny', value: String(d.numerSeryjny) });
-        if (d.dataZlecenia) entries.push({ label: 'Data zlecenia', value: String(d.dataZlecenia).split('-').reverse().join('.') });
-        if (d.dostawca) entries.push({ label: 'Dostawca', value: String(d.dostawca) });
         const formatSNDate = (value: unknown) =>
           typeof value === 'string' && value ? value.split('-').reverse().join('.') : '';
         if (d.dataDostawyPlan) entries.push({ label: 'Data dostawy plan.', value: formatSNDate(d.dataDostawyPlan) });
