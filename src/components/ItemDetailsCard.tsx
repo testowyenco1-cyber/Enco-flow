@@ -450,7 +450,6 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Rodzaj obudowy" value={typName} />
               <Field label="Rozmiar obudowy" value={displayValue(d.rozmiar)} />
-              <Field label="Rysunki — data akceptacji" value={formatDate(drawingApprovalDate)} />
               <Field
                 label="Wymiary rzeczywiste"
                 value={
