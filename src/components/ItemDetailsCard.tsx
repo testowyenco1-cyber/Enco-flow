@@ -356,7 +356,6 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
           entries.push({ label: 'Data gotowości', value: fDate });
         }
         if (d.dataZlecenia) entries.push({ label: 'Data zlecenia obudowy', value: String(d.dataZlecenia).split('-').reverse().join('.') });
-        if (d.dataRysunkowAkceptacji) entries.push({ label: 'Data akceptacji rysunków', value: String(d.dataRysunkowAkceptacji).split('-').reverse().join('.') });
         if (d.przepustyNN) entries.push({ label: 'Przepusty NN', value: d.przepustyNN });
         if (d.przepustySN) entries.push({ label: 'Przepusty SN', value: d.przepustySN });
         if (d.pokrywyNN) entries.push({ label: 'Pokrywy NN', value: d.pokrywyNN });
@@ -399,6 +398,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
       const d = item.details || {};
       const koloryItem = orderItems.find((related) => related.type === 'KOLORY');
       const opisyItem = orderItems.find((related) => related.type === 'OPISY');
+      const drawingApprovalDate = orderItems.find((related) => related.type === 'RYS_AKCEPTACJA')?.details?.dataAkceptacji;
       const kolory = koloryItem?.details || {};
       const opisy = opisyItem?.details || {};
       const typName =
@@ -450,6 +450,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Rodzaj obudowy" value={typName} />
               <Field label="Rozmiar obudowy" value={displayValue(d.rozmiar)} />
+              <Field label="Rysunki — data akceptacji" value={formatDate(drawingApprovalDate)} />
               <Field
                 label="Wymiary rzeczywiste"
                 value={
