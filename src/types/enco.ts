@@ -36,6 +36,10 @@ export type StandardItemType =
   | 'ZAM_JK'
   | 'ZLECENIE_MONTAZU'
   | 'SZAFKA_TELEMECHANIKI'
+  | 'TABLICA_POMIAROWA'
+  | 'RPW'
+  | 'TRANSFORMATOR_POTRZEB_WLASNYCH'
+  | 'WSKAZNIKI_ZWARC'
   | 'POWYKONAWCZA'
   | 'DATA_WYJAZDU'
   | 'DODATKOWE';
@@ -443,6 +447,34 @@ export const ITEM_DEFINITIONS: ItemTypeDefinition[] = [
     shortName: 'TELEMECH.',
     category: 'element',
     description: 'Szafka telemechaniki, sterownik RTU, modem GSM/światłowód, zasilacz buforowy',
+  },
+  {
+    type: 'TABLICA_POMIAROWA',
+    name: 'TABLICA POMIAROWA',
+    shortName: 'TABLICA POM.',
+    category: 'element',
+    description: 'Kategoria, zamówienie, dostawa i potwierdzenie przyjęcia tablicy pomiarowej w Pyskowicach',
+  },
+  {
+    type: 'RPW',
+    name: 'RPW',
+    shortName: 'RPW',
+    category: 'element',
+    description: 'Śledzenie zamówienia, gotowości, dostawy i przyjęcia RPW w Pyskowicach',
+  },
+  {
+    type: 'TRANSFORMATOR_POTRZEB_WLASNYCH',
+    name: 'TRANSFORMATOR POTRZEB WŁASNYCH',
+    shortName: 'TRAFO POTRZ. WŁ.',
+    category: 'element',
+    description: 'Parametry VA, numer seryjny, termin dostawy i przyjęcie w Pyskowicach',
+  },
+  {
+    type: 'WSKAZNIKI_ZWARC',
+    name: 'WSKAŹNIKI ZWARCIA',
+    shortName: 'WSKAŹNIKI',
+    category: 'element',
+    description: 'Typ, ilość, zamówienie, dostawa i potwierdzenie przyjęcia wskaźników zwarć',
   },
   {
     type: 'POWYKONAWCZA',
