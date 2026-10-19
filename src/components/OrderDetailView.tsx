@@ -338,7 +338,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
         <div className="p-6 border-b border-slate-100 bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 text-white">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3 min-w-0">
                 <span className="font-mono text-base font-black px-3 py-1 rounded bg-blue-600 text-white tracking-wider">
                   {order.orderNumber}
                 </span>
@@ -347,7 +347,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                     {orderNumberOwner.label}
                   </span>
                 )}
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+                <h1 className="min-w-0 break-words text-xl sm:text-2xl font-bold tracking-tight">
                   {order.projectName}
                 </h1>
                 {projectOwner && (
