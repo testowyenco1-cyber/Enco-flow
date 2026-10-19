@@ -307,6 +307,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
   const orderNumberOwner = getOrderFieldDepartment('orderNumber');
   const clientOwner = getOrderFieldDepartment('client');
   const projectOwner = getOrderFieldDepartment('projectName');
+  const departureOwner = getOrderFieldDepartment('departureDate');
 
   return (
     <div className="space-y-8 pb-16">
@@ -410,10 +411,17 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 <FileText className="w-3.5 h-3.5" />
                 <span>Dokument oferty</span>
               </button>
-              <DepartureBadge
-                dateStr={order.departureDate}
-                isCompleted={order.status === 'READY'}
-              />
+              <div className="flex flex-wrap items-center gap-1.5">
+                <DepartureBadge
+                  dateStr={order.departureDate}
+                  isCompleted={order.status === 'READY'}
+                />
+                {departureOwner && (
+                  <span className={`rounded border px-1.5 py-0.5 text-[9px] font-bold ${departureOwner.className}`}>
+                    {departureOwner.label}
+                  </span>
+                )}
+              </div>
               <OrderStatusBadge status={order.status} size="lg" />
               <button
                 type="button"
