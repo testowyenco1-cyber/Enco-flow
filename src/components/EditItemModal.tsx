@@ -1400,14 +1400,14 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                             />
                             <div className="min-w-0">
                               <label className="text-xs font-medium text-slate-700">{field.label}</label>
-                              {owner && <span className={`ml-2 inline-flex rounded border px-1.5 py-0.5 text-[9px] font-bold ${owner.className}`}>{owner.label}</span>}
+                              {owner && <span className={`ml-2 inline-flex rounded border px-1.5 py-0.5 text-[9px] font-bold ${owner.className}`}>{owner.shortLabel}</span>}
                             </div>
                           </>
                         ) : (
                           <>
                             <label className="mb-1 flex flex-wrap items-center gap-1.5 text-xs font-medium text-slate-700">
                               <span>{field.label}</span>
-                              {owner && <span className={`inline-flex rounded border px-1.5 py-0.5 text-[9px] font-bold ${owner.className}`}>{owner.label}</span>}
+                              {owner && <span className={`inline-flex rounded border px-1.5 py-0.5 text-[9px] font-bold ${owner.className}`}>{owner.shortLabel}</span>}
                             </label>
                             <input
                               type={field.type}
