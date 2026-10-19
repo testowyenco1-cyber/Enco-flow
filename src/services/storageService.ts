@@ -209,6 +209,14 @@ export function sanitizeOrders(parsed: any[]): Order[] {
       return baseItem;
     });
 
+    // Backfill newly introduced standard sections for existing orders without
+    // replacing any saved data or disturbing additional SN/NN switchgear cards.
+    const defaultItems = createDefaultItemsForOrder(String(ord.id || 'order'), String(ord.stationSize || ''));
+    const missingItems = defaultItems.filter(
+      (defaultItem) => !sanitizedItems.some((savedItem: any) => savedItem.type === defaultItem.type)
+    );
+    const completeItems = [...sanitizedItems, ...missingItems];
+
     const createdYear = ord.createdAt ? new Date(ord.createdAt).getFullYear() : new Date().getFullYear();
     const existingYear = String(ord.orderNumber || '').match(/\/(\d{4})$/)?.[1];
     const migratedOrderNumber = normalizeOrderNumber(ord.orderNumber || '', Number(existingYear || createdYear));
@@ -218,8 +226,8 @@ export function sanitizeOrders(parsed: any[]): Order[] {
       orderNumber: migratedOrderNumber,
       // For legacy records, preserve the currently stored date as the best available baseline.
       originalDepartureDate: ord.originalDepartureDate || ord.departureDate || '',
-      items: sanitizedItems,
-      status: calculateOrderStatus(sanitizedItems),
+      items: completeItems,
+      status: calculateOrderStatus(completeItems),
       attachments: Array.isArray(ord.attachments) ? ord.attachments : [],
     };
   });
