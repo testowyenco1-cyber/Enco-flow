@@ -432,7 +432,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
               <span className="text-[11px] font-medium text-slate-500">{label}</span>
               {owner && (
                 <span
-                  title={`Obszar prowadzący: ${owner.label}`}
+                  title={`Obszar prowadzący: ${owner.shortLabel}`}
                   className={`inline-flex max-w-full rounded border px-1.5 py-0.5 text-[9px] font-bold leading-tight ${owner.className}`}
                 >
                   {owner.label}
