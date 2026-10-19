@@ -1,4 +1,4 @@
-import { Order, OrderItem, calculateOrderStatus, Attachment, DoorOrder } from '../types/enco';
+import { Order, OrderItem, calculateOrderStatus, Attachment, DoorOrder, ITEM_DEFINITIONS } from '../types/enco';
 import { INITIAL_ORDERS, createDefaultItemsForOrder } from '../data/mockData';
 import { normalizeOrderNumber } from '../utils/orderNumberUtils';
 import { INITIAL_DOOR_ORDERS } from '../data/mockDoorOrders';
@@ -215,7 +215,16 @@ export function sanitizeOrders(parsed: any[]): Order[] {
     const missingItems = defaultItems.filter(
       (defaultItem) => !sanitizedItems.some((savedItem: any) => savedItem.type === defaultItem.type)
     );
-    const completeItems = [...sanitizedItems, ...missingItems];
+    const itemDefinitionOrder = new Map<string, number>(
+      ITEM_DEFINITIONS.map((definition, index) => [definition.type, index])
+    );
+    // Put sections in one consistent production order while preserving the
+    // relative order of multiple SN/NN switchgear cards of the same type.
+    const completeItems = [...sanitizedItems, ...missingItems].sort((left: any, right: any) => {
+      const leftOrder = itemDefinitionOrder.get(left.type) ?? Number.MAX_SAFE_INTEGER;
+      const rightOrder = itemDefinitionOrder.get(right.type) ?? Number.MAX_SAFE_INTEGER;
+      return leftOrder - rightOrder;
+    });
 
     const createdYear = ord.createdAt ? new Date(ord.createdAt).getFullYear() : new Date().getFullYear();
     const existingYear = String(ord.orderNumber || '').match(/\/(\d{4})$/)?.[1];
