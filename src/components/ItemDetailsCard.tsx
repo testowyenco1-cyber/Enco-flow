@@ -157,6 +157,8 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
           value: `${snConfig} (L: liniowe, T: transformatorowe)`,
         });
         if (d.numerSeryjny) entries.push({ label: 'Numer seryjny', value: String(d.numerSeryjny) });
+        if (d.dataZlecenia) entries.push({ label: 'Data zlecenia', value: String(d.dataZlecenia).split('-').reverse().join('.') });
+        if (d.dostawca) entries.push({ label: 'Dostawca', value: String(d.dostawca) });
         const formatSNDate = (value: unknown) =>
           typeof value === 'string' && value ? value.split('-').reverse().join('.') : '';
         if (d.dataDostawyPlan) entries.push({ label: 'Data dostawy plan.', value: formatSNDate(d.dataDostawyPlan) });
@@ -200,6 +202,12 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         if (wypVal) {
           entries.push({ label: 'Wyposażenie dodatkowe', value: wypVal });
         }
+        if (d.kategoria) entries.push({ label: 'Kategoria', value: String(d.kategoria) });
+        if (d.dostawca) entries.push({ label: 'Dostawca', value: String(d.dostawca) });
+        if (d.dataGotowosciFakt) entries.push({ label: 'Faktyczna data gotowości', value: String(d.dataGotowosciFakt).split('-').reverse().join('.') });
+        if (d.dataDostawyPlan) entries.push({ label: 'Planowana data dostawy', value: String(d.dataDostawyPlan).split('-').reverse().join('.') });
+        if (d.dataPlDostawyPyskowice) entries.push({ label: 'Planowana dostawa do Pyskowic', value: String(d.dataPlDostawyPyskowice).split('-').reverse().join('.') });
+        entries.push({ label: 'NN w Pyskowicach', value: d.nnWPyskowicach ? 'Tak' : 'Nie' });
         break;
 
       case 'MOST':
@@ -209,6 +217,10 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         if (d.rodzajGlowic) entries.push({ label: 'Rodzaj głowic', value: d.rodzajGlowic });
         if (d.iloscGlowic) entries.push({ label: 'Ilość głowic', value: d.iloscGlowic });
         if (d.terminRealizacji) entries.push({ label: 'Termin realizacji', value: d.terminRealizacji });
+        if (d.dataZlecenia) entries.push({ label: 'Data zlecenia', value: String(d.dataZlecenia).split('-').reverse().join('.') });
+        if (d.dataGotowosci) entries.push({ label: 'Data gotowości', value: String(d.dataGotowosci).split('-').reverse().join('.') });
+        if (d.dataPlDostawyPyskowice) entries.push({ label: 'Planowana dostawa do Pyskowic', value: String(d.dataPlDostawyPyskowice).split('-').reverse().join('.') });
+        entries.push({ label: 'Mosty SN w Pyskowicach', value: d.mostSNPyskowicach ? 'Tak' : 'Nie' });
         break;
 
       case 'RYS_AKCEPTACJA':
@@ -262,11 +274,52 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         if (d.wyposazenie) entries.push({ label: 'Wyposażenie', value: d.wyposazenie });
         if (d.zakres) entries.push({ label: 'Zakres', value: d.zakres });
         if (d.informacjeTechniczne) entries.push({ label: 'Informacje techniczne', value: d.informacjeTechniczne });
+        if (d.dataGotowosciDokumentacji) entries.push({ label: 'Gotowość dokumentacji telemechaniki', value: String(d.dataGotowosciDokumentacji).split('-').reverse().join('.') });
+        entries.push({ label: 'Dokumentacja wysłana do uzgodnienia', value: d.dokumentacjaWyslanaDoUzgodnienia ? 'Tak' : 'Nie' });
+        if (d.typSterownika) entries.push({ label: 'Typ sterownika', value: d.typSterownika });
+        if (d.dataZleceniaSzafy) entries.push({ label: 'Data zlecenia szafy', value: String(d.dataZleceniaSzafy).split('-').reverse().join('.') });
+        if (d.dataOczekiwana) entries.push({ label: 'Oczekiwana gotowość szafy', value: String(d.dataOczekiwana).split('-').reverse().join('.') });
+        if (d.dataGotowosci) entries.push({ label: 'Gotowość szafy', value: String(d.dataGotowosci).split('-').reverse().join('.') });
+        if (d.dataPlDostawyPyskowice) entries.push({ label: 'Planowana dostawa telemechaniki', value: String(d.dataPlDostawyPyskowice).split('-').reverse().join('.') });
+        entries.push({ label: 'Szafka w Pyskowicach', value: d.szafkaWPyskowicach ? 'Tak' : 'Nie' });
+        entries.push({ label: 'Akumulator w Pyskowicach', value: d.akumulatorWPyskowicach ? 'Tak' : 'Nie' });
+        entries.push({ label: 'Maszt i antena w Pyskowicach', value: d.masztAntenaWPyskowicach ? 'Tak' : 'Nie' });
+        if (d.sensoryNapieciowe) entries.push({ label: 'Sensory napięciowe', value: d.sensoryNapieciowe });
+        if (d.dataPlDostawySensorowPyskowice) entries.push({ label: 'Planowana dostawa sensorów', value: String(d.dataPlDostawySensorowPyskowice).split('-').reverse().join('.') });
+        entries.push({ label: 'Sensory napięciowe w Pyskowicach', value: d.sensoryNapiecioweWPyskowicach ? 'Tak' : 'Nie' });
+        break;
+
+      case 'TABLICA_POMIAROWA':
+      case 'RPW':
+        if (d.kategoria) entries.push({ label: 'Kategoria', value: String(d.kategoria) });
+        if (d.dataZlecenia) entries.push({ label: 'Data zlecenia', value: String(d.dataZlecenia).split('-').reverse().join('.') });
+        if (d.dataDostawyPlan) entries.push({ label: 'Planowana data dostawy', value: String(d.dataDostawyPlan).split('-').reverse().join('.') });
+        if (d.dataGotowosciFakt) entries.push({ label: 'Faktyczna data gotowości', value: String(d.dataGotowosciFakt).split('-').reverse().join('.') });
+        if (d.dataPlDostawyPyskowice) entries.push({ label: 'Planowana dostawa do Pyskowic', value: String(d.dataPlDostawyPyskowice).split('-').reverse().join('.') });
+        entries.push({ label: item.type === 'RPW' ? 'RPW w Pyskowicach' : 'Tablica pomiarowa w Pyskowicach', value: d.wPyskowicach ? 'Tak' : 'Nie' });
+        break;
+
+      case 'TRANSFORMATOR_POTRZEB_WLASNYCH':
+        if (d.va) entries.push({ label: 'Moc / VA', value: String(d.va) });
+        if (d.dataDostawyPlan) entries.push({ label: 'Planowana data dostawy', value: String(d.dataDostawyPlan).split('-').reverse().join('.') });
+        if (d.numerSeryjny) entries.push({ label: 'Numer seryjny', value: String(d.numerSeryjny) });
+        if (d.dataPlDostawyPyskowice) entries.push({ label: 'Planowana dostawa do Pyskowic', value: String(d.dataPlDostawyPyskowice).split('-').reverse().join('.') });
+        entries.push({ label: 'Transformator potrzeb własnych w Pyskowicach', value: d.wPyskowicach ? 'Tak' : 'Nie' });
+        break;
+
+      case 'WSKAZNIKI_ZWARC':
+        if (d.typ) entries.push({ label: 'Typ wskaźników / centralki', value: String(d.typ) });
+        if (d.ilosc !== undefined && d.ilosc !== '') entries.push({ label: 'Ilość', value: String(d.ilosc) });
+        if (d.dataZamowienia) entries.push({ label: 'Data zamówienia', value: String(d.dataZamowienia).split('-').reverse().join('.') });
+        if (d.dataPlDostawyPyskowice) entries.push({ label: 'Planowana dostawa do Pyskowic', value: String(d.dataPlDostawyPyskowice).split('-').reverse().join('.') });
+        entries.push({ label: 'Wskaźniki zwarć w Pyskowicach', value: d.wPyskowicach ? 'Tak' : 'Nie' });
         break;
 
       case 'POWYKONAWCZA':
         if (d.statusDokumentacji) entries.push({ label: 'Status dokumentacji', value: d.statusDokumentacji });
-        if (d.dataZakonczenia) entries.push({ label: 'Data zakończenia', value: d.dataZakonczenia });
+        if (d.dataZakonczenia) entries.push({ label: 'Data gotowości dokumentacji', value: String(d.dataZakonczenia).split('-').reverse().join('.') });
+        entries.push({ label: 'Waga i DTR wysłane', value: d.wagaDTRWyslana ? 'Tak' : 'Nie' });
+        if (d.dataPrzekazaniaDokumentacji) entries.push({ label: 'Data przekazania dokumentacji', value: String(d.dataPrzekazaniaDokumentacji).split('-').reverse().join('.') });
         break;
 
       case 'OBUDOWA': {
@@ -303,6 +356,9 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
           const fDate = parts.length === 3 ? `${parts[2]}.${parts[1]}.${parts[0]}` : d.dataGotowosci;
           entries.push({ label: 'Data gotowości', value: fDate });
         }
+        if (d.dataZlecenia) entries.push({ label: 'Data zlecenia obudowy', value: String(d.dataZlecenia).split('-').reverse().join('.') });
+        if (d.dataRysunkowAkceptacji) entries.push({ label: 'Data akceptacji rysunków', value: String(d.dataRysunkowAkceptacji).split('-').reverse().join('.') });
+        if (d.dataOczekiwana) entries.push({ label: 'Oczekiwana data gotowości', value: String(d.dataOczekiwana).split('-').reverse().join('.') });
         if (d.przepustyNN) entries.push({ label: 'Przepusty NN', value: d.przepustyNN });
         if (d.przepustySN) entries.push({ label: 'Przepusty SN', value: d.przepustySN });
         if (d.pokrywyNN) entries.push({ label: 'Pokrywy NN', value: d.pokrywyNN });
@@ -321,10 +377,13 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
       }
 
       case 'DATA_WYJAZDU':
-        if (d.dataTransportu) entries.push({ label: 'Godzina/data załadunku', value: d.dataTransportu });
-        if (d.przewoznik) entries.push({ label: 'Przewoźnik / HDS', value: d.przewoznik });
+        if (d.dataTransportu) entries.push({ label: 'Data załadunku', value: d.dataTransportu });
+        if (d.przewoznik) entries.push({ label: 'Przewoźnik', value: d.przewoznik });
         if (d.adresDostawy) entries.push({ label: 'Adres dostawy', value: d.adresDostawy });
         if (d.kontaktNaBudowie) entries.push({ label: 'Kontakt na budowie', value: d.kontaktNaBudowie });
+        if (d.kilometry !== undefined && d.kilometry !== '') entries.push({ label: 'Kilometry', value: String(d.kilometry) });
+        if (d.cenaTransportu !== undefined && d.cenaTransportu !== '') entries.push({ label: 'Cena transportu (PLN)', value: String(d.cenaTransportu) });
+        if (d.numerFaktury) entries.push({ label: 'Numer faktury', value: String(d.numerFaktury) });
         break;
 
       case 'DODATKOWE':
