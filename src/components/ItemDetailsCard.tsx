@@ -357,7 +357,6 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         }
         if (d.dataZlecenia) entries.push({ label: 'Data zlecenia obudowy', value: String(d.dataZlecenia).split('-').reverse().join('.') });
         if (d.dataRysunkowAkceptacji) entries.push({ label: 'Data akceptacji rysunków', value: String(d.dataRysunkowAkceptacji).split('-').reverse().join('.') });
-        if (d.dataOczekiwana) entries.push({ label: 'Oczekiwana data gotowości', value: String(d.dataOczekiwana).split('-').reverse().join('.') });
         if (d.przepustyNN) entries.push({ label: 'Przepusty NN', value: d.przepustyNN });
         if (d.przepustySN) entries.push({ label: 'Przepusty SN', value: d.przepustySN });
         if (d.pokrywyNN) entries.push({ label: 'Pokrywy NN', value: d.pokrywyNN });
