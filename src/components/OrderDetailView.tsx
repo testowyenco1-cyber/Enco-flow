@@ -358,9 +358,9 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-y-1 gap-x-4 mt-2 text-xs text-slate-300">
-                <div className="flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5 text-blue-400" />
-                  <span className="font-medium text-white">{order.client}</span>
+                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5 shrink-0 text-blue-400" />
+                  <span className="break-words font-medium text-white">{order.client}</span>
                   {clientOwner && (
                     <span className={`rounded border px-1.5 py-0.5 text-[9px] font-bold ${clientOwner.className}`}>
                       {clientOwner.label}
