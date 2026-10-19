@@ -22,8 +22,8 @@ const FIELD_OWNERS: Record<string, Record<string, DepartmentOwnerKey>> = {
   order: {
     client: 'sales',
     orderNumber: 'pyskowice',
-    stationSize: 'sales',
     projectName: 'sales',
+    departureDate: 'logistics',
   },
   OBUDOWA: {
     typObudowy: 'sales', rozmiar: 'sales', szerokosc: 'sales', glebokosc: 'sales', wysokosc: 'sales',
@@ -89,7 +89,8 @@ const FIELD_OWNERS: Record<string, Record<string, DepartmentOwnerKey>> = {
 
 const SUMMARY_LABEL_KEYS: Record<string, Record<string, string>> = {
   OBUDOWA: {
-    'Typ obudowy': 'typObudowy', 'Rozmiar obudowy': 'rozmiar', 'Wymiary rzeczywiste': 'szerokosc',
+    'Rodzaj obudowy': 'typObudowy', 'Typ obudowy': 'typObudowy',
+    'Rozmiar obudowy': 'rozmiar', 'Wymiary rzeczywiste': 'szerokosc',
     'Data gotowości': 'dataGotowosci', 'Data zlecenia obudowy': 'dataZlecenia',
     'Data akceptacji rysunków': 'dataRysunkowAkceptacji',
     'Przepusty NN': 'przepustyNN', 'Przepusty SN': 'przepustySN',
@@ -111,6 +112,7 @@ const SUMMARY_LABEL_KEYS: Record<string, Record<string, string>> = {
     'Typ rozdzielnicy': 'typRozdzielnicy', 'Ilość pól': 'iloscPol', 'Data wystawienia zlecenia': 'dataWystawieniaZlecenia',
     'Kategoria': 'kategoria', 'Dostawca': 'dostawca', 'Faktyczna data gotowości': 'dataGotowosciFakt',
     'Planowana data dostawy': 'dataDostawyPlan', 'Planowana dostawa do Pyskowic': 'dataPlDostawyPyskowice',
+    'Planowana gotowość do transportu': 'planowanaGotowoscTransportu',
     'NN w Pyskowicach': 'nnWPyskowicach',
   },
   TABLICA_POMIAROWA: {
