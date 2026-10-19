@@ -215,9 +215,10 @@ export function sanitizeOrders(parsed: any[]): Order[] {
     const missingItems = defaultItems.filter(
       (defaultItem) => !sanitizedItems.some((savedItem: any) => savedItem.type === defaultItem.type)
     );
-    const itemDefinitionOrder = new Map<string, number>(
-      ITEM_DEFINITIONS.map((definition, index) => [definition.type, index])
-    );
+    const itemDefinitionOrder = new Map<string, number>();
+    ITEM_DEFINITIONS.forEach((definition, index) => {
+      itemDefinitionOrder.set(definition.type, index);
+    });
     // Put sections in one consistent production order while preserving the
     // relative order of multiple SN/NN switchgear cards of the same type.
     const completeItems = [...sanitizedItems, ...missingItems].sort((left: any, right: any) => {
