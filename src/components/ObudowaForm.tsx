@@ -51,7 +51,6 @@ interface ObudowaFormProps {
     dataGotowosci?: string;
     dataZlecenia?: string;
     dataRysunkowAkceptacji?: string;
-    dataOczekiwana?: string;
     szerokosc?: number | string;
     glebokosc?: number | string;
     wysokosc?: number | string;
@@ -717,7 +716,6 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
             {([
               ['dataZlecenia', 'Data zlecenia obudowy'],
               ['dataRysunkowAkceptacji', 'Data akceptacji rysunków'],
-              ['dataOczekiwana', 'Oczekiwana data gotowości'],
             ] as const).map(([key, label]) => (
               <div key={key}>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">{label}</label>
