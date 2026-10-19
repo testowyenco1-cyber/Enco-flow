@@ -26,6 +26,7 @@ import {
   HardDrive,
 } from 'lucide-react';
 import { UserRoleProfile, USER_PROFILES, canEditItemType, getItemPermissionHint } from '../types/userRole';
+import { getOrderFieldDepartment } from '../utils/departmentOwnership';
 
 interface OrderDetailViewProps {
   order: Order;
@@ -303,6 +304,9 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
   const orderedItemsCount = order.items.filter((i) => i.status === 'ORDERED').length;
   const problemItemsCount = order.items.filter((i) => i.status === 'PROBLEM').length;
   const notOrderedCount = order.items.filter((i) => i.status === 'NOT_ORDERED').length;
+  const orderNumberOwner = getOrderFieldDepartment('orderNumber');
+  const clientOwner = getOrderFieldDepartment('client');
+  const projectOwner = getOrderFieldDepartment('projectName');
 
   return (
     <div className="space-y-8 pb-16">
@@ -337,15 +341,30 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 <span className="font-mono text-base font-black px-3 py-1 rounded bg-blue-600 text-white tracking-wider">
                   {order.orderNumber}
                 </span>
+                {orderNumberOwner && (
+                  <span className={`rounded border px-1.5 py-0.5 text-[9px] font-bold ${orderNumberOwner.className}`}>
+                    {orderNumberOwner.label}
+                  </span>
+                )}
                 <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
                   {order.projectName}
                 </h1>
+                {projectOwner && (
+                  <span className={`rounded border px-1.5 py-0.5 text-[9px] font-bold ${projectOwner.className}`}>
+                    {projectOwner.label}
+                  </span>
+                )}
               </div>
 
               <div className="flex flex-wrap items-center gap-y-1 gap-x-4 mt-2 text-xs text-slate-300">
                 <div className="flex items-center gap-1.5">
                   <Building2 className="w-3.5 h-3.5 text-blue-400" />
                   <span className="font-medium text-white">{order.client}</span>
+                  {clientOwner && (
+                    <span className={`rounded border px-1.5 py-0.5 text-[9px] font-bold ${clientOwner.className}`}>
+                      {clientOwner.label}
+                    </span>
+                  )}
                 </div>
                 {order.contactName && (
                   <div className="inline-flex flex-wrap items-center gap-2 text-slate-200">
