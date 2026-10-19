@@ -197,7 +197,6 @@ export function createDefaultItemsForOrder(orderId: string, stationSize = ''): O
           wysokosc: matchedVariant?.height ?? defaultVariant?.height ?? OBUDOWA_TYPES[enclosureType].defaultHeight,
           typWysokosci: OBUDOWA_TYPES[enclosureType].heightTypeLabel,
           dataZlecenia: '',
-          dataRysunkowAkceptacji: '',
           dataGotowosci: '',
         };
         break;
