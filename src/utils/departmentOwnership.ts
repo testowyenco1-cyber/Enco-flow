@@ -91,7 +91,8 @@ const SUMMARY_LABEL_KEYS: Record<string, Record<string, string>> = {
   OBUDOWA: {
     'Rodzaj obudowy': 'typObudowy', 'Typ obudowy': 'typObudowy',
     'Rozmiar obudowy': 'rozmiar', 'Wymiary rzeczywiste': 'szerokosc',
-    'Data gotowości': 'dataGotowosci', 'Data zlecenia obudowy': 'dataZlecenia',
+    'Data gotowości': 'dataGotowosci', 'Data oczekiwana': 'dataGotowosci',
+    'Data zlecenia obudowy': 'dataZlecenia', 'Rysunki — data akceptacji': 'dataRysunkowAkceptacji',
     'Data akceptacji rysunków': 'dataRysunkowAkceptacji',
     'Przepusty NN': 'przepustyNN', 'Przepusty SN': 'przepustySN',
     'Pokrywy NN': 'pokrywyNN', 'Pokrywy NN w Pyskowicach': 'pokrywyNNSaWPyskowicach',
