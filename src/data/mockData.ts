@@ -28,6 +28,12 @@ export function createDefaultItemsForOrder(orderId: string, stationSize = ''): O
           iloscPol: 3,
           konfiguracjaPol: 'L-L-L-T',
           parametryTechniczne: 'Napięcie znamionowe 24 kV, prąd 630A, SF6-free',
+          dataZlecenia: '',
+          dostawca: '',
+          dataDostawyPlan: '',
+          dataDostawyFakt: '',
+          dataPlDostawyPyskowice: '',
+          snWPyskowicach: false,
         };
         break;
       case 'ROZDZIELNICA_NN':
@@ -37,6 +43,12 @@ export function createDefaultItemsForOrder(orderId: string, stationSize = ''): O
           dataWystawieniaZlecenia: '',
           planowanaGotowoscTransportu: '',
           wyposazenieDodatkowe: '',
+          kategoria: '',
+          dostawca: '',
+          dataGotowosciFakt: '',
+          dataDostawyPlan: '',
+          dataPlDostawyPyskowice: '',
+          nnWPyskowicach: false,
         };
         break;
       case 'MOST':
@@ -47,6 +59,10 @@ export function createDefaultItemsForOrder(orderId: string, stationSize = ''): O
           rodzajGlowic: 'Konektorowe kątowe Raychem / TE Connectivity',
           iloscGlowic: '6 szt.',
           terminRealizacji: '',
+          dataZlecenia: '',
+          dataGotowosci: '',
+          dataPlDostawyPyskowice: '',
+          mostSNPyskowicach: false,
         };
         break;
       case 'RYS_AKCEPTACJA':
@@ -107,12 +123,65 @@ export function createDefaultItemsForOrder(orderId: string, stationSize = ''): O
           wyposazenie: 'Zasilacz buforowy 24V DC + akumulatory AGM, modem 4G LTE/5G, switch przemysłowy Moxa',
           zakres: 'Sygnalizacja stanu łączników, pomiar napięć i prądów, sterowanie zdalne wyłącznikiem SN',
           informacjeTechniczne: 'Protokół IEC 60870-5-104 do dyspozycji OSD',
+          dataGotowosciDokumentacji: '',
+          dokumentacjaWyslanaDoUzgodnienia: false,
+          typSterownika: '',
+          dataZleceniaSzafy: '',
+          dataOczekiwana: '',
+          dataGotowosci: '',
+          dataPlDostawyPyskowice: '',
+          szafkaWPyskowicach: false,
+          akumulatorWPyskowicach: false,
+          masztAntenaWPyskowicach: false,
+          sensoryNapieciowe: '',
+          dataPlDostawySensorowPyskowice: '',
+          sensoryNapiecioweWPyskowicach: false,
+        };
+        break;
+      case 'TABLICA_POMIAROWA':
+        details = {
+          kategoria: '',
+          dataZlecenia: '',
+          dataDostawyPlan: '',
+          dataGotowosciFakt: '',
+          dataPlDostawyPyskowice: '',
+          wPyskowicach: false,
+        };
+        break;
+      case 'RPW':
+        details = {
+          kategoria: '',
+          dataZlecenia: '',
+          dataDostawyPlan: '',
+          dataGotowosciFakt: '',
+          dataPlDostawyPyskowice: '',
+          wPyskowicach: false,
+        };
+        break;
+      case 'TRANSFORMATOR_POTRZEB_WLASNYCH':
+        details = {
+          va: '',
+          dataDostawyPlan: '',
+          numerSeryjny: '',
+          dataPlDostawyPyskowice: '',
+          wPyskowicach: false,
+        };
+        break;
+      case 'WSKAZNIKI_ZWARC':
+        details = {
+          typ: '',
+          ilosc: '',
+          dataZamowienia: '',
+          dataPlDostawyPyskowice: '',
+          wPyskowicach: false,
         };
         break;
       case 'POWYKONAWCZA':
         details = {
           statusDokumentacji: 'W przygotowaniu',
           dataZakonczenia: '',
+          wagaDTRWyslana: false,
+          dataPrzekazaniaDokumentacji: '',
         };
         break;
       case 'OBUDOWA': {
@@ -129,6 +198,9 @@ export function createDefaultItemsForOrder(orderId: string, stationSize = ''): O
           glebokosc: matchedVariant?.depth ?? (hasParsedCustomSize ? stationDepth : defaultVariant?.depth ?? (enclosureType === 'NZ' ? 2.90 : 3.50)),
           wysokosc: matchedVariant?.height ?? defaultVariant?.height ?? OBUDOWA_TYPES[enclosureType].defaultHeight,
           typWysokosci: OBUDOWA_TYPES[enclosureType].heightTypeLabel,
+          dataZlecenia: '',
+          dataRysunkowAkceptacji: '',
+          dataOczekiwana: '',
           dataGotowosci: '',
         };
         break;
@@ -139,6 +211,9 @@ export function createDefaultItemsForOrder(orderId: string, stationSize = ''): O
           przewoznik: 'Transport ponadgabarytowy HDS (Platforma 4-osiowa)',
           adresDostawy: 'Plac budowy inwestora',
           kontaktNaBudowie: 'Kierownik robót elektrycznych',
+          kilometry: '',
+          cenaTransportu: '',
+          numerFaktury: '',
         };
         break;
       case 'DODATKOWE':
