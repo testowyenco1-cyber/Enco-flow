@@ -28,8 +28,6 @@ export function createDefaultItemsForOrder(orderId: string, stationSize = ''): O
           iloscPol: 3,
           konfiguracjaPol: 'L-L-L-T',
           parametryTechniczne: 'Napięcie znamionowe 24 kV, prąd 630A, SF6-free',
-          dataZlecenia: '',
-          dostawca: '',
           dataDostawyPlan: '',
           dataDostawyFakt: '',
           dataPlDostawyPyskowice: '',
