@@ -166,6 +166,11 @@ export function getFieldDepartment(itemType: string, fieldKey: string): Departme
   return key ? DEPARTMENT_OWNERS[key] : null;
 }
 
+export function getDepartmentsForItemType(itemType: string): DepartmentOwner[] {
+  const uniqueKeys = [...new Set(Object.values(FIELD_OWNERS[itemType] || {}))];
+  return uniqueKeys.map((key) => DEPARTMENT_OWNERS[key]);
+}
+
 export function getSummaryFieldDepartment(itemType: string, label: string): DepartmentOwner | null {
   const fieldKey = SUMMARY_LABEL_KEYS[itemType]?.[label];
   return fieldKey ? getFieldDepartment(itemType, fieldKey) : null;
