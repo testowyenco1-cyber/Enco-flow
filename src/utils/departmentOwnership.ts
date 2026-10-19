@@ -61,6 +61,7 @@ const FIELD_OWNERS: Record<string, Record<string, DepartmentOwnerKey>> = {
     mostSNPyskowicach: 'pyskowice', terminRealizacji: 'logistics',
   },
   SZAFKA_TELEMECHANIKI: {
+    typ: 'sales', wyposazenie: 'sales', zakres: 'sales', informacjeTechniczne: 'sales',
     dataGotowosciDokumentacji: 'technical', dokumentacjaWyslanaDoUzgodnienia: 'sales',
     typSterownika: 'sales', dataZleceniaSzafy: 'sales', dataOczekiwana: 'sales', dataGotowosci: 'sales',
     dataPlDostawyPyskowice: 'logistics', szafkaWPyskowicach: 'pyskowice',
