@@ -265,29 +265,17 @@ export const USER_PROFILES_LIST: UserRoleProfile[] = Object.values(USER_PROFILES
  * Oficjalne hasła dostępowe dla 5 profili z uprawnieniami edycyjnymi.
  * Profil "Ogólny" nie posiada hasła (otwarty podgląd).
  */
-export const USER_PASSWORDS: Record<UserRoleId, string | null> = {
-  admin: 'EncoFlow#2026A',
-  dzial_handlowy: 'Stacja#4827',
-  logistyka: 'Rozdzielnia!53',
-  plochocinska: 'Energia#7294',
-  pyskowice: 'FlowENCO!86',
-  ogolny: null,
-};
-
 /**
- * Sprawdza, czy profil wymaga podania hasła
+ * Informacja opisowa dla starszych komponentów. Uwierzytelnianie jest
+ * obsługiwane wyłącznie przez API serwera — hasła nie są przechowywane w kodzie klienta.
  */
 export function hasPasswordProtection(roleId: UserRoleId): boolean {
-  return USER_PASSWORDS[roleId] !== null;
+  return roleId !== 'ogolny';
 }
 
-/**
- * Weryfikuje poprawność hasła dla wskazanego profilu
- */
-export function verifyUserPassword(roleId: UserRoleId, passwordAttempt: string): boolean {
-  const expected = USER_PASSWORDS[roleId];
-  if (expected === null) return true; // Profil ogólny nie wymaga hasła
-  return expected === (passwordAttempt || '').trim();
+/** Zgodność ze starszym modalem; logowanie klientowe jest celowo wyłączone. */
+export function verifyUserPassword(_roleId: UserRoleId, _passwordAttempt: string): boolean {
+  return false;
 }
 
 /**
