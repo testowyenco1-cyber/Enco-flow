@@ -435,7 +435,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
           <div className="min-w-0">
             <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
               <span className="text-[11px] font-medium text-slate-500">{label}</span>
-              {owner && (
+              {owner?.key === 'pyskowice' && (
                 <span
                   title={`Obszar prowadzący: ${owner.shortLabel}`}
                   className={`inline-flex max-w-full rounded border px-1.5 py-0.5 text-[9px] font-bold leading-tight ${owner.className}`}
@@ -532,7 +532,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
             <div key={idx} className="min-w-0 text-xs">
               <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
                 <span className="text-slate-500 font-medium">{entry.label}:</span>
-                {owner && (
+                {owner?.key === 'pyskowice' && (
                   <span
                     title={`Obszar prowadzący: ${owner.label}`}
                     className={`inline-flex max-w-full rounded border px-1.5 py-0.5 text-[9px] font-bold leading-tight ${owner.className}`}
@@ -1090,6 +1090,14 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
             <h3 className="text-base font-bold text-slate-900 tracking-tight">
               {item.name}
             </h3>
+            {item.type === 'ROZDZIELNICA_NN' && (
+              <span
+                title="Produkcja rozdzielnicy NN — Płochocińska"
+                className="rounded border border-cyan-200 bg-cyan-50 px-1.5 py-0.5 text-[9px] font-bold text-cyan-800"
+              >
+                PŁOCHOCIŃSKA
+              </span>
+            )}
             {canEdit ? (
               <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded shadow-2xs hidden sm:inline-flex items-center gap-1">
                 ✏️ Dostęp do edycji
