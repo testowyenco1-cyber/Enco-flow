@@ -34,21 +34,18 @@ import { DoorOrderModal } from './components/DoorOrderModal';
 import { NewOrderModal } from './components/NewOrderModal';
 import { EditOrderModal } from './components/EditOrderModal';
 import { EditItemModal } from './components/EditItemModal';
-import { RoleMatrixModal } from './components/RoleMatrixModal';
-import { PasswordAuthModal } from './components/PasswordAuthModal';
+import { AuthScreen } from './components/AuthScreen';
+import { UserManagementModal } from './components/UserManagementModal';
+import type { AuthUser } from './types/auth';
+import { getBootstrapStatus, getCurrentAuthUser, logout as logoutAuth } from './services/authService';
+import { profileForAuthUser } from './utils/authUserProfile';
 import { DoorOrderDetailView } from './components/DoorOrderDetailView';
 import { SNOrdersView } from './components/SNOrdersView';
 import { CalendarView } from './components/CalendarView';
 import { CustomerDatabaseModal } from './components/CustomerDatabaseModal';
 import { CheckCircle2, AlertTriangle, Info, Archive, RotateCcw, Search } from 'lucide-react';
 import { validateOrderNumber } from './utils/orderNumberUtils';
-import {
-  UserRoleId,
-  UserRoleProfile,
-  USER_PROFILES,
-  USER_PROFILES_LIST,
-  hasPasswordProtection,
-} from './types/userRole';
+
 
 interface ActionDashboardBoundaryProps {
   children: React.ReactNode;
@@ -86,7 +83,13 @@ class ActionDashboardErrorBoundary extends React.Component<ActionDashboardBounda
   }
 }
 
-export default function App() {
+interface AppWorkspaceProps {
+  authUser: AuthUser;
+  onLogout: () => void;
+  onRefreshAuthUser: () => void;
+}
+
+function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspaceProps) {
   // Zachowaj stan paska menu między odświeżeniami strony w tej przeglądarce.
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
     try {
@@ -188,45 +191,9 @@ export default function App() {
   }, []);
   const [filterTab, setFilterTab] = useState<string>('all');
 
-  // User Profile Role State
-  const [currentRoleId, setCurrentRoleId] = useState<UserRoleId>(() => {
-    const saved = localStorage.getItem('enco_current_role_id');
-    if (saved && saved in USER_PROFILES) {
-      return saved as UserRoleId;
-    }
-    return 'admin';
-  });
-  const [isRoleMatrixOpen, setIsRoleMatrixOpen] = useState(false);
-  const [pendingRoleId, setPendingRoleId] = useState<UserRoleId | null>(null);
-  const [isPasswordAuthModalOpen, setIsPasswordAuthModalOpen] = useState(false);
-
-  const currentProfile: UserRoleProfile = USER_PROFILES[currentRoleId] || USER_PROFILES.admin;
-
-  const handleSelectProfile = (roleId: UserRoleId) => {
-    if (roleId === currentRoleId) return;
-
-    // Jeśli profil jest chroniony hasłem, wymagaj autoryzacji
-    if (hasPasswordProtection(roleId)) {
-      setPendingRoleId(roleId);
-      setIsPasswordAuthModalOpen(true);
-      return;
-    }
-
-    // Profil bez hasła (np. Ogólny) przełącz natychmiast
-    setCurrentRoleId(roleId);
-    localStorage.setItem('enco_current_role_id', roleId);
-    const profile = USER_PROFILES[roleId];
-    showToast(`Przełączono profil: ${profile.name} (${profile.shortName})`, 'info');
-  };
-
-  const handlePasswordAuthSuccess = (authenticatedRoleId: UserRoleId) => {
-    setCurrentRoleId(authenticatedRoleId);
-    localStorage.setItem('enco_current_role_id', authenticatedRoleId);
-    setIsPasswordAuthModalOpen(false);
-    setPendingRoleId(null);
-    const profile = USER_PROFILES[authenticatedRoleId];
-    showToast(`Zalogowano pomyślnie do konta: ${profile.name} (${profile.shortName})`, 'success');
-  };
+  // Uprawnienia są wyliczane z konta zalogowanego po stronie serwera.
+  const currentProfile = useMemo(() => profileForAuthUser(authUser), [authUser]);
+  const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
 
   // Modals state
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
@@ -650,8 +617,9 @@ export default function App() {
         doorOrdersCount={doorOrders.length}
         doorOverdueCount={doorOverdueCount}
         currentProfile={currentProfile}
-        onSelectProfile={handleSelectProfile}
-        onOpenMatrixModal={() => setIsRoleMatrixOpen(true)}
+        authUser={authUser}
+        onLogout={onLogout}
+        onOpenUserAdmin={() => setIsUserManagementOpen(true)}
       />
 
       {/* Main Viewport */}
@@ -831,28 +799,11 @@ export default function App() {
         currentProfile={currentProfile}
       /> 
       
-      {/* Role Matrix Modal */}
-      <RoleMatrixModal
-        isOpen={isRoleMatrixOpen}
-        onClose={() => setIsRoleMatrixOpen(false)}
-        activeProfileId={currentRoleId}
-        onSelectProfile={handleSelectProfile}
-      />
-
-      {/* Password Authentication Modal */}
-      <PasswordAuthModal
-        isOpen={isPasswordAuthModalOpen}
-        targetProfileId={pendingRoleId}
-        onClose={() => {
-          setIsPasswordAuthModalOpen(false);
-          setPendingRoleId(null);
-        }}
-        onSuccess={handlePasswordAuthSuccess}
-        onSwitchToGuest={() => {
-          setIsPasswordAuthModalOpen(false);
-          setPendingRoleId(null);
-          handleSelectProfile('ogolny');
-        }}
+      <UserManagementModal
+        isOpen={isUserManagementOpen}
+        onClose={() => setIsUserManagementOpen(false)}
+        currentUserId={authUser.id}
+        onUsersChanged={onRefreshAuthUser}
       />
 
       {/* Toast Notification */}
@@ -871,5 +822,112 @@ export default function App() {
         </div>
       )}
     </div>
+  );
+}
+
+// The application workspace is mounted only after a valid server session is established.
+export default function App() {
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [setupRequired, setSetupRequired] = useState(false);
+  const [startupError, setStartupError] = useState('');
+  const [retryCount, setRetryCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    const initializeAuthentication = async () => {
+      setAuthReady(false);
+      setStartupError('');
+      try {
+        const user = await getCurrentAuthUser();
+        if (cancelled) return;
+        if (user) {
+          setAuthUser(user);
+          setSetupRequired(false);
+        } else {
+          const status = await getBootstrapStatus();
+          if (cancelled) return;
+          setAuthUser(null);
+          setSetupRequired(status.needsSetup);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setStartupError(error instanceof Error ? error.message : 'Nie można połączyć się z serwerem logowania.');
+        }
+      } finally {
+        if (!cancelled) setAuthReady(true);
+      }
+    };
+    void initializeAuthentication();
+    return () => { cancelled = true; };
+  }, [retryCount]);
+
+  const refreshAuthenticatedUser = async () => {
+    try {
+      const user = await getCurrentAuthUser();
+      if (user) setAuthUser(user);
+      else setAuthUser(null);
+    } catch (error) {
+      console.error('Nie udało się odświeżyć uprawnień konta:', error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logoutAuth();
+    } catch (error) {
+      console.warn('Sesja mogła już wygasnąć:', error);
+    } finally {
+      setAuthUser(null);
+      setSetupRequired(false);
+      setStartupError('');
+    }
+  };
+
+  if (!authReady) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
+        <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900 px-5 py-4 text-sm text-slate-300">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
+          Sprawdzanie sesji ENCO Flow…
+        </div>
+      </div>
+    );
+  }
+
+  if (startupError && !authUser) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 p-4 text-white">
+        <section className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-7 text-center shadow-2xl">
+          <h1 className="text-lg font-black">Nie można połączyć się z logowaniem</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-400">{startupError}</p>
+          <button type="button" onClick={() => setRetryCount((count) => count + 1)}
+            className="mt-5 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-500">
+            Spróbuj ponownie
+          </button>
+        </section>
+      </main>
+    );
+  }
+
+  if (!authUser) {
+    return (
+      <AuthScreen
+        setupRequired={setupRequired}
+        onAuthenticated={(user) => {
+          setAuthUser(user);
+          setSetupRequired(false);
+          setStartupError('');
+        }}
+      />
+    );
+  }
+
+  return (
+    <AppWorkspace
+      authUser={authUser}
+      onLogout={() => { void handleLogout(); }}
+      onRefreshAuthUser={() => { void refreshAuthenticatedUser(); }}
+    />
   );
 }
