@@ -5,6 +5,20 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { INITIAL_ORDERS } from './src/data/mockData';
 import { INITIAL_DOOR_ORDERS } from './src/data/mockDoorOrders';
+import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import type { AuthDepartmentId, AuthUser } from './src/types/auth';
+import { canEditItemType, type UserRoleProfile } from './src/types/userRole';
+import { profileForAuthUser } from './src/utils/authUserProfile';
+
+interface StoredAuthUser extends AuthUser {
+  passwordSalt: string;
+  passwordHash: string;
+}
+interface LoginSession {
+  userId: string;
+  expiresAt: number;
+}
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -62,6 +76,18 @@ async function startServer() {
   if (!fs.existsSync(UPLOADS_DIR)) {
     fs.mkdirSync(UPLOADS_DIR, { recursive: true });
   }
+
+  const USERS_FILE = path.join(DATA_DIR, 'users.json');
+  if (!fs.existsSync(USERS_FILE)) {
+    fs.writeFileSync(USERS_FILE, '[]', 'utf-8');
+  }
+  const authSessions = new Map<string, LoginSession>();
+  const failedLoginAttempts = new Map<string, { count: number; resetAt: number }>();
+  const AUTH_COOKIE_NAME = 'enco_flow_session';
+  const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+  const ALLOWED_DEPARTMENTS: AuthDepartmentId[] = [
+    'dzial_handlowy', 'logistyka', 'pyskowice', 'plochocinska',
+  ];
 
   const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
   const DOORS_FILE = path.join(DATA_DIR, 'door_orders.json');
@@ -273,7 +299,7 @@ async function startServer() {
   initAllFoldersAndSeedFiles();
 
   // Static route to serve uploaded files directly
-  app.use('/uploads', express.static(UPLOADS_DIR));
+  app.use('/uploads', requireApiAuth, requireCapability('canDownload'), express.static(UPLOADS_DIR));
 
   // Zapis atomowy: awaria procesu podczas zapisu nie zostawi uciętego pliku JSON.
   function writeJsonAtomically(filePath: string, data: unknown) {
@@ -281,6 +307,408 @@ async function startServer() {
     fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), 'utf-8');
     fs.renameSync(tempPath, filePath);
   }
+
+  function loadAuthUsers(): StoredAuthUser[] {
+    const parsed = JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
+    if (!Array.isArray(parsed)) throw new Error('Nieprawidłowy format bazy kont użytkowników.');
+    return parsed as StoredAuthUser[];
+  }
+
+  function saveAuthUsers(users: StoredAuthUser[]) {
+    writeJsonAtomically(USERS_FILE, users);
+  }
+
+  function publicAuthUser(user: StoredAuthUser): AuthUser {
+    const { passwordSalt: _salt, passwordHash: _hash, ...publicRecord } = user;
+    return publicRecord;
+  }
+
+  function normalizeUsername(value: unknown): string {
+    return typeof value === 'string' ? value.trim().toLowerCase() : '';
+  }
+
+  function normalizeDepartments(value: unknown): AuthDepartmentId[] | null {
+    if (!Array.isArray(value)) return null;
+    const result: AuthDepartmentId[] = [];
+    for (const department of value) {
+      if (typeof department !== 'string' || !ALLOWED_DEPARTMENTS.includes(department as AuthDepartmentId)) return null;
+      if (!result.includes(department as AuthDepartmentId)) result.push(department as AuthDepartmentId);
+    }
+    return result;
+  }
+
+  function isValidUsername(username: string): boolean {
+    return /^[a-z0-9._-]{3,40}$/.test(username);
+  }
+
+  function makePasswordRecord(password: string): { passwordSalt: string; passwordHash: string } {
+    const passwordSalt = randomBytes(16).toString('hex');
+    const passwordHash = scryptSync(password, passwordSalt, 64).toString('hex');
+    return { passwordSalt, passwordHash };
+  }
+
+  function passwordMatches(user: StoredAuthUser, password: string): boolean {
+    const expected = Buffer.from(user.passwordHash, 'hex');
+    const actual = Buffer.from(scryptSync(password, user.passwordSalt, 64).toString('hex'), 'hex');
+    return expected.length === actual.length && timingSafeEqual(expected, actual);
+  }
+
+  function getCookie(req: any, name: string): string | null {
+    const raw = String(req.headers?.cookie || '');
+    for (const part of raw.split(';')) {
+      const separator = part.indexOf('=');
+      if (separator < 0) continue;
+      if (part.slice(0, separator).trim() === name) return decodeURIComponent(part.slice(separator + 1).trim());
+    }
+    return null;
+  }
+
+  function getAuthenticatedUser(req: any): AuthUser | null {
+    const token = getCookie(req, AUTH_COOKIE_NAME);
+    if (!token) return null;
+    const session = authSessions.get(token);
+    if (!session) return null;
+    if (session.expiresAt <= Date.now()) {
+      authSessions.delete(token);
+      return null;
+    }
+    const user = loadAuthUsers().find((entry) => entry.id === session.userId);
+    if (!user || !user.active) {
+      authSessions.delete(token);
+      return null;
+    }
+    return publicAuthUser(user);
+  }
+
+  function startSession(req: any, res: any, user: StoredAuthUser) {
+    const token = randomBytes(32).toString('hex');
+    authSessions.set(token, { userId: user.id, expiresAt: Date.now() + SESSION_TTL_MS });
+    const forwardedProto = String(req.headers?.['x-forwarded-proto'] || '');
+    const secure = req.secure || forwardedProto.split(',')[0].trim() === 'https' ? '; Secure' : '';
+    res.setHeader('Set-Cookie', `${AUTH_COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}${secure}`);
+  }
+
+  function endSessionsForUser(userId: string) {
+    for (const [token, session] of authSessions.entries()) {
+      if (session.userId === userId) authSessions.delete(token);
+    }
+  }
+
+  function requireApiAuth(req: any, res: any, next: any) {
+    if (req.path === '/health') return next();
+    const user = getAuthenticatedUser(req);
+    if (!user) {
+      return res.status(401).json({ success: false, error: 'Sesja wygasła lub brak logowania. Zaloguj się ponownie.' });
+    }
+    req.authUser = user;
+    return next();
+  }
+
+  function requireAdmin(req: any, res: any, next: any) {
+    const user = req.authUser as AuthUser | undefined;
+    if (!user?.isAdmin) return res.status(403).json({ success: false, error: 'Ta operacja wymaga uprawnień administratora.' });
+    return next();
+  }
+
+  function requestProfile(req: any): UserRoleProfile | null {
+    const user = req.authUser as AuthUser | undefined;
+    return user ? profileForAuthUser(user) : null;
+  }
+
+  function requireCapability(capability: keyof UserRoleProfile) {
+    return (req: any, res: any, next: any) => {
+      const profile = requestProfile(req);
+      if (!profile || !Boolean(profile[capability])) {
+        return res.status(403).json({ success: false, error: 'Twoje konto nie ma uprawnień do wykonania tej operacji.' });
+      }
+      return next();
+    };
+  }
+
+  function requireItemPermission(itemType: string) {
+    return (req: any, res: any, next: any) => {
+      const profile = requestProfile(req);
+      if (!profile || !canEditItemType(profile, itemType)) {
+        return res.status(403).json({ success: false, error: `Twoje konto nie ma uprawnień do edycji elementu: ${itemType}.` });
+      }
+      return next();
+    };
+  }
+
+  function requireFileFolderPermission(req: any, res: any, next: any) {
+    const profile = requestProfile(req);
+    if (!profile?.canDownload) return res.status(403).json({ success: false, error: 'Twoje konto nie ma uprawnień do obsługi plików.' });
+    const folder = sanitizePath(String(req.body?.folderKey || req.query?.folderKey || ''));
+    const folderTypes: Record<string, string[]> = {
+      '02_Obudowa_Betonowa': ['OBUDOWA'],
+      '03_Rozdzielnica_SN': ['ROZDZIELNICA_SN'],
+      '04_Rozdzielnica_NN': ['ROZDZIELNICA_NN'],
+      '05_Mosty_i_Szynoprzewody': ['MOST'],
+      '06_Rysunki_i_Akceptacje': ['RYS_AKCEPTACJA'],
+      '07_Kolory_i_Elewacja': ['KOLORY'],
+      '08_Opisy_i_Oznaczenia': ['OPISY'],
+      '09_Drzwi_i_Slusarka': ['DRZWI'],
+      '10_Podwykonawcy_i_Montaz': ['ZAP_SERWISPOL', 'ZAM_SERWISPOL', 'ZAP_JK', 'ZAM_JK', 'ZLECENIE_MONTAZU'],
+      '11_Telemechanika_i_Lacznosc': ['SZAFKA_TELEMECHANIKI'],
+      '12_Dokumentacja_Powykonawcza': ['POWYKONAWCZA'],
+      '13_Inne_i_Dodatkowe': ['DODATKOWE'],
+    };
+    const requiredTypes = folderTypes[folder];
+    if (requiredTypes && !requiredTypes.some((type) => canEditItemType(profile, type))) {
+      return res.status(403).json({ success: false, error: 'Nie masz uprawnień do zmiany plików w tym folderze.' });
+    }
+    if (folder === '01_Dokumentacja_Glowna' && !profile.canEditOrderMetadata) {
+      return res.status(403).json({ success: false, error: 'Nie masz uprawnień do zmiany dokumentacji głównej zlecenia.' });
+    }
+    return next();
+  }
+
+  function orderUpdatePermissionError(existing: any, incoming: any, profile: UserRoleProfile): string | null {
+    const changed = (left: unknown, right: unknown) => JSON.stringify(left ?? null) !== JSON.stringify(right ?? null);
+    const metadataFields = ['customerId', 'contactId', 'contactName', 'contactEmail', 'contactPhone', 'orderNumber', 'client', 'projectName', 'stationSize', 'originalDepartureDate'];
+    for (const key of metadataFields) {
+      if (changed(existing[key], incoming[key]) && !profile.canEditOrderMetadata) {
+        return 'Nie masz uprawnień do zmiany podstawowych danych zlecenia.';
+      }
+    }
+    if (changed(existing.departureDate, incoming.departureDate) && !profile.canEditDepartureDate) {
+      return 'Nie masz uprawnień do zmiany terminu wyjazdu.';
+    }
+    if (changed(existing.generalNotes, incoming.generalNotes) && !profile.canEditGeneralNotes) {
+      return 'Nie masz uprawnień do zmiany uwag ogólnych.';
+    }
+    if (changed(existing.additionalInfo, incoming.additionalInfo) && !profile.canEditAdditionalInfo) {
+      return 'Nie masz uprawnień do zmiany informacji dodatkowych.';
+    }
+    if (changed(existing.archivedAt, incoming.archivedAt) && !profile.canDeleteOrders) {
+      return 'Nie masz uprawnień do archiwizowania lub przywracania zleceń.';
+    }
+    if (changed(existing.attachments, incoming.attachments) && !profile.canDownload) {
+      return 'Nie masz uprawnień do zmiany załączników zlecenia.';
+    }
+
+    const previousItems: any[] = Array.isArray(existing.items) ? existing.items : [];
+    const incomingItems: any[] = Array.isArray(incoming.items) ? incoming.items : [];
+    const previousById = new Map(previousItems.map((item) => [String(item.id), item]));
+    const incomingById = new Map(incomingItems.map((item) => [String(item.id), item]));
+    for (const item of previousItems) {
+      if (!incomingById.has(String(item.id)) && !canEditItemType(profile, String(item.type || ''))) {
+        return `Nie masz uprawnień do usuwania elementu: ${item.name || item.type}.`;
+      }
+    }
+    for (const item of incomingItems) {
+      const previous = previousById.get(String(item.id));
+      if (!previous || changed(previous, item)) {
+        if (!canEditItemType(profile, String(item.type || '')) ||
+            (previous && !canEditItemType(profile, String(previous.type || '')))) {
+          return `Nie masz uprawnień do dodawania lub edycji elementu: ${item.name || item.type}.`;
+        }
+      }
+    }
+
+    const handledFields = new Set([
+      'id', 'createdAt', 'updatedAt', 'status', 'items', 'attachments',
+      'customerId', 'contactId', 'contactName', 'contactEmail', 'contactPhone',
+      'orderNumber', 'client', 'projectName', 'stationSize', 'originalDepartureDate',
+      'departureDate', 'generalNotes', 'additionalInfo', 'archivedAt',
+    ]);
+    const keys = new Set([...Object.keys(existing || {}), ...Object.keys(incoming || {})]);
+    for (const key of keys) {
+      if (!handledFields.has(key) && changed(existing[key], incoming[key]) && !profile.canEditOrderMetadata) {
+        return 'Nie masz uprawnień do zmiany pozostałych danych zlecenia.';
+      }
+    }
+    if (changed(existing.status, incoming.status) && !changed(existing.items, incoming.items) && !profile.canEditOrderMetadata) {
+      return 'Status zlecenia musi wynikać ze zmiany dozwolonych elementów.';
+    }
+    return null;
+  }
+
+  // Public authentication routes are the only API routes that do not require an existing session.
+  app.use('/api', (req: any, res: any, next: any) => {
+    const publicPaths = new Set([
+      '/auth/bootstrap-status', '/auth/bootstrap', '/auth/login', '/auth/me', '/auth/logout', '/health',
+    ]);
+    if (publicPaths.has(req.path)) return next();
+    return requireApiAuth(req, res, next);
+  });
+
+  app.get('/api/auth/bootstrap-status', (_req, res) => {
+    try {
+      return res.json({ needsSetup: loadAuthUsers().length === 0 });
+    } catch {
+      return res.status(500).json({ error: 'Nie można odczytać bazy kont użytkowników.' });
+    }
+  });
+
+  app.post('/api/auth/bootstrap', (req, res) => {
+    try {
+      if (loadAuthUsers().length !== 0) {
+        return res.status(409).json({ error: 'Konto administratora jest już skonfigurowane. Odśwież stronę i zaloguj się.' });
+      }
+      const username = normalizeUsername(req.body?.username);
+      const displayName = typeof req.body?.displayName === 'string' ? req.body.displayName.trim() : '';
+      const password = typeof req.body?.password === 'string' ? req.body.password : '';
+      if (!isValidUsername(username)) return res.status(400).json({ error: 'Login może zawierać małe litery, cyfry, kropkę, myślnik i podkreślenie (3–40 znaków).' });
+      if (displayName.length < 2 || displayName.length > 100) return res.status(400).json({ error: 'Podaj poprawną nazwę administratora.' });
+      if (password.length < 10 || password.length > 200) return res.status(400).json({ error: 'Hasło administratora musi mieć od 10 do 200 znaków.' });
+
+      const now = new Date().toISOString();
+      const admin: StoredAuthUser = {
+        id: `usr_${randomBytes(12).toString('hex')}`,
+        username, displayName, departments: [], isAdmin: true, active: true,
+        createdAt: now, updatedAt: now,
+        ...makePasswordRecord(password),
+      };
+      saveAuthUsers([admin]);
+      startSession(req, res, admin);
+      return res.status(201).json({ success: true, user: publicAuthUser(admin) });
+    } catch (err) {
+      console.error('Auth bootstrap failed:', err);
+      return res.status(500).json({ error: 'Nie udało się skonfigurować konta administratora.' });
+    }
+  });
+
+  app.post('/api/auth/login', (req, res) => {
+    try {
+      const username = normalizeUsername(req.body?.username);
+      const password = typeof req.body?.password === 'string' ? req.body.password : '';
+      const attemptKey = `${req.ip || 'unknown'}:${username}`;
+      const prior = failedLoginAttempts.get(attemptKey);
+      if (prior && prior.resetAt > Date.now() && prior.count >= 8) {
+        return res.status(429).json({ error: 'Zbyt wiele nieudanych prób logowania. Spróbuj ponownie za 15 minut.' });
+      }
+      if (!username || !password || password.length > 200) {
+        return res.status(400).json({ error: 'Wprowadź login i hasło.' });
+      }
+      const user = loadAuthUsers().find((entry) => entry.username === username);
+      const matches = user ? passwordMatches(user, password) : (scryptSync(password, randomBytes(16).toString('hex'), 64), false);
+      if (!user || !user.active || !matches) {
+        const count = prior && prior.resetAt > Date.now() ? prior.count + 1 : 1;
+        failedLoginAttempts.set(attemptKey, { count, resetAt: Date.now() + 15 * 60 * 1000 });
+        return res.status(401).json({ error: 'Nieprawidłowy login lub hasło.' });
+      }
+      failedLoginAttempts.delete(attemptKey);
+      startSession(req, res, user);
+      return res.json({ success: true, user: publicAuthUser(user) });
+    } catch (err) {
+      console.error('Login failed:', err);
+      return res.status(500).json({ error: 'Nie udało się zalogować.' });
+    }
+  });
+
+  app.get('/api/auth/me', (req: any, res) => {
+    try {
+      const user = getAuthenticatedUser(req);
+      if (!user) return res.status(401).json({ error: 'Brak aktywnej sesji.' });
+      return res.json({ user });
+    } catch (err) {
+      console.error('Reading current user failed:', err);
+      return res.status(500).json({ error: 'Nie można odczytać aktywnej sesji.' });
+    }
+  });
+
+  app.post('/api/auth/logout', (req: any, res) => {
+    const token = getCookie(req, AUTH_COOKIE_NAME);
+    if (token) authSessions.delete(token);
+    res.setHeader('Set-Cookie', `${AUTH_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+    return res.json({ success: true });
+  });
+
+  // Every remaining API route requires a valid session; account management additionally requires an admin.
+  app.get('/api/admin/users', requireApiAuth, requireAdmin, (_req, res) => {
+    try {
+      const users = loadAuthUsers()
+        .sort((a, b) => a.displayName.localeCompare(b.displayName, 'pl'))
+        .map(publicAuthUser);
+      return res.json({ users });
+    } catch (err) {
+      console.error('Reading user accounts failed:', err);
+      return res.status(500).json({ error: 'Nie udało się pobrać kont użytkowników.' });
+    }
+  });
+
+  app.post('/api/admin/users', requireApiAuth, requireAdmin, (req, res) => {
+    try {
+      const username = normalizeUsername(req.body?.username);
+      const displayName = typeof req.body?.displayName === 'string' ? req.body.displayName.trim() : '';
+      const password = typeof req.body?.password === 'string' ? req.body.password : '';
+      const departments = normalizeDepartments(req.body?.departments);
+      const isAdmin = req.body?.isAdmin === true;
+      if (!isValidUsername(username)) return res.status(400).json({ error: 'Login musi mieć 3–40 znaków i może zawierać litery, cyfry, kropkę, myślnik lub podkreślenie.' });
+      if (displayName.length < 2 || displayName.length > 100) return res.status(400).json({ error: 'Podaj poprawną nazwę użytkownika.' });
+      if (password.length < 10 || password.length > 200) return res.status(400).json({ error: 'Hasło początkowe musi mieć od 10 do 200 znaków.' });
+      if (!departments) return res.status(400).json({ error: 'Wybrano nieprawidłowy dział.' });
+      const users = loadAuthUsers();
+      if (users.some((user) => user.username === username)) return res.status(409).json({ error: 'Taki login jest już zajęty.' });
+      const now = new Date().toISOString();
+      const user: StoredAuthUser = {
+        id: `usr_${randomBytes(12).toString('hex')}`,
+        username, displayName, departments: isAdmin ? [] : departments, isAdmin, active: true,
+        createdAt: now, updatedAt: now,
+        ...makePasswordRecord(password),
+      };
+      users.push(user);
+      saveAuthUsers(users);
+      return res.status(201).json({ success: true, user: publicAuthUser(user) });
+    } catch (err) {
+      console.error('Creating user account failed:', err);
+      return res.status(500).json({ error: 'Nie udało się utworzyć konta użytkownika.' });
+    }
+  });
+
+  app.patch('/api/admin/users/:userId', requireApiAuth, requireAdmin, (req: any, res) => {
+    try {
+      const users = loadAuthUsers();
+      const index = users.findIndex((user) => user.id === req.params.userId);
+      if (index < 0) return res.status(404).json({ error: 'Nie znaleziono konta użytkownika.' });
+      const original = users[index];
+      const actor = req.authUser as AuthUser;
+      const displayName = typeof req.body?.displayName === 'string' ? req.body.displayName.trim() : original.displayName;
+      const departments = req.body?.departments === undefined ? original.departments : normalizeDepartments(req.body.departments);
+      const isAdmin = typeof req.body?.isAdmin === 'boolean' ? req.body.isAdmin : original.isAdmin;
+      const active = typeof req.body?.active === 'boolean' ? req.body.active : original.active;
+      if (displayName.length < 2 || displayName.length > 100) return res.status(400).json({ error: 'Podaj poprawną nazwę użytkownika.' });
+      if (!departments) return res.status(400).json({ error: 'Wybrano nieprawidłowy dział.' });
+      if (original.id === actor.id && (!isAdmin || !active)) return res.status(400).json({ error: 'Nie możesz odebrać sobie uprawnień administratora ani dezaktywować własnego konta.' });
+      const activeAdmins = users.filter((user) => user.active && user.isAdmin);
+      if (original.active && original.isAdmin && (!active || !isAdmin) && activeAdmins.length <= 1) {
+        return res.status(400).json({ error: 'System musi mieć co najmniej jednego aktywnego administratora.' });
+      }
+      const updated: StoredAuthUser = {
+        ...original,
+        displayName,
+        departments: isAdmin ? [] : departments,
+        isAdmin,
+        active,
+        updatedAt: new Date().toISOString(),
+      };
+      users[index] = updated;
+      saveAuthUsers(users);
+      if (!active) endSessionsForUser(updated.id);
+      return res.json({ success: true, user: publicAuthUser(updated) });
+    } catch (err) {
+      console.error('Updating user account failed:', err);
+      return res.status(500).json({ error: 'Nie udało się zapisać zmian konta.' });
+    }
+  });
+
+  app.post('/api/admin/users/:userId/reset-password', requireApiAuth, requireAdmin, (req, res) => {
+    try {
+      const password = typeof req.body?.password === 'string' ? req.body.password : '';
+      if (password.length < 10 || password.length > 200) return res.status(400).json({ error: 'Nowe hasło musi mieć od 10 do 200 znaków.' });
+      const users = loadAuthUsers();
+      const index = users.findIndex((user) => user.id === req.params.userId);
+      if (index < 0) return res.status(404).json({ error: 'Nie znaleziono konta użytkownika.' });
+      users[index] = { ...users[index], ...makePasswordRecord(password), updatedAt: new Date().toISOString() };
+      saveAuthUsers(users);
+      endSessionsForUser(users[index].id);
+      return res.json({ success: true });
+    } catch (err) {
+      console.error('Resetting user password failed:', err);
+      return res.status(500).json({ error: 'Nie udało się zresetować hasła.' });
+    }
+  });
 
   // Shared JSON storage API. Clients read on startup or explicit manual refresh only.
   // Wspólna baza firm i osób kontaktowych.
