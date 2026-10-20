@@ -483,8 +483,8 @@ async function startServer() {
     if (changed(existing.archivedAt, incoming.archivedAt) && !profile.canDeleteOrders) {
       return 'Nie masz uprawnień do archiwizowania lub przywracania zleceń.';
     }
-    if (changed(existing.attachments, incoming.attachments) && !profile.canDownload) {
-      return 'Nie masz uprawnień do zmiany załączników zlecenia.';
+    if (changed(existing.attachments, incoming.attachments) && !profile.canEditOrderMetadata) {
+      return 'Nie masz uprawnień do zmiany załączników głównych zlecenia.';
     }
 
     const previousItems: any[] = Array.isArray(existing.items) ? existing.items : [];
