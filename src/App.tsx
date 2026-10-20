@@ -27,6 +27,7 @@ import {
 } from './services/storageService';
 import { Header } from './components/Header';
 import { DashboardView } from './components/DashboardView';
+import { ActionDashboardView } from './components/ActionDashboardView';
 import { OrderDetailView } from './components/OrderDetailView';
 import { DoorOrdersView } from './components/DoorOrdersView';
 import { DoorOrderModal } from './components/DoorOrderModal';
@@ -53,8 +54,9 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
   const [archiveSearch, setArchiveSearch] = useState('');
-  const [activeModule, setActiveModule] = useState<'orders' | 'doors' | 'sn' | 'calendar'>(() => {
+  const [activeModule, setActiveModule] = useState<'orders' | 'doors' | 'sn' | 'calendar' | 'actions'>(() => {
     const path = window.location.pathname;
+    if (path === '/dzialania') return 'actions';
     if (path === '/kalendarz') return 'calendar';
     if (path === '/rozdzielnice-sn') return 'sn';
     return path === '/drzwi' || path.startsWith('/drzwi/') ? 'doors' : 'orders';
@@ -78,7 +80,12 @@ export default function App() {
   const navigate = (path: string) => {
     if (window.location.pathname !== path) window.history.pushState({}, '', path);
     setCurrentPath(path);
-    if (path === '/kalendarz') {
+    if (path === '/dzialania') {
+      setActiveModule('actions');
+      setSelectedOrderId(null);
+      sessionStorage.setItem('enco_active_module', 'actions');
+      sessionStorage.removeItem('enco_selected_order_id');
+    } else if (path === '/kalendarz') {
       setActiveModule('calendar');
       setSelectedOrderId(null);
       sessionStorage.setItem('enco_active_module', 'calendar');
@@ -108,7 +115,10 @@ export default function App() {
     const handlePopState = () => {
       const path = window.location.pathname;
       setCurrentPath(path);
-      if (path === '/kalendarz') {
+      if (path === '/dzialania') {
+        setActiveModule('actions');
+        setSelectedOrderId(null);
+      } else if (path === '/kalendarz') {
         setActiveModule('calendar');
         setSelectedOrderId(null);
       } else if (path === '/rozdzielnice-sn') {
@@ -586,7 +596,7 @@ export default function App() {
         }}
         problemCount={problemOrdersCount}
         activeModule={activeModule}
-        onSelectModule={(mod) => navigate(mod === 'doors' ? '/drzwi' : mod === 'sn' ? '/rozdzielnice-sn' : mod === 'calendar' ? '/kalendarz' : '/zlecenia')}
+        onSelectModule={(mod) => navigate(mod === 'actions' ? '/dzialania' : mod === 'doors' ? '/drzwi' : mod === 'sn' ? '/rozdzielnice-sn' : mod === 'calendar' ? '/kalendarz' : '/zlecenia')}
         doorOrdersCount={doorOrders.length}
         doorOverdueCount={doorOverdueCount}
         currentProfile={currentProfile}
@@ -598,7 +608,15 @@ export default function App() {
       <main className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 transition-[padding] duration-200 ${sidebarOpen ? 'lg:pl-[clamp(236px,calc(16vw+16px),296px)]' : ''} ${
         activeModule === 'doors' ? 'max-w-full 2xl:max-w-[1800px]' : 'max-w-[1800px]'
       }`}>
-        {activeModule === 'calendar' ? (
+        {activeModule === 'actions' ? (
+          <ActionDashboardView
+            orders={activeOrders}
+            doorOrders={doorOrders}
+            onSelectOrder={handleSelectOrder}
+            onOpenDoorModule={() => navigate('/drzwi')}
+            currentProfile={currentProfile}
+          />
+        ) : activeModule === 'calendar' ? (
           <CalendarView orders={activeOrders} onSelectOrder={handleSelectOrder} />
         ) : activeModule === 'sn' ? (
           <SNOrdersView orders={orders} currentProfile={currentProfile} onNavigateToOrder={handleSelectOrder} />
