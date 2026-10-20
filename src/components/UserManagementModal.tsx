@@ -280,8 +280,8 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                         <p className="mt-1 font-mono text-xs text-slate-500">@{user.username}</p>
                         <p className="mt-1 text-[11px] text-slate-500">{departmentList(user.departments)}</p>
                       </div>
-                      <button type="button" disabled={isSelf} title={isSelf ? 'Poproś innego administratora o reset własnego hasła.' : 'Ustaw nowe hasło dla użytkownika'} onClick={() => setShowResetFor((current) => current === user.id ? null : user.id)} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50">
-                        <KeyRound className="h-3.5 w-3.5" /> Resetuj hasło
+                      <button type="button" title={isSelf ? 'Zmiana własnego hasła zakończy bieżącą sesję.' : 'Ustaw nowe hasło dla użytkownika'} onClick={() => setShowResetFor((current) => current === user.id ? null : user.id)} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100">
+                        <KeyRound className="h-3.5 w-3.5" /> {isSelf ? 'Zmień własne hasło' : 'Resetuj hasło'}
                       </button>
                     </div>
 
