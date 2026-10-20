@@ -262,10 +262,6 @@ export const USER_PROFILES: Record<UserRoleId, UserRoleProfile> = {
 export const USER_PROFILES_LIST: UserRoleProfile[] = Object.values(USER_PROFILES);
 
 /**
- * Oficjalne hasła dostępowe dla 5 profili z uprawnieniami edycyjnymi.
- * Profil "Ogólny" nie posiada hasła (otwarty podgląd).
- */
-/**
  * Informacja opisowa dla starszych komponentów. Uwierzytelnianie jest
  * obsługiwane wyłącznie przez API serwera — hasła nie są przechowywane w kodzie klienta.
  */
