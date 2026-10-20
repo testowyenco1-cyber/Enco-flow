@@ -579,7 +579,7 @@ const profile = currentProfile || USER_PROFILES.admin;
                     <td className="px-4 py-3">
                       <button
                         type="button"
-                        onClick={() => action.source === 'door' && onOpenDoorModule ? onOpenDoorModule() : onSelectOrder(action.orderId)}
+                        onClick={() => onSelectOrder(action.orderId)}
                         className="text-xs font-bold text-blue-700 hover:text-blue-900 hover:underline text-left whitespace-nowrap"
                       >
                         {action.orderNumber}
@@ -589,6 +589,11 @@ const profile = currentProfile || USER_PROFILES.admin;
                     <td className="px-4 py-3">
                       <div className="text-xs font-semibold text-slate-800 whitespace-normal min-w-[220px]">{action.actionType}</div>
                       <div className="text-[11px] text-slate-500 mt-1 whitespace-normal max-w-sm">{action.reason}</div>
+                      {action.source === 'door' && onOpenDoorModule && (
+                        <button type="button" onClick={onOpenDoorModule} className="mt-2 text-[11px] font-semibold text-blue-700 hover:underline">
+                          Otwórz moduł Drzwi
+                        </button>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span className="inline-flex rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 whitespace-nowrap">
