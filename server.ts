@@ -464,7 +464,18 @@ async function startServer() {
   }
 
   function orderUpdatePermissionError(existing: any, incoming: any, profile: UserRoleProfile): string | null {
-    const changed = (left: unknown, right: unknown) => JSON.stringify(left ?? null) !== JSON.stringify(right ?? null);
+    const normalizeForComparison = (value: any): any => {
+      if (Array.isArray(value)) return value.map(normalizeForComparison);
+      if (value && typeof value === 'object') {
+        return Object.keys(value).sort().reduce((result: Record<string, unknown>, key) => {
+          result[key] = normalizeForComparison(value[key]);
+          return result;
+        }, {});
+      }
+      return value ?? null;
+    };
+    const changed = (left: unknown, right: unknown) =>
+      JSON.stringify(normalizeForComparison(left)) !== JSON.stringify(normalizeForComparison(right));
     const metadataFields = ['customerId', 'contactId', 'contactName', 'contactEmail', 'contactPhone', 'orderNumber', 'client', 'projectName', 'stationSize', 'originalDepartureDate'];
     for (const key of metadataFields) {
       if (changed(existing[key], incoming[key]) && !profile.canEditOrderMetadata) {
