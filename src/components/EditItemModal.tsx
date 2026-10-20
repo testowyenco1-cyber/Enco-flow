@@ -16,7 +16,7 @@ import { X, Check, AlertCircle, CheckCircle2, Layers, Clock, AlertTriangle, Lock
 import { StatusSwitcher } from './StatusSwitcher';
 import { ObudowaForm, ObudowaFormData } from './ObudowaForm';
 import { UserRoleProfile, USER_PROFILES, canEditItemType, getItemPermissionHint } from '../types/userRole';
-import { getDepartmentsForItemType, getFieldDepartment } from '../utils/departmentOwnership';
+import { DEPARTMENT_OWNERS, getDepartmentsForItemType, getFieldDepartment } from '../utils/departmentOwnership';
 
 interface EditItemModalProps {
   item: OrderItem | null;
@@ -96,7 +96,10 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
   const profile = currentProfile || USER_PROFILES.admin;
   const isReadOnly = !canEditItemType(profile, item.type);
   const permHint = getItemPermissionHint(profile, item.type, item.name);
-  const departmentOwners = getDepartmentsForItemType(item.type);
+  const departmentOwners = [
+    ...getDepartmentsForItemType(item.type).filter((owner) => owner.key === 'pyskowice'),
+    ...(item.type === 'ROZDZIELNICA_NN' ? [DEPARTMENT_OWNERS.plochocinska] : []),
+  ];
 
   type TrackingField = { key: string; label: string; type: 'text' | 'date' | 'number' | 'checkbox'; placeholder?: string };
   const extendedTrackingFields: TrackingField[] = (() => {
@@ -1400,14 +1403,14 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                             />
                             <div className="min-w-0">
                               <label className="text-xs font-medium text-slate-700">{field.label}</label>
-                              {owner && <span className={`ml-2 inline-flex rounded border px-1.5 py-0.5 text-[9px] font-bold ${owner.className}`}>{owner.shortLabel}</span>}
+                              {owner?.key === 'pyskowice' && <span className={`ml-2 inline-flex rounded border px-1.5 py-0.5 text-[9px] font-bold ${owner.className}`}>{owner.shortLabel}</span>}
                             </div>
                           </>
                         ) : (
                           <>
                             <label className="mb-1 flex flex-wrap items-center gap-1.5 text-xs font-medium text-slate-700">
                               <span>{field.label}</span>
-                              {owner && <span className={`inline-flex rounded border px-1.5 py-0.5 text-[9px] font-bold ${owner.className}`}>{owner.shortLabel}</span>}
+                              {owner?.key === 'pyskowice' && <span className={`inline-flex rounded border px-1.5 py-0.5 text-[9px] font-bold ${owner.className}`}>{owner.shortLabel}</span>}
                             </label>
                             <input
                               type={field.type}
