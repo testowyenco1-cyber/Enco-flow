@@ -56,6 +56,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   currentProfile,
 }) => {
 const profile = currentProfile || USER_PROFILES.admin;
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortField, setSortField] = useState<SortField>('departureDate');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   // KPI Calculations
   const stats = useMemo(() => {
     let total = orders.length;
