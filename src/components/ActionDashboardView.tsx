@@ -112,7 +112,7 @@ function departmentFor(itemType: string, phase: 'start' | 'monitor' | 'problem',
   if (itemType === 'ZLECENIE_MONTAZU') return 'pyskowice';
   if (itemType === 'OBUDOWA') return 'pyskowice';
   if (itemType === 'ROZDZIELNICA_NN' && item) {
-    const details = item.details && typeof item.details === 'object' ? item.details : {};
+    const details: Record<string, any> = item.details && typeof item.details === 'object' ? item.details : {};
     if (details.nnWPyskowicach === true || details.nnWPyskowicach === 'tak') return 'pyskowice';
     if (details.dataGotowosciFakt || details.planowanaGotowoscTransportu) return 'logistics';
     return 'plochocinska';
@@ -201,7 +201,7 @@ function buildActions(orders: Order[], doorOrders: DoorOrder[]): ActionRow[] {
 
   safeDoors.filter((door) => door && !(door.terminDostawy || '').trim()).forEach((door) => {
     const linkedOrders = safeOrders.filter((order) =>
-      order && !order.archivedAt && (door.numeryZl || []).some((zl) => isSameOrderNumber(zl, order.orderNumber))
+      order && !order.archivedAt && (Array.isArray(door.numeryZl) ? door.numeryZl : []).some((zl) => isSameOrderNumber(zl, order.orderNumber))
     );
     if (!linkedOrders.length) return;
     const dueDate = asDate(door.terminZamowienia);
