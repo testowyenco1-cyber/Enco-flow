@@ -87,7 +87,21 @@ class ActionDashboardErrorBoundary extends React.Component<ActionDashboardBounda
 }
 
 export default function App() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Zachowaj stan paska menu między odświeżeniami strony w tej przeglądarce.
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
+    try {
+      return window.localStorage.getItem('enco_sidebar_open') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('enco_sidebar_open', String(sidebarOpen));
+    } catch {
+      // Aplikacja działa również wtedy, gdy przeglądarka blokuje localStorage.
+    }
+  }, [sidebarOpen]);
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
   const [archiveSearch, setArchiveSearch] = useState('');
   const [activeModule, setActiveModule] = useState<'orders' | 'doors' | 'sn' | 'calendar' | 'actions'>(() => {
