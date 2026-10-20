@@ -719,7 +719,7 @@ async function startServer() {
     try { const parsed = JSON.parse(fs.readFileSync(CUSTOMERS_FILE, 'utf-8')); return res.json({ success: true, customers: Array.isArray(parsed) ? parsed : [] }); }
     catch (err) { console.error('Error reading customer database:', err); return res.status(500).json({ success: false, error: 'Błąd odczytu bazy klientów' }); }
   });
-  app.post('/api/customers', (req, res) => {
+  app.post('/api/customers', requireCapability('canEditOrderMetadata'), (req, res) => {
     try {
       const incoming = req.body?.customer;
       if (!incoming || !incoming.id || !String(incoming.name || '').trim()) return res.status(400).json({ success: false, error: 'Wymagane jest ID i nazwa firmy' });
@@ -741,7 +741,7 @@ async function startServer() {
     } catch (err) { console.error('Error saving customer database:', err); return res.status(500).json({ success: false, error: 'Błąd zapisu bazy klientów' }); }
   });
 
-  app.put('/api/customers/:customerId', (req, res) => {
+  app.put('/api/customers/:customerId', requireCapability('canEditOrderMetadata'), (req, res) => {
     try {
       const incoming = req.body?.customer;
       if (!incoming || String(incoming.id) !== String(req.params.customerId) || !String(incoming.name || '').trim()) return res.status(400).json({ success: false, error: 'Nieprawidłowe dane firmy' });
@@ -754,7 +754,7 @@ async function startServer() {
       return res.json({ success: true, customers, timestamp: Date.now() });
     } catch (err) { console.error('Error updating customer:', err); return res.status(500).json({ success: false, error: 'Błąd aktualizacji firmy' }); }
   });
-  app.delete('/api/customers/:customerId', (req, res) => {
+  app.delete('/api/customers/:customerId', requireCapability('canEditOrderMetadata'), (req, res) => {
     try {
       const parsed = JSON.parse(fs.readFileSync(CUSTOMERS_FILE, 'utf-8'));
       const customers: any[] = Array.isArray(parsed) ? parsed : [];
@@ -796,7 +796,29 @@ async function startServer() {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) serverOrders = parsed;
       }
-      const deleted = new Set(merge === true && Array.isArray(deletedIds) ? deletedIds.map((id: any) => String(id)) : []);
+
+      // The server independently checks permissions instead of trusting UI controls.
+      const actor = (req as any).authUser as AuthUser;
+      const profile = profileForAuthUser(actor);
+      const requestedDeletes = merge === true && Array.isArray(deletedIds) ? deletedIds.map((id: any) => String(id)) : [];
+      if (requestedDeletes.length > 0 && !profile.canDeleteOrders) {
+        return res.status(403).json({ success: false, error: 'Twoje konto nie ma uprawnień do usuwania zleceń.' });
+      }
+      for (const incoming of orders) {
+        if (!incoming || typeof incoming.id !== 'string') {
+          return res.status(400).json({ success: false, error: 'Każde zlecenie musi mieć identyfikator.' });
+        }
+        const existing = serverOrders.find((entry: any) => String(entry.id) === String(incoming.id));
+        if (!existing) {
+          if (!profile.canCreateOrders) {
+            return res.status(403).json({ success: false, error: 'Twoje konto nie ma uprawnień do tworzenia zleceń.' });
+          }
+        } else {
+          const permissionError = orderUpdatePermissionError(existing, incoming, profile);
+          if (permissionError) return res.status(403).json({ success: false, error: permissionError });
+        }
+      }
+      const deleted = new Set(requestedDeletes);
       const ordersToSave = serverOrders.filter((ord: any) => !deleted.has(String(ord.id)));
       orders.forEach((incoming: any) => {
         const index = ordersToSave.findIndex((existing: any) => String(existing.id) === String(incoming.id));
@@ -833,7 +855,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/sn-switchgear', (req, res) => {
+  app.post('/api/sn-switchgear', requireItemPermission('ROZDZIELNICA_SN'), (req, res) => {
     try {
       const incoming = req.body?.records;
       const deletedIds = Array.isArray(req.body?.deletedIds) ? req.body.deletedIds.map((id: any) => String(id)) : [];
@@ -879,7 +901,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/door-orders', (req, res) => {
+  app.post('/api/door-orders', requireCapability('canManageDoors'), (req, res) => {
     try {
       const { doorOrders, merge, deletedIds } = req.body;
       if (!Array.isArray(doorOrders)) {
@@ -924,7 +946,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/door-catalog', (req, res) => {
+  app.post('/api/door-catalog', requireCapability('canManageDoors'), (req, res) => {
     try {
       const { variants } = req.body || {};
       if (!Array.isArray(variants) || variants.some((item: any) =>
@@ -961,7 +983,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/obudowa-variants', (req, res) => {
+  app.post('/api/obudowa-variants', requireItemPermission('OBUDOWA'), (req, res) => {
     try {
       const incoming = req.body?.variant;
       const type = incoming?.type;
@@ -1085,7 +1107,7 @@ async function startServer() {
   });
 
   // Upload file into a specific folder location on server disk
-  app.post('/api/files/upload', (req, res) => {
+  app.post('/api/files/upload', requireFileFolderPermission, (req, res) => {
     try {
       const { orderNumber, folderKey, fileName, base64Data, uploadedBy } = req.body;
 
@@ -1149,7 +1171,7 @@ async function startServer() {
   });
 
   // Download / view a file from structured storage
-  app.get('/api/files/download', (req, res) => {
+  app.get('/api/files/download', requireCapability('canDownload'), (req, res) => {
     try {
       const orderNumber = sanitizePath(String(req.query.orderNumber || ''));
       const folderKey = sanitizePath(String(req.query.folderKey || ''));
@@ -1189,7 +1211,7 @@ async function startServer() {
   });
 
   // Delete file from disk
-  app.delete('/api/files', (req, res) => {
+  app.delete('/api/files', requireFileFolderPermission, (req, res) => {
     try {
       const orderNumber = sanitizePath(String(req.query.orderNumber || req.body.orderNumber || ''));
       const folderKey = sanitizePath(String(req.query.folderKey || req.body.folderKey || ''));
@@ -1217,7 +1239,7 @@ async function startServer() {
   });
 
   // Create custom folder for order
-  app.post('/api/files/create-folder', (req, res) => {
+  app.post('/api/files/create-folder', requireCapability('canDownload'), (req, res) => {
     try {
       const { orderNumber, folderName } = req.body;
       if (!orderNumber || !folderName) {
@@ -1244,7 +1266,7 @@ async function startServer() {
   });
 
   // 5. Reset to Demo Data
-  app.post('/api/reset-data', (req, res) => {
+  app.post('/api/reset-data', requireCapability('canResetDemo'), (req, res) => {
     try {
       writeJsonAtomically(ORDERS_FILE, INITIAL_ORDERS);
       writeJsonAtomically(DOORS_FILE, INITIAL_DOOR_ORDERS);
