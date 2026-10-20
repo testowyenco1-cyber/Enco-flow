@@ -60,7 +60,7 @@ interface DashboardAction {
   department: Exclude<ActionDepartmentKey, 'all'>;
   plannedDate?: string;
   createdAt: string;
-  priority: 'overdue' | 'today' | 'soon' | 'planned' | 'no-date';
+  priority: 'overdue' | 'problem' | 'today' | 'soon' | 'planned' | 'no-date';
   reason: string;
   source: 'item' | 'door';
 }
@@ -117,9 +117,7 @@ function getItemPlannedDate(item: Order['items'][number], order: Order): string 
     'dataPlDostawyPyskowice',
     'planowanaGotowoscTransportu',
     'dataGotowosci',
-    'dataGotowosciFakt',
     'dataOczekiwana',
-    'dataZakonczenia',
     'dataTransportu',
     'terminRealizacji',
   ];
@@ -210,7 +208,7 @@ function buildDashboardActions(orders: Order[], doorOrders: DoorOrder[]): Dashbo
         actionType = 'Wyjaśnić problem: ' + itemLabel;
         department = getActionDepartment(item, 'problem');
         reason = item.notes ? String(item.notes) : 'Element ma status „Problem”.';
-        priority = 'overdue';
+        priority = 'problem';
       } else if (item.status === 'NOT_ORDERED') {
         actionType = 'Zlecić / rozpocząć: ' + itemLabel;
         department = getActionDepartment(item, 'start');
@@ -221,7 +219,11 @@ function buildDashboardActions(orders: Order[], doorOrders: DoorOrder[]): Dashbo
           actionType = 'Ustalić termin: ' + itemLabel;
           reason = 'Brak przewidywanej daty dla etapu w realizacji.';
           priority = 'no-date';
-        } else if (daysToDate !== null && daysToDate <= 7) {
+        } else if (daysToDate === null) {
+          actionType = 'Sprawdzić termin: ' + itemLabel;
+          reason = 'Zapisany termin wymaga sprawdzenia.';
+          priority = 'no-date';
+        } else if (daysToDate <= 7) {
           actionType = item.status === 'ORDERED'
             ? 'Sprawdzić realizację / dostawę: ' + itemLabel
             : 'Dopilnować zakończenia: ' + itemLabel;
@@ -508,7 +510,7 @@ const profile = currentProfile || USER_PROFILES.admin;
               <option value="actionType">Sortuj: rodzaj działania</option>
               <option value="department">Sortuj: dział</option>
               <option value="plannedDate">Sortuj: przewidywana data wykonania</option>
-              <option value="createdAt">Sortuj: data dodania</option>
+              <option value="createdAt">Sortuj: data dodania elementu</option>
             </select>
             <button
               type="button"
@@ -540,7 +542,7 @@ const profile = currentProfile || USER_PROFILES.admin;
                   <th className="px-4 py-3 font-bold">Rodzaj działania</th>
                   <th className="px-4 py-3 font-bold">Dział</th>
                   <th className="px-4 py-3 font-bold">Przewidywana data</th>
-                  <th className="px-4 py-3 font-bold">Dodano</th>
+                  <th className="px-4 py-3 font-bold">Dodano element</th>
                   <th className="px-4 py-3 font-bold">Stan</th>
                 </tr>
               </thead>
@@ -570,7 +572,9 @@ const profile = currentProfile || USER_PROFILES.admin;
                     <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{action.createdAt ? formatDatePL(action.createdAt.slice(0, 10)) : '—'}</td>
                     <td className="px-4 py-3">
                       {action.priority === 'overdue' ? (
-                        <span className="inline-flex rounded-full bg-rose-100 px-2 py-1 text-[10px] font-bold text-rose-700 whitespace-nowrap">Po terminie / problem</span>
+                        <span className="inline-flex rounded-full bg-rose-100 px-2 py-1 text-[10px] font-bold text-rose-700 whitespace-nowrap">Po terminie</span>
+                      ) : action.priority === 'problem' ? (
+                        <span className="inline-flex rounded-full bg-rose-100 px-2 py-1 text-[10px] font-bold text-rose-700 whitespace-nowrap">Problem</span>
                       ) : action.priority === 'today' ? (
                         <span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-800 whitespace-nowrap">Na dziś</span>
                       ) : action.priority === 'soon' ? (
