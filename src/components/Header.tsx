@@ -1,6 +1,7 @@
 import React from 'react';
 import { Plus, RefreshCw, Zap, Layers, AlertTriangle, Lock, CircuitBoard, Menu, X, ChevronDown, Archive, ShieldCheck, Download, Save, LoaderCircle, CheckCircle2, CalendarDays, UsersRound, ListTodo } from 'lucide-react';
-import { UserRoleProfile, UserRoleId } from '../types/userRole';
+import type { UserRoleProfile } from '../types/userRole';
+import type { AuthUser } from '../types/auth';
 import { UserRoleSelector } from './UserRoleSelector';
 
 interface HeaderProps {
@@ -24,8 +25,9 @@ interface HeaderProps {
   doorOrdersCount?: number;
   doorOverdueCount?: number;
   currentProfile: UserRoleProfile;
-  onSelectProfile: (roleId: UserRoleId) => void;
-  onOpenMatrixModal: () => void;
+  authUser: AuthUser;
+  onLogout: () => void;
+  onOpenUserAdmin: () => void;
 }
 
 const modules = [
@@ -49,7 +51,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab = 'all', onSelectTab, problemCount = 0,
   activeModule = 'orders', onSelectModule,
   doorOrdersCount = 0, doorOverdueCount = 0,
-  currentProfile, onSelectProfile, onOpenMatrixModal,
+  currentProfile, authUser, onLogout, onOpenUserAdmin,
 }) => {
   const selectedModule = modules.find((module) => module.id === activeModule) ?? modules[0];
   const SelectedIcon = archiveActive ? Archive : selectedModule.Icon;
@@ -110,9 +112,10 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <div className="min-w-0">
             <UserRoleSelector
+              currentUser={authUser}
               currentProfile={currentProfile}
-              onSelectProfile={onSelectProfile}
-              onOpenMatrixModal={onOpenMatrixModal}
+              onLogout={onLogout}
+              onOpenUserAdmin={onOpenUserAdmin}
             />
           </div>
           {activeModule === 'doors' ? (
