@@ -167,6 +167,33 @@ function getActionDepartment(
   return phase === 'problem' ? 'sales' : 'logistics';
 }
 
+function getStartActionLabel(itemType: string, itemLabel: string): string {
+  const labels: Record<string, string> = {
+    OBUDOWA: 'Zlecić / potwierdzić obudowę',
+    ROZDZIELNICA_SN: 'Zlecić rozdzielnicę SN',
+    ROZDZIELNICA_NN: 'Zlecić rozdzielnicę NN',
+    TABLICA_POMIAROWA: 'Zlecić tablicę pomiarową',
+    RPW: 'Zlecić / przygotować RPW',
+    MOST: 'Zlecić most kablowy',
+    SZAFKA_TELEMECHANIKI: 'Zlecić szafkę telemechaniki',
+    TRANSFORMATOR_POTRZEB_WLASNYCH: 'Zamówić transformator potrzeb własnych',
+    WSKAZNIKI_ZWARC: 'Zamówić wskaźniki zwarcia',
+    RYS_AKCEPTACJA: 'Przygotować / uzyskać akceptację rysunków',
+    KOLORY: 'Potwierdzić kolorystykę i numery RAL',
+    OPISY: 'Ustalić wymagane opisy i tabliczki',
+    DRZWI: 'Sprawdzić / zlecić drzwi',
+    ZAP_SERWISPOL: 'Wysłać zapytanie do SERWISPOL',
+    ZAM_SERWISPOL: 'Złożyć zamówienie SERWISPOL',
+    ZAP_JK: 'Uzyskać wycenę JK',
+    ZAM_JK: 'Zamówić usługę JK',
+    ZLECENIE_MONTAZU: 'Przygotować zlecenie montażu',
+    POWYKONAWCZA: 'Przygotować dokumentację powykonawczą',
+    DATA_WYJAZDU: 'Ustalić plan transportu i wyjazdu stacji',
+    DODATKOWE: 'Zweryfikować wyposażenie dodatkowe',
+  };
+  return labels[itemType] || 'Sprawdzić / rozpocząć: ' + itemLabel;
+}
+
 function getDashboardPriority(date?: string): DashboardAction['priority'] {
   const days = localDayDifference(date);
   if (days === null) return 'no-date';
@@ -210,7 +237,7 @@ function buildDashboardActions(orders: Order[], doorOrders: DoorOrder[]): Dashbo
         reason = item.notes ? String(item.notes) : 'Element ma status „Problem”.';
         priority = 'problem';
       } else if (item.status === 'NOT_ORDERED') {
-        actionType = 'Zlecić / rozpocząć: ' + itemLabel;
+        actionType = getStartActionLabel(item.type, itemLabel);
         department = getActionDepartment(item, 'start');
         reason = 'Element nie został jeszcze zlecony ani oznaczony jako niewymagany.';
       } else if (item.status === 'ORDERED' || item.status === 'IN_PROGRESS') {
