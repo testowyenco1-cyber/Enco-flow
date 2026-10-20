@@ -350,7 +350,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 <h1 className="min-w-0 break-words text-xl sm:text-2xl font-bold tracking-tight">
                   {order.projectName}
                 </h1>
-                {projectOwner && (
+                {projectOwner && projectOwner.key !== 'sales' && (
                   <span className={`rounded border px-1.5 py-0.5 text-[9px] font-bold ${projectOwner.className}`}>
                     {projectOwner.label}
                   </span>
@@ -361,7 +361,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                   <Building2 className="w-3.5 h-3.5 shrink-0 text-blue-400" />
                   <span className="break-words font-medium text-white">{order.client}</span>
-                  {clientOwner && (
+                  {clientOwner && clientOwner.key !== 'sales' && (
                     <span className={`rounded border px-1.5 py-0.5 text-[9px] font-bold ${clientOwner.className}`}>
                       {clientOwner.label}
                     </span>
