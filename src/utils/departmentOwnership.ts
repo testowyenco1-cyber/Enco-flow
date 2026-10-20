@@ -3,7 +3,7 @@
  * DH and MW are intentionally represented together as Dział Handlowy.
  * This is informational workflow ownership, not assignment to individual employees.
  */
-export type DepartmentOwnerKey = 'sales' | 'pyskowice' | 'logistics' | 'technical';
+export type DepartmentOwnerKey = 'sales' | 'pyskowice' | 'plochocinska' | 'logistics' | 'technical';
 
 export interface DepartmentOwner {
   key: DepartmentOwnerKey;
@@ -15,6 +15,7 @@ export interface DepartmentOwner {
 export const DEPARTMENT_OWNERS: Record<DepartmentOwnerKey, DepartmentOwner> = {
   sales: { key: 'sales', label: 'Dział Handlowy (DH/MW)', shortLabel: 'DH / MW', className: 'border-blue-200 bg-blue-50 text-blue-800' },
   pyskowice: { key: 'pyskowice', label: 'Fabryka Pyskowice', shortLabel: 'PYSKOWICE', className: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
+  plochocinska: { key: 'plochocinska', label: 'Produkcja Płochocińska', shortLabel: 'PŁOCHOCIŃSKA', className: 'border-cyan-200 bg-cyan-50 text-cyan-800' },
   logistics: { key: 'logistics', label: 'Dział Logistyki', shortLabel: 'LOGISTYKA', className: 'border-amber-200 bg-amber-50 text-amber-800' },
   technical: { key: 'technical', label: 'Techniczny · projektant DH', shortLabel: 'TECHNICZNY', className: 'border-violet-200 bg-violet-50 text-violet-800' },
 };
