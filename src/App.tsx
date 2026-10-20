@@ -50,6 +50,42 @@ import {
   hasPasswordProtection,
 } from './types/userRole';
 
+interface ActionDashboardBoundaryProps {
+  children: React.ReactNode;
+  onGoToOrders: () => void;
+}
+
+interface ActionDashboardBoundaryState {
+  hasError: boolean;
+}
+
+class ActionDashboardErrorBoundary extends React.Component<ActionDashboardBoundaryProps, ActionDashboardBoundaryState> {
+  state: ActionDashboardBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): ActionDashboardBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('Błąd modułu Plan działań:', error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <section role="alert" className="mx-auto max-w-2xl rounded-xl border border-rose-200 bg-white p-8 text-center shadow-sm">
+          <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-rose-600" />
+          <h1 className="text-lg font-bold text-slate-900">Nie udało się wyświetlić Planu działań</h1>
+          <p className="mt-2 text-sm text-slate-600">Błąd został zapisany w konsoli przeglądarki. Pozostałe moduły aplikacji powinny nadal być dostępne.</p>
+          <button type="button" onClick={this.props.onGoToOrders} className="mt-5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700">Wróć do zleceń</button>
+        </section>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
@@ -609,13 +645,15 @@ export default function App() {
         activeModule === 'doors' ? 'max-w-full 2xl:max-w-[1800px]' : 'max-w-[1800px]'
       }`}>
         {activeModule === 'actions' ? (
-          <ActionDashboardView
-            orders={activeOrders}
-            doorOrders={doorOrders}
-            onSelectOrder={handleSelectOrder}
-            onOpenDoorModule={() => navigate('/drzwi')}
-            currentProfile={currentProfile}
-          />
+          <ActionDashboardErrorBoundary onGoToOrders={() => navigate('/zlecenia')}>
+            <ActionDashboardView
+              orders={activeOrders}
+              doorOrders={doorOrders}
+              onSelectOrder={handleSelectOrder}
+              onOpenDoorModule={() => navigate('/drzwi')}
+              currentProfile={currentProfile}
+            />
+          </ActionDashboardErrorBoundary>
         ) : activeModule === 'calendar' ? (
           <CalendarView orders={activeOrders} onSelectOrder={handleSelectOrder} />
         ) : activeModule === 'sn' ? (
