@@ -693,8 +693,12 @@ async function startServer() {
     }
   });
 
-  app.post('/api/admin/users/:userId/reset-password', requireApiAuth, requireAdmin, (req, res) => {
+  app.post('/api/admin/users/:userId/reset-password', requireApiAuth, requireAdmin, (req: any, res) => {
     try {
+      const actor = req.authUser as AuthUser;
+      if (actor.id === req.params.userId) {
+        return res.status(400).json({ error: 'Nie możesz resetować własnego hasła z aktywnej sesji. Poproś innego administratora.' });
+      }
       const password = typeof req.body?.password === 'string' ? req.body.password : '';
       if (password.length < 10 || password.length > 200) return res.status(400).json({ error: 'Nowe hasło musi mieć od 10 do 200 znaków.' });
       const users = loadAuthUsers();
