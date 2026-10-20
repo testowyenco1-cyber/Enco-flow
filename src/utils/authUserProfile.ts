@@ -33,7 +33,6 @@ export function profileForAuthUser(user: AuthUser): UserRoleProfile {
     };
   }
 
-  const ids = departmentProfiles.map((profile) => profile.id);
   const names = departmentProfiles.map((profile) => profile.name);
   const canEditAll = departmentProfiles.some((profile) => profile.canEditAll);
   const all = (key: keyof UserRoleProfile) => departmentProfiles.some((profile) => Boolean(profile[key]));
