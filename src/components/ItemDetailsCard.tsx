@@ -814,10 +814,6 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         )}
 
         {/* 3. Ilość pól (pole liczbowe) & 4. Konfiguracja pól */}
-          </div>
-        </div>
-
-        {/* 3. Ilość pól (pole liczbowe) & 4. Konfiguracja pól */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-3 border-t border-slate-200">
           {/* 3. Ilość pól */}
           <div>
