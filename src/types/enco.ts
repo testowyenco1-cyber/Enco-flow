@@ -92,13 +92,20 @@ export function isValidSNProducer(producer: string): producer is SNProducer {
   return SN_PRODUCERS.includes(producer as SNProducer);
 }
 
-export function isValidSNModel(producer: string, model: string): boolean {
-  if (!isValidSNProducer(producer)) return false;
-  const models = SN_MODELS_BY_PRODUCER[producer];
-  return Boolean(models && models.includes(model));
+export function isValidSNModel(
+  producer: string,
+  model: string,
+  modelsByProducer: Record<string, string[]> = SN_MODELS_BY_PRODUCER,
+): boolean {
+  const models = modelsByProducer[producer];
+  return Boolean(producer && model && models && models.includes(model));
 }
 
-export function validateSNCombination(producer?: string, model?: string): {
+export function validateSNCombination(
+  producer?: string,
+  model?: string,
+  modelsByProducer: Record<string, string[]> = SN_MODELS_BY_PRODUCER,
+): {
   isValid: boolean;
   error?: string;
 } {
@@ -108,16 +115,16 @@ export function validateSNCombination(producer?: string, model?: string): {
   if (!producer) {
     return { isValid: false, error: 'Wybierz producenta rozdzielnicy SN.' };
   }
-  if (!isValidSNProducer(producer)) {
-    return { isValid: false, error: `Nieznany producent: ${producer}. Wybierz Schneider Electric, EATON lub Siemens.` };
+  if (!Object.prototype.hasOwnProperty.call(modelsByProducer, producer)) {
+    return { isValid: false, error: `Nieznany producent: ${producer}. Wybierz producenta ze słownika SN.` };
   }
   if (!model) {
     return { isValid: false, error: `Wybierz model rozdzielnicy dla producenta ${producer}.` };
   }
-  if (!isValidSNModel(producer, model)) {
+  if (!isValidSNModel(producer, model, modelsByProducer)) {
     return {
       isValid: false,
-      error: `Nieprawidłowy model "${model}" dla producenta ${producer}. Dostępne modele: ${SN_MODELS_BY_PRODUCER[producer]?.join(', ')}.`,
+      error: `Nieprawidłowy model "${model}" dla producenta ${producer}. Dostępne modele: ${modelsByProducer[producer]?.join(', ') || 'brak'}.`,
     };
   }
   return { isValid: true };
