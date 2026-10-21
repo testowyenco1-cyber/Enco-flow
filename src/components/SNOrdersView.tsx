@@ -338,7 +338,7 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
           <tbody className="divide-y divide-slate-100">
             {visibleRecords.map(record => {
               const order = matchingOrder(record);
-              return <tr key={record.id} className={`align-top transition-colors ${record.category === 'DELIVERED' ? 'bg-blue-100/50 hover:bg-blue-200/50' : record.category === 'WAREHOUSE' ? 'bg-green-100/50 hover:bg-green-200/50' : 'hover:bg-blue-50/30'}`}>
+              return <tr key={record.id} className={`align-top transition-colors ${record.category === 'DELIVERED' ? 'bg-blue-100/65 hover:bg-blue-200/65' : record.category === 'WAREHOUSE' ? 'bg-green-100/65 hover:bg-green-200/65' : 'hover:bg-blue-50/30'}`}>
                 <td className="px-2 py-1.5 text-[11px] font-medium text-slate-600">{visibleRecords.findIndex(item => item.id === record.id) + 1}</td>
                 <td className="min-w-0 px-1 py-1">
                   {(record.type === 'RM_AIRSET' || record.type === 'RM_AIRSET_STOEN' || record.type === 'SIEMENS' || record.type === 'XIRIA') && canEdit ? <div className="min-w-0 space-y-1">
