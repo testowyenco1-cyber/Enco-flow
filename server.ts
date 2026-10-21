@@ -1137,6 +1137,7 @@ async function startServer() {
 
   app.post('/api/sn-catalog', requireItemPermission('ROZDZIELNICA_SN'), (req, res) => {
     try {
+      const action = typeof req.body?.action === 'string' ? req.body.action : 'add';
       const producer = typeof req.body?.producer === 'string' ? req.body.producer.trim() : '';
       const model = typeof req.body?.model === 'string' ? req.body.model.trim() : '';
       if (!producer || producer.length > 120 || (model && model.length > 120)) {
@@ -1147,13 +1148,32 @@ async function startServer() {
         producers: Array.isArray(parsed?.producers) ? parsed.producers.filter((value: unknown) => typeof value === 'string') as string[] : [...INITIAL_SN_CATALOG.producers],
         modelsByProducer: parsed?.modelsByProducer && typeof parsed.modelsByProducer === 'object' ? parsed.modelsByProducer as Record<string, string[]> : { ...INITIAL_SN_CATALOG.modelsByProducer },
       };
-      const existingProducer = catalog.producers.find(value => value.toLocaleLowerCase('pl') === producer.toLocaleLowerCase('pl'));
-      const canonicalProducer = existingProducer || producer;
-      if (!existingProducer) catalog.producers.push(producer);
-      if (!Array.isArray(catalog.modelsByProducer[canonicalProducer])) catalog.modelsByProducer[canonicalProducer] = [];
-      if (model && !catalog.modelsByProducer[canonicalProducer].some(value => value.toLocaleLowerCase('pl') === model.toLocaleLowerCase('pl'))) {
-        catalog.modelsByProducer[canonicalProducer].push(model);
+      const canonicalProducer = catalog.producers.find(value => value.toLocaleLowerCase('pl') === producer.toLocaleLowerCase('pl')) || producer;
+
+      if (action === 'removeProducer') {
+        const existingProducer = catalog.producers.find(value => value.toLocaleLowerCase('pl') === producer.toLocaleLowerCase('pl'));
+        if (!existingProducer) return res.status(404).json({ success: false, error: 'Nie znaleziono producenta w słowniku.' });
+        catalog.producers = catalog.producers.filter(value => value !== existingProducer);
+        delete catalog.modelsByProducer[existingProducer];
+      } else if (action === 'removeModel') {
+        const existingProducer = catalog.producers.find(value => value.toLocaleLowerCase('pl') === producer.toLocaleLowerCase('pl'));
+        if (!existingProducer) return res.status(404).json({ success: false, error: 'Nie znaleziono producenta w słowniku.' });
+        const models = Array.isArray(catalog.modelsByProducer[existingProducer]) ? catalog.modelsByProducer[existingProducer] : [];
+        const existingModel = models.find(value => value.toLocaleLowerCase('pl') === model.toLocaleLowerCase('pl'));
+        if (!model || !existingModel) return res.status(404).json({ success: false, error: 'Nie znaleziono modelu w słowniku.' });
+        catalog.modelsByProducer[existingProducer] = models.filter(value => value !== existingModel);
+      } else if (action === 'addProducer' || action === 'addModel' || action === 'add') {
+        const existingProducer = catalog.producers.find(value => value.toLocaleLowerCase('pl') === producer.toLocaleLowerCase('pl'));
+        const finalProducer = existingProducer || producer;
+        if (!existingProducer) catalog.producers.push(producer);
+        if (!Array.isArray(catalog.modelsByProducer[finalProducer])) catalog.modelsByProducer[finalProducer] = [];
+        if (model && !catalog.modelsByProducer[finalProducer].some(value => value.toLocaleLowerCase('pl') === model.toLocaleLowerCase('pl'))) {
+          catalog.modelsByProducer[finalProducer].push(model);
+        }
+      } else {
+        return res.status(400).json({ success: false, error: 'Nieznana operacja słownika SN.' });
       }
+
       catalog.producers.sort((a, b) => a.localeCompare(b, 'pl', { sensitivity: 'base' }));
       for (const key of Object.keys(catalog.modelsByProducer)) {
         catalog.modelsByProducer[key] = Array.isArray(catalog.modelsByProducer[key])
@@ -1161,7 +1181,7 @@ async function startServer() {
           : [];
       }
       writeJsonAtomically(SN_CATALOG_FILE, catalog);
-      return res.json({ success: true, ...catalog, canonicalProducer, timestamp: Date.now() });
+      return res.json({ success: true, ...catalog, timestamp: Date.now() });
     } catch (err) {
       console.error('Error saving SN catalogue:', err);
       return res.status(500).json({ success: false, error: 'Błąd zapisu katalogu producentów i modeli SN' });
