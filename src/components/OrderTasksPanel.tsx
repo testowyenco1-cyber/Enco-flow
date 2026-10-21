@@ -11,6 +11,7 @@ interface Props {
   projectName: string;
   client: string;
   currentProfile: UserRoleProfile;
+  onOpenChange?: (isOpen: boolean) => void;
 }
 
 const DEPARTMENTS: Array<{ id: AuthDepartmentId; label: string }> = [
@@ -43,7 +44,7 @@ function dueLabel(value: string, status: EncoTaskStatus): { label: string; style
   return { label: 'Termin', style: 'bg-blue-50 text-blue-700 border-blue-200' };
 }
 
-export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, projectName, client, currentProfile }) => {
+export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, projectName, client, currentProfile, onOpenChange }) => {
   const [isOpen, setIsOpen] = useState(() => {
     try { return window.localStorage.getItem('enco-flow-order-tasks-panel') !== 'collapsed'; }
     catch { return true; }
@@ -61,6 +62,10 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
   const [assigneeType, setAssigneeType] = useState<'department' | 'person'>('department');
   const [department, setDepartment] = useState<AuthDepartmentId>('dzial_handlowy');
   const [userId, setUserId] = useState('');
+
+  useEffect(() => {
+    onOpenChange?.(isOpen);
+  }, [isOpen, onOpenChange]);
 
   useEffect(() => {
     try { window.localStorage.setItem('enco-flow-order-tasks-panel', isOpen ? 'open' : 'collapsed'); }
