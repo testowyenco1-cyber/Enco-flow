@@ -93,6 +93,7 @@ async function startServer() {
   const DOORS_FILE = path.join(DATA_DIR, 'door_orders.json');
   const OBUDOWA_VARIANTS_FILE = path.join(DATA_DIR, 'obudowa_variants.json');
   const SN_SWITCHGEAR_FILE = path.join(DATA_DIR, 'sn_switchgear.json');
+  const SN_CATALOG_FILE = path.join(DATA_DIR, 'sn_catalog.json');
   const DOOR_CATALOG_FILE = path.join(DATA_DIR, 'door_catalog.json');
   const TASKS_FILE = path.join(DATA_DIR, 'tasks.json');
   if (!fs.existsSync(TASKS_FILE)) fs.writeFileSync(TASKS_FILE, '[]', 'utf-8');
@@ -140,6 +141,24 @@ async function startServer() {
       console.log('Initialized SN switchgear inventory in data_store/sn_switchgear.json');
     } catch (e) {
       console.error('Failed to initialize SN switchgear inventory:', e);
+    }
+  }
+
+  // Shared SN manufacturer/model catalogue. Stored on the server so all users share additions.
+  const INITIAL_SN_CATALOG = {
+    producers: ['Schneider Electric', 'EATON', 'Siemens'],
+    modelsByProducer: {
+      'Schneider Electric': ['AirSeT'],
+      'EATON': ['Xiria'],
+      'Siemens': ['8DJH 24 Blue GIS'],
+    } as Record<string, string[]>,
+  };
+  if (!fs.existsSync(SN_CATALOG_FILE)) {
+    try {
+      fs.writeFileSync(SN_CATALOG_FILE, JSON.stringify(INITIAL_SN_CATALOG, null, 2), 'utf-8');
+      console.log('Initialized shared SN manufacturer/model catalogue in data_store/sn_catalog.json');
+    } catch (e) {
+      console.error('Failed to initialize SN catalogue:', e);
     }
   }
 
@@ -1100,6 +1119,52 @@ async function startServer() {
     } catch (err) {
       console.error('Error saving door hardware catalogue:', err);
       return res.status(500).json({ success: false, error: 'Błąd zapisu katalogu ślusarki' });
+    }
+  });
+
+  // Shared SN manufacturer/model catalogue. Additions persist in DATA_DIR/sn_catalog.json.
+  app.get('/api/sn-catalog', (_req, res) => {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(SN_CATALOG_FILE, 'utf-8'));
+      const producers = Array.isArray(parsed?.producers) ? parsed.producers.filter((value: unknown) => typeof value === 'string') : INITIAL_SN_CATALOG.producers;
+      const modelsByProducer = parsed?.modelsByProducer && typeof parsed.modelsByProducer === 'object' ? parsed.modelsByProducer : INITIAL_SN_CATALOG.modelsByProducer;
+      return res.json({ success: true, producers, modelsByProducer, timestamp: Date.now() });
+    } catch (err) {
+      console.error('Error reading SN catalogue:', err);
+      return res.status(500).json({ success: false, error: 'Błąd odczytu katalogu producentów i modeli SN' });
+    }
+  });
+
+  app.post('/api/sn-catalog', requireItemPermission('ROZDZIELNICA_SN'), (req, res) => {
+    try {
+      const producer = typeof req.body?.producer === 'string' ? req.body.producer.trim() : '';
+      const model = typeof req.body?.model === 'string' ? req.body.model.trim() : '';
+      if (!producer || producer.length > 120 || (model && model.length > 120)) {
+        return res.status(400).json({ success: false, error: 'Podaj poprawną nazwę producenta i opcjonalnie modelu (maks. 120 znaków).' });
+      }
+      const parsed = JSON.parse(fs.readFileSync(SN_CATALOG_FILE, 'utf-8'));
+      const catalog = {
+        producers: Array.isArray(parsed?.producers) ? parsed.producers.filter((value: unknown) => typeof value === 'string') as string[] : [...INITIAL_SN_CATALOG.producers],
+        modelsByProducer: parsed?.modelsByProducer && typeof parsed.modelsByProducer === 'object' ? parsed.modelsByProducer as Record<string, string[]> : { ...INITIAL_SN_CATALOG.modelsByProducer },
+      };
+      const existingProducer = catalog.producers.find(value => value.toLocaleLowerCase('pl') === producer.toLocaleLowerCase('pl'));
+      const canonicalProducer = existingProducer || producer;
+      if (!existingProducer) catalog.producers.push(producer);
+      if (!Array.isArray(catalog.modelsByProducer[canonicalProducer])) catalog.modelsByProducer[canonicalProducer] = [];
+      if (model && !catalog.modelsByProducer[canonicalProducer].some(value => value.toLocaleLowerCase('pl') === model.toLocaleLowerCase('pl'))) {
+        catalog.modelsByProducer[canonicalProducer].push(model);
+      }
+      catalog.producers.sort((a, b) => a.localeCompare(b, 'pl', { sensitivity: 'base' }));
+      for (const key of Object.keys(catalog.modelsByProducer)) {
+        catalog.modelsByProducer[key] = Array.isArray(catalog.modelsByProducer[key])
+          ? Array.from(new Set(catalog.modelsByProducer[key].filter(value => typeof value === 'string' && value.trim()).map(value => value.trim())))
+          : [];
+      }
+      writeJsonAtomically(SN_CATALOG_FILE, catalog);
+      return res.json({ success: true, ...catalog, canonicalProducer, timestamp: Date.now() });
+    } catch (err) {
+      console.error('Error saving SN catalogue:', err);
+      return res.status(500).json({ success: false, error: 'Błąd zapisu katalogu producentów i modeli SN' });
     }
   });
 
