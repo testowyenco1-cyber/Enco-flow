@@ -6,7 +6,6 @@ import {
   SN_PRODUCERS,
   SN_MODELS_BY_PRODUCER,
   SNProducer,
-  DEFAULT_SN_CONFIG,
   SN_CONFIG_EXAMPLES,
   validateSNCombination,
   formatDimensionM,
@@ -211,7 +210,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
       producent: newProducer,
       model: nextModel,
       typRozdzielnicy: nextModel,
-      konfiguracjaPol: item.details?.konfiguracjaPol || DEFAULT_SN_CONFIG,
+      konfiguracjaPol: item.details?.konfiguracjaPol || '',
     });
   };
 
@@ -221,7 +220,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
       ...item.details,
       model: newModel,
       typRozdzielnicy: newModel,
-      konfiguracjaPol: item.details?.konfiguracjaPol || DEFAULT_SN_CONFIG,
+      konfiguracjaPol: item.details?.konfiguracjaPol || '',
     });
   };
 
@@ -247,10 +246,10 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         if (polCount !== undefined && polCount !== '') {
           entries.push({ label: 'Ilość pól', value: `${polCount} pola` });
         }
-        const snConfig = d.konfiguracjaPol || DEFAULT_SN_CONFIG;
+        const snConfig = d.konfiguracjaPol || '';
         entries.push({
           label: 'Konfiguracja pól',
-          value: `${snConfig} (L: liniowe, T: transformatorowe)`,
+          value: snConfig ? `${snConfig} (L: liniowe, T: transformatorowe)` : 'Nieuzupełniono',
         });
         if (d.numerSeryjny) entries.push({ label: 'Numer seryjny', value: String(d.numerSeryjny) });
         const formatSNDate = (value: unknown) =>
@@ -265,7 +264,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         break;
 
       case 'ROZDZIELNICA_NN':
-        const typVal = d.typRozdzielnicy || d.typ || 'RTS-z';
+        const typVal = d.typRozdzielnicy || d.typ || '';
         const typFormatted = typVal.includes('RTS-z')
           ? 'RTS-z — zawieszana, obsługa zewnętrzna'
           : typVal.includes('RTS-w')
@@ -666,12 +665,69 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
     shortNameBadgeClass = 'bg-blue-600 text-white border-blue-700 font-black shadow-2xs';
   }
 
+  const handleValidatedStatusChange = (newStatus: ItemStatus) => {
+    if (newStatus === 'READY') {
+      const d = item.details || {};
+      const requiredByType: Record<string, { key: string; label: string }[]> = {
+        ROZDZIELNICA_SN: [
+          { key: 'producent', label: 'Producent rozdzielnicy SN' },
+          { key: 'model', label: 'Model rozdzielnicy SN' },
+          { key: 'liczbaPol', label: 'Liczba pól rozdzielnicy SN' },
+          { key: 'konfiguracjaPol', label: 'Konfiguracja pól SN' },
+        ],
+        ROZDZIELNICA_NN: [
+          { key: 'typRozdzielnicy', label: 'Typ rozdzielnicy NN' },
+          { key: 'iloscPol', label: 'Liczba pól rozdzielnicy NN' },
+        ],
+        MOST: [
+          { key: 'rodzajKabla', label: 'Rodzaj kabla mostu' },
+          { key: 'typPrzekroj', label: 'Typ i przekrój kabla' },
+          { key: 'dlugosc', label: 'Długość mostu kablowego' },
+          { key: 'rodzajGlowic', label: 'Rodzaj głowic kablowych' },
+          { key: 'iloscGlowic', label: 'Liczba głowic kablowych' },
+        ],
+        KOLORY: [
+          { key: 'kolorObudowy', label: 'Kolor obudowy' },
+          { key: 'kolorDrzwi', label: 'Kolor drzwi' },
+        ],
+        OBUDOWA: [
+          { key: 'typObudowy', label: 'Typ obudowy (BEK/NZ)' },
+          { key: 'rozmiar', label: 'Rozmiar stacji' },
+        ],
+      };
+      const required = requiredByType[item.type] || [];
+      const missing = required.filter(({ key }) => {
+        const value = d[key] ?? (key === 'model' && d.typRozdzielnicy ? d.typRozdzielnicy : '');
+        return typeof value === 'string' ? value.trim() === '' : value === null || value === undefined;
+      });
+      if (missing.length > 0) {
+        window.alert(
+          `Nie można potwierdzić gotowości elementu „${item.name}”. Uzupełnij wymagane pola:\\n\\n• ${missing.map(({ label }) => label).join('\\n• ')}`
+        );
+        return;
+      }
+      if (item.type === 'ROZDZIELNICA_SN') {
+        const count = Number(d.liczbaPol ?? d.iloscPol);
+        if (!Number.isInteger(count) || count < 1) {
+          window.alert('Nie można potwierdzić gotowości: liczba pól rozdzielnicy SN musi być liczbą całkowitą większą od zera.');
+          return;
+        }
+        const combo = validateSNCombination(d.producent || '', d.model || d.typRozdzielnicy || '', snCatalog.modelsByProducer);
+        if (!combo.isValid) {
+          window.alert(combo.error || 'Wybierz poprawnego producenta i model rozdzielnicy SN.');
+          return;
+        }
+      }
+    }
+    onStatusChange(newStatus);
+  };
+
   const renderSNForm = () => {
     const d = item.details || {};
     const producerVal = d.producent || '';
     const modelVal = d.model || d.typRozdzielnicy || '';
     const polVal = d.liczbaPol ?? d.iloscPol ?? '';
-    const configVal = d.konfiguracjaPol ?? DEFAULT_SN_CONFIG;
+    const configVal = d.konfiguracjaPol ?? '';
     const technicalVal = d.parametryTechniczne || '';
 
     const comboValidation = validateSNCombination(producerVal, modelVal, snCatalog.modelsByProducer);
@@ -693,7 +749,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
           {producerVal && modelVal && isComboValid ? (
             <span className="text-[11px] font-mono text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 inline-flex items-center gap-1.5 shadow-2xs">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              <strong>{producerVal}</strong> · {modelVal} · {polVal || 3}p ({configVal})
+              <strong>{producerVal}</strong> · {modelVal} · {polVal || '—'}p ({configVal || '—'})
             </span>
           ) : (
             <span className="text-[11px] text-amber-800 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200 inline-flex items-center gap-1.5">
@@ -997,10 +1053,10 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
 
   const renderNNForm = () => {
     const d = item.details || {};
-    const typVal = d.typRozdzielnicy || d.typ || 'RTS-z';
+    const typVal = d.typRozdzielnicy || d.typ || '';
     const isRTSz = typVal.includes('RTS-z');
     const isRTSw = typVal.includes('RTS-w');
-    const iloscVal = String(d.iloscPol || d.liczbaPol || '8');
+    const iloscVal = String(d.iloscPol ?? d.liczbaPol ?? '');
     const dataWystawienia = d.dataWystawieniaZlecenia || d.dataZlecenia || '';
     const gotowoscTransportu = d.planowanaGotowoscTransportu || d.dataWydaniaDoTransportu || '';
     const wyposazenieVal = d.wyposazenieDodatkowe || d.wyposazenie || d.konfiguracja || '';
@@ -1259,7 +1315,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
           <span className="text-xs text-slate-600 font-bold hidden sm:inline">Status:</span>
           <StatusSwitcher
             currentStatus={item.status}
-            onChange={onStatusChange}
+            onChange={handleValidatedStatusChange}
             variant="segmented"
             readOnly={!canEdit}
             readOnlyNotice={permHint.reason}
