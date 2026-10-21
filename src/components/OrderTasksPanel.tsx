@@ -142,12 +142,12 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
   return (
     <>
       {!isOpen && (
-        <button type="button" onClick={() => setIsOpen(true)} className="fixed right-0 top-1/2 z-50 flex -translate-y-1/2 items-center gap-2 rounded-l-xl border border-r-0 border-slate-300 bg-slate-900 px-3 py-4 text-white shadow-xl transition-colors hover:bg-slate-800" aria-label="Otwórz panel zadań" title="Zadania i przypomnienia">
+        <button type="button" onClick={() => setIsOpen(true)} className="fixed right-0 top-1/2 z-50 flex -translate-y-1/2 items-center gap-2 rounded-l-xl border border-r-0 border-slate-300 bg-slate-900 px-3 py-4 text-white transition-colors hover:bg-slate-800" aria-label="Otwórz panel zadań" title="Zadania i przypomnienia">
           <PanelRightOpen className="h-5 w-5" />
           <span className="text-xs font-bold [writing-mode:vertical-rl] rotate-180">Zadania</span>
         </button>
       )}
-      <aside className={"fixed right-0 top-0 z-40 flex h-[100dvh] w-[360px] max-w-[calc(100vw-16px)] flex-col overflow-hidden border-l border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-in-out " + (isOpen ? "translate-x-0" : "translate-x-full")}>
+      <aside className={"fixed right-0 top-16 z-40 flex h-[calc(100dvh-4rem)] w-[360px] max-w-[calc(100vw-16px)] flex-col overflow-hidden border-l border-slate-200 bg-white transition-transform duration-300 ease-in-out " + (isOpen ? "translate-x-0" : "translate-x-full")}>
             <div className="flex items-start justify-between gap-2 border-b border-slate-200 bg-slate-900 px-3 py-4 text-white">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-sm font-bold"><BellRing className="h-4 w-4 text-blue-300" /> Zadania i przypomnienia</div>
