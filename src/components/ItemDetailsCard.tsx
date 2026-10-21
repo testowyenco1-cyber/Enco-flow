@@ -657,7 +657,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
     const configVal = d.konfiguracjaPol ?? DEFAULT_SN_CONFIG;
     const technicalVal = d.parametryTechniczne || '';
 
-    const comboValidation = validateSNCombination(producerVal, modelVal);
+    const comboValidation = validateSNCombination(producerVal, modelVal, snCatalog.modelsByProducer);
     const isComboValid = comboValidation.isValid;
 
     return (
