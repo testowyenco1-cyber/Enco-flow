@@ -27,6 +27,9 @@ import {
   LayoutGrid,
   Table as TableIcon,
   CheckSquare,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   Info,
   Lock,
   FolderOpen,
@@ -73,6 +76,11 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
   const [filterTab, setFilterTab] = useState<DoorFilterTab>('all');
   const [viewMode, setViewMode] = useState<DoorViewMode>('table');
   const [sortMode, setSortMode] = useState<DoorSortMode>('deliveryStatus');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const handleSort = (mode: DoorSortMode) => {
+    if (sortMode === mode) setSortDirection((current) => current === 'asc' ? 'desc' : 'asc');
+    else { setSortMode(mode); setSortDirection('asc'); }
+  }
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const [orderToDelete, setOrderToDelete] = useState<DoorOrder | null>(null);
   const [isDoorFilesModalOpen, setIsDoorFilesModalOpen] = useState(false);
@@ -148,20 +156,20 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
       return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
     };
     return filtered.sort((a, b) => {
+      let comparison = 0;
       if (sortMode === 'deliveryStatus') {
         const rank = (order: DoorOrder) => {
           if (order.terminDostawy?.trim()) return 2;
           return checkDoorOrderOverdue(order.terminZamowienia, order.terminDostawy).isOverdue ? 0 : 1;
         };
-        const difference = rank(a) - rank(b);
-        if (difference) return difference;
-        return dateValue(a.terminZamowienia) - dateValue(b.terminZamowienia);
-      }
-      if (sortMode === 'deliveryDate') return dateValue(a.terminDostawy) - dateValue(b.terminDostawy);
-      if (sortMode === 'orderDate') return dateValue(b.dataZamowienia) - dateValue(a.dataZamowienia);
-      return a.numerDokumentu.localeCompare(b.numerDokumentu, 'pl', { numeric: true, sensitivity: 'base' });
+        comparison = rank(a) - rank(b);
+        if (!comparison) comparison = dateValue(a.terminZamowienia) - dateValue(b.terminZamowienia);
+      } else if (sortMode === 'deliveryDate') comparison = dateValue(a.terminDostawy) - dateValue(b.terminDostawy);
+      else if (sortMode === 'orderDate') comparison = dateValue(a.dataZamowienia) - dateValue(b.dataZamowienia);
+      else comparison = a.numerDokumentu.localeCompare(b.numerDokumentu, 'pl', { numeric: true, sensitivity: 'base' });
+      return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }, [doorOrders, filterTab, searchQuery, sortMode]);
+  }, [doorOrders, filterTab, searchQuery, sortMode, sortDirection]);
 
   useEffect(() => {
     const closeZlDropdownOnOutsideClick = (event: MouseEvent) => {
@@ -464,15 +472,6 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
 
         {/* Sortowanie, zakładki filtrów i widoków */}
         <div className="flex flex-wrap items-center justify-between md:justify-end gap-2.5">
-          <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-            <span>Sortuj:</span>
-            <select value={sortMode} onChange={(e) => setSortMode(e.target.value as DoorSortMode)} className="max-w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
-              <option value="deliveryStatus">Status dostawy</option>
-              <option value="deliveryDate">Termin dostawy</option>
-              <option value="orderDate">Data zamówienia</option>
-              <option value="document">Numer dokumentu</option>
-            </select>
-          </label>
           {/* Zakładki szybkiego filtru */}
           <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl text-xs font-semibold">
             <button
@@ -580,15 +579,15 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
             <table className="w-full min-w-[1080px] table-fixed border-collapse text-left text-[11px]">
               <thead className="sticky top-0 z-10 bg-slate-100 text-[11px] font-bold text-slate-800">
                 <tr className="[&>th]:border-b [&>th]:border-r [&>th]:border-slate-300 [&>th]:px-1.5 [&>th]:py-2 [&>th]:whitespace-normal [&>th]:break-words [&>th]:leading-tight">
-                  <th className="w-[110px]">Numer dokumentu</th>
-                  <th className="w-[105px]">Data zamówienia</th>
+                  <th className="w-[110px]"><button type="button" onClick={() => handleSort('document')} className="inline-flex items-center gap-1 text-left hover:text-blue-700" title="Sortuj według numeru dokumentu">Numer dokumentu {sortMode === 'document' ? (sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 text-slate-400" />}</button></th>
+                  <th className="w-[105px]"><button type="button" onClick={() => handleSort('orderDate')} className="inline-flex items-center gap-1 text-left hover:text-blue-700" title="Sortuj według daty zamówienia">Data zamówienia {sortMode === 'orderDate' ? (sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 text-slate-400" />}</button></th>
                   <th className="w-[105px]">Termin z zamówienia</th>
                   <th className="w-[115px]">Kategoria</th>
                   <th className="w-[85px] text-right">Netto</th>
                   <th className="w-[85px] text-right">Brutto</th>
                   <th className="w-[125px]">Numer ZL</th>
                   <th className="w-[180px]">Kontrahent</th>
-                  <th className="w-[155px]">Termin dostawy / potwierdzenie</th>
+                  <th className="w-[155px]"><div className="flex flex-col items-start gap-1"><button type="button" onClick={() => handleSort('deliveryDate')} className="inline-flex items-center gap-1 text-left hover:text-blue-700" title="Sortuj według terminu dostawy">Termin dostawy {sortMode === 'deliveryDate' ? (sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 text-slate-400" />}</button><button type="button" onClick={() => handleSort('deliveryStatus')} className="inline-flex items-center gap-1 text-left hover:text-blue-700" title="Domyślnie: po terminie, oczekujące, dostarczone. Kliknij, aby zmienić kierunek sortowania.">Status dostawy {sortMode === 'deliveryStatus' ? (sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 text-slate-400" />}</button></div></th>
                   <th className="w-[140px]">Uwagi</th>
                   <th className="w-[70px] text-center">Akcje</th>
                 </tr>
