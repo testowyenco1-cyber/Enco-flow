@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Order, ITEM_DEFINITIONS, STATUS_META, ItemStatus } from '../types/enco';
 import { Search, LayoutDashboard } from 'lucide-react';
+import type { EncoTask } from '../types/tasks';
+import { fetchTasks } from '../services/taskService';
 
 interface DashboardModuleViewProps {
   orders: Order[];
@@ -12,6 +14,17 @@ const isTaskOrdered = (status: ItemStatus) => status !== 'NOT_ORDERED' && status
 export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders, onSelectOrder }) => {
   const columns = ITEM_DEFINITIONS;
   const activeOrders = orders.filter((order) => !order.archivedAt);
+  const [tasks, setTasks] = useState<EncoTask[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchTasks()
+      .then((loadedTasks) => { if (!cancelled) setTasks(loadedTasks); })
+      .catch(() => { if (!cancelled) setTasks([]); })
+      .finally(() => { if (!cancelled) setTasksLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <section className="space-y-3">
@@ -34,8 +47,8 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
                     <span className="block truncate">{column.shortName}</span>
                   </th>
                 ))}
-                <th scope="col" className="sticky right-0 z-30 min-w-[64px] border-b border-l border-slate-200 bg-slate-100 px-2 py-2 text-center font-bold text-slate-700">
-                  Zlecone
+                <th scope="col" title="Liczba aktualnych zadań z panelu zadań i przypomnień (bez wykonanych)" className="sticky right-0 z-30 min-w-[64px] border-b border-l border-slate-200 bg-slate-100 px-2 py-2 text-center font-bold text-slate-700">
+                  Zadania
                 </th>
               </tr>
               <tr>
@@ -45,13 +58,13 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
                     <span className="block truncate">{column.name}</span>
                   </th>
                 ))}
-                <th className="sticky right-0 z-30 border-b border-l border-slate-200 bg-white px-1 py-1 text-center text-[9px] font-normal text-slate-400">zadań</th>
+                <th className="sticky right-0 z-30 border-b border-l border-slate-200 bg-white px-1 py-1 text-center text-[9px] font-normal text-slate-400">aktywn.</th>
               </tr>
             </thead>
             <tbody>
               {activeOrders.map((order) => {
                 const itemsByType = new Map(order.items.map((item) => [item.type, item]));
-                const orderedCount = order.items.filter((item) => isTaskOrdered(item.status)).length;
+                const activeTaskCount = tasks.filter((task) => task.orderId === order.id && task.status !== 'done').length;
                 return (
                   <tr key={order.id} className="group cursor-pointer hover:bg-blue-50/70" onClick={() => onSelectOrder(order.id)}>
                     <td className="sticky left-0 z-10 border-b border-r border-slate-100 bg-white px-2.5 py-1.5 group-hover:bg-blue-50/70">
@@ -75,7 +88,7 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
                       );
                     })}
                     <td className="sticky right-0 z-10 border-b border-l border-slate-100 bg-white px-2 py-1.5 text-center group-hover:bg-blue-50/70">
-                      <span className="inline-flex min-w-7 justify-center rounded bg-slate-100 px-1.5 py-1 font-bold tabular-nums text-slate-700">{orderedCount}</span>
+                      <span className="inline-flex min-w-7 justify-center rounded bg-slate-100 px-1.5 py-1 font-bold tabular-nums text-slate-700">{tasksLoading ? '…' : activeTaskCount}</span>
                     </td>
                   </tr>
                 );
