@@ -339,6 +339,11 @@ async function startServer() {
         const hasBase = Object.prototype.hasOwnProperty.call(base, key);
         const hasIncoming = Object.prototype.hasOwnProperty.call(incoming, key);
         const hasCurrent = Object.prototype.hasOwnProperty.call(current, key);
+        // Timestamps are metadata, not user-editable fields; concurrent saves must not conflict on them.
+        if (key === 'updatedAt' && hasIncoming) {
+          merged[key] = incoming[key];
+          continue;
+        }
         if (hasBase && !hasIncoming) {
           if (!hasCurrent || equal(current[key], base[key])) delete merged[key];
           else conflicts.push(path);
@@ -1043,6 +1048,7 @@ async function startServer() {
             return res.status(409).json({ success: false, conflict: true, error: 'Inny użytkownik zmienił te same pola. Odśwież zlecenie i przenieś swoje zmiany ponownie.', orderId: incoming.id, fields: conflicts });
           }
         }
+        candidate.updatedAt = new Date().toISOString();
         const permissionError = orderUpdatePermissionError(existing, candidate, profile);
         if (permissionError) return res.status(403).json({ success: false, error: permissionError });
         mergedIncoming.push(candidate);
@@ -1156,6 +1162,7 @@ async function startServer() {
           const conflicts: string[] = [];
           const candidate = mergeConcurrentValue(base, incoming, existing, '', conflicts);
           if (conflicts.length) return res.status(409).json({ success: false, conflict: true, error: 'Inny użytkownik zmienił te same pola w zamówieniu drzwi. Odśwież rekord i przenieś swoje zmiany ponownie.', orderId: incoming.id, fields: conflicts });
+          candidate.updatedAt = new Date().toISOString();
           mergedIncoming.push(candidate);
         } else mergedIncoming.push(incoming);
       }
