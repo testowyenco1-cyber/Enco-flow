@@ -552,7 +552,11 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                       <div className="space-y-1.5">
                         <input
                           value={details.model || details.typRozdzielnicy || ''}
-                          onChange={(e) => handleSnModelChange(e.target.value)}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setDetails((prev) => ({ ...prev, model: value, typRozdzielnicy: value, konfiguracjaPol: prev.konfiguracjaPol || DEFAULT_SN_CONFIG }));
+                            setSnError(null);
+                          }}
                           placeholder="Wpisz nazwę modelu"
                           className="w-full text-xs px-3 py-2 border border-blue-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden font-semibold text-slate-900"
                         />
