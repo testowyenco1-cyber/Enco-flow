@@ -86,7 +86,7 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
   const [serverSnapshot, setServerSnapshot] = useState<SNRecord[]>([]);
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
   const [selectedType, setSelectedType] = useState<SNType>('SIEMENS');
-  const [selectedCategory, setSelectedCategory] = useState<SNCategory>('DELIVERED');
+  const [selectedCategory, setSelectedCategory] = useState<SNCategory | 'ALL'>('ALL');
   const [search, setSearch] = useState('');
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [sortKey, setSortKey] = useState<SortKey>('rodzaj');
@@ -123,7 +123,7 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
   useEffect(() => { void loadRecords(); }, []);
 
   const visibleRecords = useMemo(() => records.filter(record => {
-    if (record.type !== selectedType || record.category !== selectedCategory) return false;
+    if (record.type !== selectedType || (selectedCategory !== 'ALL' && record.category !== selectedCategory)) return false;
     const allText = [record.rodzaj, record.terminDostawy, record.nrZamowienia, record.projekt, record.lokalizacja].filter(Boolean).join(' ').toLowerCase();
     if (!allText.includes(search.trim().toLowerCase())) return false;
     return Object.entries(columnFilters).every(([key, value]) => !value.trim() || String(record[key as keyof SNRecord] ?? '').toLowerCase().includes(value.trim().toLowerCase()));
@@ -249,7 +249,7 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
   };
 
   const exportSNToExcel = () => {
-    const categoryLabel = CATEGORIES.find(category => category.key === selectedCategory)?.label || selectedCategory;
+    const categoryLabel = selectedCategory === 'ALL' ? 'Wszystkie' : CATEGORIES.find(category => category.key === selectedCategory)?.label || selectedCategory;
     const typeLabel = TYPES.find(type => type.key === selectedType)?.label || selectedType;
     const headers = ['Typ rozdzielnicy', 'Sekcja', 'Lp.', 'Rodzaj', 'Ilość', 'Termin dostawy', 'Nr zamówienia', 'Projekt / ZL', 'Lokalizacja'];
     const escapeCell = (value: unknown) => {
@@ -312,6 +312,9 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
     </div>
 
     <div className="flex flex-wrap gap-2">
+      <button type="button" onClick={() => setSelectedCategory('ALL')} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${selectedCategory === 'ALL' ? 'border-slate-800 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}>
+        <CircuitBoard className="h-4 w-4" />Wszystkie<span className={`rounded-full px-1.5 py-0.5 text-[10px] ${selectedCategory === 'ALL' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-600'}`}>{typeCounts[selectedType] || 0}</span>
+      </button>
       {CATEGORIES.map(category => <button type="button" key={category.key} onClick={() => setSelectedCategory(category.key)} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${selectedCategory === category.key ? 'border-slate-800 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}>
         {category.icon}{category.label}<span className={`rounded-full px-1.5 py-0.5 text-[10px] ${selectedCategory === category.key ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-600'}`}>{categoryCounts[category.key] || 0}</span>
       </button>)}
@@ -322,7 +325,7 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
 
     <div className={`overflow-hidden rounded-xl border border-slate-200 bg-white ${saving ? 'pointer-events-none opacity-70' : ''}`}>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
-        <div><h2 className="text-sm font-bold text-slate-900">{TYPES.find(type => type.key === selectedType)?.label} · {CATEGORIES.find(category => category.key === selectedCategory)?.label}</h2><p className="mt-0.5 text-xs text-slate-500">Pozycje: {visibleRecords.length}. Zmiany należy zapisać przyciskiem „Zapisz zestawienie”.</p></div>
+        <div><h2 className="text-sm font-bold text-slate-900">{TYPES.find(type => type.key === selectedType)?.label} · {selectedCategory === 'ALL' ? 'Wszystkie' : CATEGORIES.find(category => category.key === selectedCategory)?.label}</h2><p className="mt-0.5 text-xs text-slate-500">Pozycje: {visibleRecords.length}. Zmiany należy zapisać przyciskiem „Zapisz zestawienie”.</p></div>
         {canEdit && <button type="button" onClick={addRecord} className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100"><Plus className="h-3.5 w-3.5" /> Dodaj pozycję</button>}
       </div>
       {loading ? <div className="p-10 text-center text-sm text-slate-500">Pobieranie zestawienia…</div> : visibleRecords.length === 0 ? <div className="p-10 text-center text-sm text-slate-500">Brak pozycji w tej sekcji. Możesz dodać pierwszą pozycję przyciskiem powyżej.</div> : <div className="w-full min-w-0">
