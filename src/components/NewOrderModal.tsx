@@ -55,7 +55,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
   const selectedCustomer = customers.find((item) => item.id === customerId);
   const selectedContact = selectedCustomer?.contacts.find((item) => item.id === contactId);
   const [projectName, setProjectName] = useState('');
-  const [stationSize, setStationSize] = useState('BEK 250/450');
+  const [stationSize, setStationSize] = useState('');
   const [departureDate, setDepartureDate] = useState('');
   const [generalNotes, setGeneralNotes] = useState('');
   const [additionalInfo, setAdditionalInfo] = useState('');
@@ -117,6 +117,23 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
       setMode('list');
       setSelectedListNumber(nextAvailable);
       setCustomNumber('');
+      setClient('');
+      setCustomerId('');
+      setContactId('');
+      setProjectName('');
+      setStationSize('');
+      setDepartureDate('');
+      setGeneralNotes('');
+      setAdditionalInfo('');
+      setShowNewCustomer(false);
+      setShowNewContact(false);
+      setNewCustomerName('');
+      setNewCustomerNip('');
+      setNewCustomerAddress('');
+      setNewContactName('');
+      setNewContactPosition('');
+      setNewContactEmail('');
+      setNewContactPhone('');
       setError('');
     }
   }, [isOpen, nextAvailable]);
