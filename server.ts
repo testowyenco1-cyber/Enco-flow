@@ -322,6 +322,68 @@ async function startServer() {
   // Static route to serve uploaded files directly
   app.use('/uploads', requireApiAuth, requireCapability('canDownload'), express.static(UPLOADS_DIR));
 
+  // Three-way merge: apply only fields changed relative to the client's baseline.
+  // Concurrent edits to the same field are reported instead of silently overwritten.
+  function mergeConcurrentValue(base: any, incoming: any, current: any, fieldPath: string, conflicts: string[]): any {
+    const equal = (a: any, b: any) => JSON.stringify(a) === JSON.stringify(b);
+    if (equal(incoming, base)) return current;
+    if (equal(current, base)) return incoming;
+    if (equal(incoming, current)) return current;
+
+    const isObject = (value: any) => value !== null && typeof value === 'object' && !Array.isArray(value);
+    if (isObject(base) && isObject(incoming) && isObject(current)) {
+      const merged: Record<string, any> = { ...current };
+      const keys = new Set([...Object.keys(base), ...Object.keys(incoming), ...Object.keys(current)]);
+      for (const key of keys) {
+        const path = fieldPath ? fieldPath + '.' + key : key;
+        const hasBase = Object.prototype.hasOwnProperty.call(base, key);
+        const hasIncoming = Object.prototype.hasOwnProperty.call(incoming, key);
+        const hasCurrent = Object.prototype.hasOwnProperty.call(current, key);
+        if (hasBase && !hasIncoming) {
+          if (!hasCurrent || equal(current[key], base[key])) delete merged[key];
+          else conflicts.push(path);
+        } else if (!hasBase && hasIncoming) {
+          if (!hasCurrent) merged[key] = incoming[key];
+          else if (!equal(current[key], incoming[key])) conflicts.push(path);
+        } else if (hasBase && hasIncoming) {
+          if (!hasCurrent) {
+            if (!equal(incoming[key], base[key])) conflicts.push(path);
+          } else {
+            merged[key] = mergeConcurrentValue(base[key], incoming[key], current[key], path, conflicts);
+          }
+        }
+      }
+      return merged;
+    }
+
+    const keyedArray = (value: any) => Array.isArray(value) && value.every((entry) => entry && typeof entry === 'object' && typeof entry.id === 'string');
+    if (keyedArray(base) && keyedArray(incoming) && keyedArray(current)) {
+      const baseMap = new Map(base.map((entry: any) => [entry.id, entry]));
+      const incomingMap = new Map(incoming.map((entry: any) => [entry.id, entry]));
+      const currentMap = new Map(current.map((entry: any) => [entry.id, entry]));
+      const mergedMap = new Map(currentMap);
+      for (const id of new Set([...baseMap.keys(), ...incomingMap.keys(), ...currentMap.keys()])) {
+        const b: any = baseMap.get(id), n: any = incomingMap.get(id), cur: any = currentMap.get(id);
+        const path = fieldPath + '[' + id + ']';
+        if (b && !n) {
+          if (!cur || equal(cur, b)) mergedMap.delete(id);
+          else conflicts.push(path);
+        } else if (!b && n) {
+          if (!cur) mergedMap.set(id, n);
+          else if (!equal(cur, n)) conflicts.push(path);
+        } else if (b && n && cur) {
+          mergedMap.set(id, mergeConcurrentValue(b, n, cur, path, conflicts));
+        } else if (b && n && !cur && !equal(b, n)) {
+          conflicts.push(path);
+        }
+      }
+      return Array.from(mergedMap.values());
+    }
+
+    conflicts.push(fieldPath || '(rekord)');
+    return current;
+  }
+
   // Zapis atomowy: awaria procesu podczas zapisu nie zostawi uciętego pliku JSON.
   function writeJsonAtomically(filePath: string, data: unknown) {
     const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
@@ -936,7 +998,7 @@ async function startServer() {
 
   app.post('/api/orders', (req, res) => {
     try {
-      const { orders, merge, deletedIds } = req.body;
+      const { orders, merge, deletedIds, baseOrders } = req.body;
       if (!Array.isArray(orders)) {
         return res.status(400).json({ success: false, error: 'Nieprawidłowy format listy zleceń' });
       }
@@ -958,6 +1020,8 @@ async function startServer() {
       if (requestedDeletes.length > 0 && !profile.canDeleteOrders) {
         return res.status(403).json({ success: false, error: 'Twoje konto nie ma uprawnień do usuwania zleceń.' });
       }
+      const bases = new Map<string, any>((Array.isArray(baseOrders) ? baseOrders : []).filter((entry: any) => entry && typeof entry.id === 'string').map((entry: any) => [String(entry.id), entry]));
+      const mergedIncoming: any[] = [];
       for (const incoming of orders) {
         if (!incoming || typeof incoming.id !== 'string') {
           return res.status(400).json({ success: false, error: 'Każde zlecenie musi mieć identyfikator.' });
@@ -967,21 +1031,32 @@ async function startServer() {
           if (!profile.canCreateOrders) {
             return res.status(403).json({ success: false, error: 'Twoje konto nie ma uprawnień do tworzenia zleceń.' });
           }
-        } else {
-          const permissionError = orderUpdatePermissionError(existing, incoming, profile);
-          if (permissionError) return res.status(403).json({ success: false, error: permissionError });
+          mergedIncoming.push(incoming);
+          continue;
         }
+        const base = bases.get(String(incoming.id));
+        let candidate = incoming;
+        if (base) {
+          const conflicts: string[] = [];
+          candidate = mergeConcurrentValue(base, incoming, existing, '', conflicts);
+          if (conflicts.length) {
+            return res.status(409).json({ success: false, conflict: true, error: 'Inny użytkownik zmienił te same pola. Odśwież zlecenie i przenieś swoje zmiany ponownie.', orderId: incoming.id, fields: conflicts });
+          }
+        }
+        const permissionError = orderUpdatePermissionError(existing, candidate, profile);
+        if (permissionError) return res.status(403).json({ success: false, error: permissionError });
+        mergedIncoming.push(candidate);
       }
       const deleted = new Set(requestedDeletes);
       const ordersToSave = serverOrders.filter((ord: any) => !deleted.has(String(ord.id)));
-      orders.forEach((incoming: any) => {
+      mergedIncoming.forEach((incoming: any) => {
         const index = ordersToSave.findIndex((existing: any) => String(existing.id) === String(incoming.id));
         if (index >= 0) ordersToSave[index] = incoming;
         else ordersToSave.push(incoming);
       });
 
       // Ensure folders exist for changed/new orders.
-      orders.forEach((ord: any) => {
+      mergedIncoming.forEach((ord: any) => {
         if (ord.orderNumber) ensureOrderFolders(ord.orderNumber, ord.projectName);
       });
 
@@ -1057,7 +1132,7 @@ async function startServer() {
 
   app.post('/api/door-orders', requireCapability('canManageDoors'), (req, res) => {
     try {
-      const { doorOrders, merge, deletedIds } = req.body;
+      const { doorOrders, merge, deletedIds, baseDoorOrders } = req.body;
       if (!Array.isArray(doorOrders)) {
         return res.status(400).json({ success: false, error: 'Nieprawidłowy format zamówień drzwi' });
       }
@@ -1070,9 +1145,23 @@ async function startServer() {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) serverDoorOrders = parsed;
       }
+      const bases = new Map<string, any>((Array.isArray(baseDoorOrders) ? baseDoorOrders : []).filter((entry: any) => entry && typeof entry.id === 'string').map((entry: any) => [String(entry.id), entry]));
+      const mergedIncoming: any[] = [];
+      for (const incoming of doorOrders) {
+        if (!incoming || typeof incoming.id !== 'string') return res.status(400).json({ success: false, error: 'Każde zamówienie drzwi musi mieć identyfikator.' });
+        const existing = serverDoorOrders.find((entry: any) => String(entry.id) === String(incoming.id));
+        if (!existing) { mergedIncoming.push(incoming); continue; }
+        const base = bases.get(String(incoming.id));
+        if (base) {
+          const conflicts: string[] = [];
+          const candidate = mergeConcurrentValue(base, incoming, existing, '', conflicts);
+          if (conflicts.length) return res.status(409).json({ success: false, conflict: true, error: 'Inny użytkownik zmienił te same pola w zamówieniu drzwi. Odśwież rekord i przenieś swoje zmiany ponownie.', orderId: incoming.id, fields: conflicts });
+          mergedIncoming.push(candidate);
+        } else mergedIncoming.push(incoming);
+      }
       const deleted = new Set(merge === true && Array.isArray(deletedIds) ? deletedIds.map((id: any) => String(id)) : []);
       const doorOrdersToSave = serverDoorOrders.filter((ord: any) => !deleted.has(String(ord.id)));
-      doorOrders.forEach((incoming: any) => {
+      mergedIncoming.forEach((incoming: any) => {
         const index = doorOrdersToSave.findIndex((existing: any) => String(existing.id) === String(incoming.id));
         if (index >= 0) doorOrdersToSave[index] = incoming;
         else doorOrdersToSave.push(incoming);
