@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { UserRoleProfile, USER_PROFILES, canEditItemType, getItemPermissionHint } from '../types/userRole';
 import { getOrderFieldDepartment } from '../utils/departmentOwnership';
+import { OrderTasksPanel } from './OrderTasksPanel';
 
 interface OrderDetailViewProps {
   order: Order;
@@ -847,6 +848,14 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
           })}
         </div>
       </div>
+
+      <OrderTasksPanel
+        orderId={order.id}
+        orderNumber={order.orderNumber}
+        projectName={order.projectName}
+        client={order.client}
+        currentProfile={profile}
+      />
 
       {/* Offer Document Generator & Technical Sheet Modal */}
       <OfferDocumentModal
