@@ -314,12 +314,15 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
 
     if (item.type === 'ROZDZIELNICA_SN') {
       const activeModel = details.model || details.typRozdzielnicy || '';
-      const validation = validateSNCombination(details.producent, activeModel);
-      const customCombinationValid = customSnProducer || customSnModel
-        ? Boolean(String(details.producent || '').trim() && String(activeModel || '').trim())
-        : validation.isValid;
+      const selectedProducer = String(details.producent || '').trim();
+      const selectedModel = String(activeModel || '').trim();
+      const isSavedCombination = snCatalog.producers.includes(selectedProducer)
+        && (snCatalog.modelsByProducer[selectedProducer] || []).includes(selectedModel);
+      const customCombinationValid = isSavedCombination || (
+        (customSnProducer || customSnModel) && Boolean(selectedProducer && selectedModel)
+      );
       if (!customCombinationValid) {
-        setSnError(validation.error || 'Wprowadź producenta i model rozdzielnicy SN.');
+        setSnError('Wybierz zapisanego producenta i jego model albo najpierw zapisz własne wartości na stałe.');
         return;
       }
 
