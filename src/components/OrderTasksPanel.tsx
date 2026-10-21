@@ -135,17 +135,23 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
   };
 
   return (
-              <aside className={"sticky top-4 flex max-h-[calc(100vh-2rem)] min-h-[420px] shrink-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-[width] duration-200 " + (isOpen ? "w-full lg:w-[300px]" : "w-full lg:w-[48px]")}>
-            <div className={"flex items-start justify-between gap-2 border-b border-slate-200 bg-slate-900 px-3 py-4 text-white " + (!isOpen ? "flex-col items-center" : "")}>
-              <div className={"min-w-0 " + (!isOpen ? "hidden" : "")}>
+    <>
+      {!isOpen && (
+        <button type="button" onClick={() => setIsOpen(true)} className="fixed right-0 top-1/2 z-50 flex -translate-y-1/2 items-center gap-2 rounded-l-xl border border-r-0 border-slate-300 bg-slate-900 px-3 py-4 text-white shadow-xl transition-colors hover:bg-slate-800" aria-label="Otwórz panel zadań" title="Zadania i przypomnienia">
+          <PanelRightOpen className="h-5 w-5" />
+          <span className="text-xs font-bold [writing-mode:vertical-rl] rotate-180">Zadania</span>
+        </button>
+      )}
+      <aside className={"fixed right-0 top-0 z-40 flex h-[100dvh] w-[360px] max-w-[calc(100vw-16px)] flex-col overflow-hidden border-l border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-in-out " + (isOpen ? "translate-x-0" : "translate-x-full")}>
+            <div className="flex items-start justify-between gap-2 border-b border-slate-200 bg-slate-900 px-3 py-4 text-white">
+              <div className="min-w-0">
                 <div className="flex items-center gap-2 text-sm font-bold"><BellRing className="h-4 w-4 text-blue-300" /> Zadania i przypomnienia</div>
                 <p className="mt-1 truncate text-[11px] text-slate-300">{orderNumber} · {projectName || client}</p>
                 <p className="mt-1 text-[11px] text-slate-400">{activeCount} aktywne {activeCount === 1 ? 'zadanie' : 'zadania'}</p>
               </div>
-              <button type="button" onClick={() => setIsOpen((open) => !open)} className="rounded-lg p-1.5 text-slate-300 hover:bg-slate-800 hover:text-white" aria-label={isOpen ? "Zwiń panel zadań" : "Rozwiń panel zadań"} title={isOpen ? "Zwiń panel" : "Rozwiń panel"}>{isOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-5 w-5" />}</button>
+              <button type="button" onClick={() => setIsOpen((open) => !open)} className="rounded-lg p-1.5 text-slate-300 hover:bg-slate-800 hover:text-white" aria-label={isOpen ? "Zwiń panel zadań" : "Rozwiń panel zadań"} title={isOpen ? "Zwiń panel" : "Rozwiń panel"}><PanelRightClose className="h-4 w-4" /></button>
             </div>
 
-            {isOpen && (
             <>
 <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
               <button type="button" onClick={() => setIsFormOpen((open) => !open)} disabled={!canCreateTask} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
@@ -240,7 +246,7 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
             <div className="border-t border-slate-200 bg-slate-50 px-4 py-3 text-[10px] text-slate-500">Zmiany zadań są zapisywane na serwerze po kliknięciu „Zapisz zadanie” lub zmianie statusu.</div>
 
             </>
-          )}
           </aside>
+    </>
   );
 };
