@@ -42,6 +42,7 @@ interface OrderDetailViewProps {
   onNavigateToDoorModule?: (numerDokumentu?: string) => void;
   onCreateDoorOrder?: (defaultStationZl?: string, defaultStationName?: string) => void;
   currentProfile?: UserRoleProfile;
+  onOrderTasksPanelOpenChange?: (isOpen: boolean) => void;
 }
 
 export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
@@ -57,6 +58,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
   onNavigateToDoorModule,
   onCreateDoorOrder,
   currentProfile,
+  onOrderTasksPanelOpenChange,
 }) => {
   const profile = currentProfile || USER_PROFILES.admin;
   const [itemsFilter, setItemsFilter] = useState<'all' | 'my_scope'>('all');
@@ -856,6 +858,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
         projectName={order.projectName}
         client={order.client}
         currentProfile={profile}
+        onOpenChange={onOrderTasksPanelOpenChange}
       />
 
       {/* Offer Document Generator & Technical Sheet Modal */}
