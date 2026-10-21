@@ -192,7 +192,7 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
   const addRecord = () => {
     if (!canEdit || saving) return;
     const record: SNRecord = {
-      id: makeId(), type: selectedType, category: selectedCategory, rodzaj: '', ilosc: 1,
+      id: makeId(), type: selectedType, category: 'TO_DELIVER', rodzaj: '', ilosc: 1,
       terminDostawy: '',
       nrZamowienia: '', projekt: '', linkedOrderId: undefined, lokalizacja: '',
     };
