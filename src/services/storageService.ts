@@ -313,16 +313,22 @@ export async function saveSingleOrderToServer(order: Order): Promise<boolean> {
     console.warn('Cannot save an order before a successful server refresh establishes a baseline.');
     return false;
   }
-
+  const baseOrder = snapshot.find((entry) => String(entry.id) === String(order.id));
   try {
     const res = await fetch('/api/orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orders: [order], deletedIds: [], merge: true }),
+      body: JSON.stringify({ orders: [order], baseOrders: baseOrder ? [baseOrder] : [], deletedIds: [], merge: true }),
     });
-    if (!res.ok) return false;
-
-    applySavedChangesToSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, [order], []);
+    const payload = await res.json().catch(() => null);
+    if (!res.ok) {
+      if (res.status === 409 && payload?.conflict) {
+        window.alert(payload.error || 'Wykryto konflikt zmian. Odśwież zlecenie i spróbuj ponownie.');
+      }
+      return false;
+    }
+    const savedOrder = Array.isArray(payload?.orders) ? payload.orders.find((entry: Order) => String(entry.id) === String(order.id)) : null;
+    applySavedChangesToSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, savedOrder ? [savedOrder] : [order], []);
     return true;
   } catch (err) {
     console.warn('Could not save single order to server:', err);
@@ -342,15 +348,22 @@ export async function saveOrdersToServer(orders: Order[]): Promise<boolean> {
     return false;
   }
   const { changed, deletedIds } = getPendingChanges(orders, snapshot);
+  const baseOrders = changed.map((entry) => snapshot.find((base) => String(base.id) === String(entry.id))).filter(Boolean);
   try {
     const res = await fetch('/api/orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ orders: changed, deletedIds, merge: true }),
+      body: JSON.stringify({ orders: changed, baseOrders, deletedIds, merge: true }),
     });
-    if (!res.ok) return false;
-    // Advance only the records included in this successful request; preserve other baselines.
-    applySavedChangesToSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, changed, deletedIds);
+    const payload = await res.json().catch(() => null);
+    if (!res.ok) {
+      if (res.status === 409 && payload?.conflict) {
+        window.alert(payload.error || 'Wykryto konflikt zmian. Odśwież dane i spróbuj ponownie.');
+      }
+      return false;
+    }
+    const savedOrders = Array.isArray(payload?.orders) ? payload.orders.filter((entry: Order) => changed.some((changedOrder) => String(changedOrder.id) === String(entry.id))) : changed;
+    applySavedChangesToSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, savedOrders, deletedIds);
     return true;
   } catch (err) {
     console.warn('Could not save orders to server:', err);
@@ -424,14 +437,22 @@ export async function saveDoorOrdersToServer(doorOrders: DoorOrder[]): Promise<b
     return false;
   }
   const { changed, deletedIds } = getPendingChanges(doorOrders, snapshot);
+  const baseDoorOrders = changed.map((entry) => snapshot.find((base) => String(base.id) === String(entry.id))).filter(Boolean);
   try {
     const res = await fetch('/api/door-orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ doorOrders: changed, deletedIds, merge: true }),
+      body: JSON.stringify({ doorOrders: changed, baseDoorOrders, deletedIds, merge: true }),
     });
-    if (!res.ok) return false;
-    applySavedChangesToSnapshot(SERVER_DOOR_SNAPSHOT_KEY, changed, deletedIds);
+    const payload = await res.json().catch(() => null);
+    if (!res.ok) {
+      if (res.status === 409 && payload?.conflict) {
+        window.alert(payload.error || 'Wykryto konflikt zmian w zamówieniu drzwi. Odśwież dane i spróbuj ponownie.');
+      }
+      return false;
+    }
+    const savedOrders = Array.isArray(payload?.doorOrders) ? payload.doorOrders.filter((entry: DoorOrder) => changed.some((changedOrder) => String(changedOrder.id) === String(entry.id))) : changed;
+    applySavedChangesToSnapshot(SERVER_DOOR_SNAPSHOT_KEY, savedOrders, deletedIds);
     return true;
   } catch (err) {
     console.warn('Could not save door orders to server:', err);
