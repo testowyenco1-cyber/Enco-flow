@@ -311,7 +311,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
   const departureOwner = getOrderFieldDepartment('departureDate');
 
   return (
-    <div className="flex items-start gap-4">\n      <div className="min-w-0 flex-1 space-y-8 pb-16">
+    <div className="flex flex-col items-stretch gap-4 lg:flex-row lg:items-start">\n      <div className="min-w-0 flex-1 space-y-8 pb-16">
       {/* Back button & Breadcrumbs */}
       <div className="flex items-center justify-between">
         <button
