@@ -50,7 +50,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
   const [snCatalogError, setSnCatalogError] = useState<string | null>(null);
   const [showSnCatalogManager, setShowSnCatalogManager] = useState(false);
   const [newSnProducer, setNewSnProducer] = useState('');
-  const [newSnModel, setNewSnModel] = useState('');
+  const [newSnModel, setNewSnModel] = useState<Record<string, string>>({});
   const [editingSnProducer, setEditingSnProducer] = useState<string | null>(null);
   const [editingSnModel, setEditingSnModel] = useState<{ producer: string; model: string } | null>(null);
   const [snRenameValue, setSnRenameValue] = useState('');
@@ -89,11 +89,11 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
     if (await persistSnCatalog({ producers: [...snCatalog.producers, { name, models: [] }] })) setNewSnProducer('');
   };
   const addSnModel = async (producerName: string) => {
-    const model = newSnModel.trim();
+    const model = (newSnModel[producerName] || '').trim();
     const producer = snCatalog.producers.find((p) => p.name === producerName);
     if (!producer || !model) return;
     if (producer.models.some((m) => m.toLocaleLowerCase('pl-PL') === model.toLocaleLowerCase('pl-PL'))) { setSnCatalogError('Taki model już istnieje u tego producenta.'); return; }
-    if (await persistSnCatalog({ producers: snCatalog.producers.map((p) => p.name === producerName ? { ...p, models: [...p.models, model] } : p) })) setNewSnModel('');
+    if (await persistSnCatalog({ producers: snCatalog.producers.map((p) => p.name === producerName ? { ...p, models: [...p.models, model] } : p) })) setNewSnModel((prev) => ({ ...prev, [producerName]: '' }));
   };
   const deleteSnProducer = async (name: string) => {
     if (!window.confirm(`Usunąć producenta "${name}" z katalogu? Dane zapisane w zleceniach pozostaną bez zmian.`)) return;
@@ -209,8 +209,10 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
     if (item.type === 'ROZDZIELNICA_SN') {
       const activeModel = details.model || details.typRozdzielnicy || '';
       const selectedProducer = snCatalog.producers.find((producer) => producer.name === details.producent);
-      if (!details.producent || !selectedProducer) { setSnError('Wybierz producenta rozdzielnicy SN z aktualnego katalogu.'); return; }
-      if (!activeModel || !selectedProducer.models.includes(activeModel)) { setSnError(`Wybierz model rozdzielnicy SN dostępny dla producenta ${details.producent}.`); return; }
+      const isUnchangedHistoricalSelection = details.producent === item.details?.producent &&
+        activeModel === (item.details?.model || item.details?.typRozdzielnicy);
+      if (!details.producent || (!selectedProducer && !isUnchangedHistoricalSelection)) { setSnError('Wybierz producenta rozdzielnicy SN z aktualnego katalogu.'); return; }
+      if (!activeModel || (selectedProducer && !selectedProducer.models.includes(activeModel) && !isUnchangedHistoricalSelection)) { setSnError(`Wybierz model rozdzielnicy SN dostępny dla producenta ${details.producent}.`); return; }
 
       const rawCount = details.liczbaPol ?? details.iloscPol;
       const parsedCount = Number(rawCount);
@@ -503,8 +505,8 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                           {producer.models.length === 0 && <p className="pl-2 text-[11px] text-slate-400">Brak modeli — dodaj pierwszy poniżej.</p>}
                         </div>
                         <div className="flex gap-2 pt-1">
-                          <input value={newSnModel} onChange={(e) => setNewSnModel(e.target.value)} placeholder={`Nowy model dla ${producer.name}`} maxLength={120} className="min-w-0 flex-1 text-xs px-2 py-1.5 border border-slate-300 rounded" />
-                          <button type="button" disabled={snCatalogBusy || !newSnModel.trim()} onClick={() => addSnModel(producer.name)} className="inline-flex items-center gap-1 px-2 py-1.5 rounded bg-slate-800 text-white text-[11px] font-bold disabled:opacity-50"><Plus className="w-3 h-3" /> Model</button>
+                          <input value={newSnModel[producer.name] || ''} onChange={(e) => setNewSnModel((prev) => ({ ...prev, [producer.name]: e.target.value }))} placeholder={`Nowy model dla ${producer.name}`} maxLength={120} className="min-w-0 flex-1 text-xs px-2 py-1.5 border border-slate-300 rounded" />
+                          <button type="button" disabled={snCatalogBusy || !(newSnModel[producer.name] || '').trim()} onClick={() => addSnModel(producer.name)} className="inline-flex items-center gap-1 px-2 py-1.5 rounded bg-slate-800 text-white text-[11px] font-bold disabled:opacity-50"><Plus className="w-3 h-3" /> Model</button>
                         </div>
                       </div>)}
                     </div>
