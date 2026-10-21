@@ -62,6 +62,9 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
         if (!initialDetails.konfiguracjaPol) {
           initialDetails.konfiguracjaPol = DEFAULT_SN_CONFIG;
         }
+        // Persist the default "Nie" explicitly and normalize legacy string values.
+        initialDetails.snWPyskowicach =
+          initialDetails.snWPyskowicach === true || initialDetails.snWPyskowicach === 'true';
         if (!initialDetails.model && initialDetails.typRozdzielnicy) {
           initialDetails.model = initialDetails.typRozdzielnicy;
         }
@@ -260,6 +263,8 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
         liczbaPol: parsedCount,
         iloscPol: parsedCount,
         konfiguracjaPol: (details.konfiguracjaPol || DEFAULT_SN_CONFIG).trim(),
+        // Always save an actual boolean, including false when the switchgear is not yet in Pyskowice.
+        snWPyskowicach: details.snWPyskowicach === true || details.snWPyskowicach === 'true',
       };
 
       onSave({
@@ -718,7 +723,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">SN w Pyskowicach</label>
                     <select
-                      value={String(Boolean(details.snWPyskowicach))}
+                      value={details.snWPyskowicach === true || details.snWPyskowicach === 'true' ? 'true' : 'false'}
                       onChange={(e) => handleDetailChange('snWPyskowicach', e.target.value === 'true')}
                       className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden font-semibold"
                     >
