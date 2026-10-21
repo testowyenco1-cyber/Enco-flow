@@ -43,6 +43,7 @@ import { DoorOrderDetailView } from './components/DoorOrderDetailView';
 import { SNOrdersView } from './components/SNOrdersView';
 import { CalendarView } from './components/CalendarView';
 import { CustomerDatabaseModal } from './components/CustomerDatabaseModal';
+import { DatabaseManagementModal } from './components/DatabaseManagementModal';
 import { CheckCircle2, AlertTriangle, Info, Archive, RotateCcw, Search } from 'lucide-react';
 import { validateOrderNumber } from './utils/orderNumberUtils';
 
@@ -198,6 +199,7 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
   // Modals state
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
   const [isCustomerDatabaseOpen, setIsCustomerDatabaseOpen] = useState(false);
+  const [isDatabaseManagementOpen, setIsDatabaseManagementOpen] = useState(false);
   const [isEditOrderModalOpen, setIsEditOrderModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<OrderItem | null>(null);
 
@@ -603,7 +605,7 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
         isSavingChanges={isSavingChanges}
         onSaveChanges={() => void handleSaveAllChanges()}
         onOpenArchive={() => navigate('/archiwum')}
-        onOpenCustomers={() => setIsCustomerDatabaseOpen(true)}
+        onOpenDatabases={() => setIsDatabaseManagementOpen(true)}
         archiveActive={archiveActive}
         archiveCount={archivedOrders.length}
         activeTab={filterTab}
@@ -741,6 +743,7 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
       </footer>
 
       {/* Modals */}
+      <DatabaseManagementModal isOpen={isDatabaseManagementOpen} onClose={() => setIsDatabaseManagementOpen(false)} onOpenCustomers={() => setIsCustomerDatabaseOpen(true)} />
       <CustomerDatabaseModal isOpen={isCustomerDatabaseOpen} onClose={() => setIsCustomerDatabaseOpen(false)} />
 
       <NewOrderModal
