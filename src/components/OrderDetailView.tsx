@@ -311,7 +311,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
   const departureOwner = getOrderFieldDepartment('departureDate');
 
   return (
-    <div className="space-y-8 pb-16">
+    <div className="flex items-start gap-4">\n      <div className="min-w-0 flex-1 space-y-8 pb-16">
       {/* Back button & Breadcrumbs */}
       <div className="flex items-center justify-between">
         <button
@@ -849,7 +849,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
         </div>
       </div>
 
-      <OrderTasksPanel
+      </div>\n      <OrderTasksPanel
         orderId={order.id}
         orderNumber={order.orderNumber}
         projectName={order.projectName}
