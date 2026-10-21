@@ -5,6 +5,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { INITIAL_ORDERS } from './src/data/mockData';
 import { INITIAL_DOOR_ORDERS } from './src/data/mockDoorOrders';
+import { calculateOrderStatus } from './src/types/enco';
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import type { AuthDepartmentId, AuthUser } from './src/types/auth';
 import { canEditItemType, type UserRoleProfile } from './src/types/userRole';
@@ -340,7 +341,7 @@ async function startServer() {
         const hasIncoming = Object.prototype.hasOwnProperty.call(incoming, key);
         const hasCurrent = Object.prototype.hasOwnProperty.call(current, key);
         // Timestamps are metadata, not user-editable fields; concurrent saves must not conflict on them.
-        if (key === 'updatedAt' && hasIncoming) {
+        if ((key === 'updatedAt' || (key === 'status' && fieldPath === '')) && hasIncoming) {
           merged[key] = incoming[key];
           continue;
         }
@@ -1049,6 +1050,7 @@ async function startServer() {
           }
         }
         candidate.updatedAt = new Date().toISOString();
+        if (Array.isArray(candidate.items)) candidate.status = calculateOrderStatus(candidate.items);
         const permissionError = orderUpdatePermissionError(existing, candidate, profile);
         if (permissionError) return res.status(403).json({ success: false, error: permissionError });
         mergedIncoming.push(candidate);
@@ -1160,7 +1162,7 @@ async function startServer() {
         const base = bases.get(String(incoming.id));
         if (base) {
           const conflicts: string[] = [];
-          const candidate = mergeConcurrentValue(base, incoming, existing, '', conflicts);
+          const candidate = mergeConcurrentValue(base, incoming, existing, 'doorOrder', conflicts);
           if (conflicts.length) return res.status(409).json({ success: false, conflict: true, error: 'Inny użytkownik zmienił te same pola w zamówieniu drzwi. Odśwież rekord i przenieś swoje zmiany ponownie.', orderId: incoming.id, fields: conflicts });
           candidate.updatedAt = new Date().toISOString();
           mergedIncoming.push(candidate);
