@@ -56,6 +56,37 @@ function getPendingChanges<T>(current: T[], snapshot: T[] | null): { changed: T[
   return { changed, deletedIds };
 }
 
+function applyLocalDiffToBaseline(base: any, incoming: any): any {
+  const equal = (a: any, b: any) => JSON.stringify(a) === JSON.stringify(b);
+  if (equal(base, incoming)) return base;
+  const isObject = (value: any) => value !== null && typeof value === 'object' && !Array.isArray(value);
+  if (isObject(base) && isObject(incoming)) {
+    const next: Record<string, any> = { ...base };
+    for (const key of new Set([...Object.keys(base), ...Object.keys(incoming)])) {
+      const hasBase = Object.prototype.hasOwnProperty.call(base, key);
+      const hasIncoming = Object.prototype.hasOwnProperty.call(incoming, key);
+      if (hasBase && !hasIncoming) delete next[key];
+      else if (!hasBase && hasIncoming) next[key] = incoming[key];
+      else next[key] = applyLocalDiffToBaseline(base[key], incoming[key]);
+    }
+    return next;
+  }
+  const keyedArray = (value: any) => Array.isArray(value) && value.every((entry) => entry && typeof entry === 'object' && typeof entry.id === 'string');
+  if (keyedArray(base) && keyedArray(incoming)) {
+    const next = new Map<string, any>(base.map((entry: any) => [entry.id, entry]));
+    const incomingMap = new Map<string, any>(incoming.map((entry: any) => [entry.id, entry]));
+    for (const id of new Set([...next.keys(), ...incomingMap.keys()])) {
+      const previous = next.get(id);
+      const current = incomingMap.get(id);
+      if (previous && !current) next.delete(id);
+      else if (!previous && current) next.set(id, current);
+      else if (previous && current) next.set(id, applyLocalDiffToBaseline(previous, current));
+    }
+    return Array.from(next.values());
+  }
+  return incoming;
+}
+
 function applySavedChangesToSnapshot<T>(snapshotKey: string, changed: T[], deletedIds: string[]): void {
   // Patch only records confirmed by this save. This preserves local baseline
   // changes from other saves that may finish while this request is in flight.
@@ -327,8 +358,8 @@ export async function saveSingleOrderToServer(order: Order): Promise<boolean> {
       }
       return false;
     }
-    const savedOrder = Array.isArray(payload?.orders) ? payload.orders.find((entry: Order) => String(entry.id) === String(order.id)) : null;
-    applySavedChangesToSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, savedOrder ? [savedOrder] : [order], []);
+    const savedBaseline = baseOrder ? applyLocalDiffToBaseline(baseOrder, order) : order;
+    applySavedChangesToSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, [savedBaseline], []);
     return true;
   } catch (err) {
     console.warn('Could not save single order to server:', err);
@@ -362,8 +393,11 @@ export async function saveOrdersToServer(orders: Order[]): Promise<boolean> {
       }
       return false;
     }
-    const savedOrders = Array.isArray(payload?.orders) ? payload.orders.filter((entry: Order) => changed.some((changedOrder) => String(changedOrder.id) === String(entry.id))) : changed;
-    applySavedChangesToSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, savedOrders, deletedIds);
+    const savedBaselines = changed.map((entry) => {
+      const base = snapshot.find((previous) => String(previous.id) === String(entry.id));
+      return base ? applyLocalDiffToBaseline(base, entry) : entry;
+    });
+    applySavedChangesToSnapshot(SERVER_ORDERS_SNAPSHOT_KEY, savedBaselines, deletedIds);
     return true;
   } catch (err) {
     console.warn('Could not save orders to server:', err);
@@ -451,8 +485,11 @@ export async function saveDoorOrdersToServer(doorOrders: DoorOrder[]): Promise<b
       }
       return false;
     }
-    const savedOrders = Array.isArray(payload?.doorOrders) ? payload.doorOrders.filter((entry: DoorOrder) => changed.some((changedOrder) => String(changedOrder.id) === String(entry.id))) : changed;
-    applySavedChangesToSnapshot(SERVER_DOOR_SNAPSHOT_KEY, savedOrders, deletedIds);
+    const savedBaselines = changed.map((entry) => {
+      const base = snapshot.find((previous) => String(previous.id) === String(entry.id));
+      return base ? applyLocalDiffToBaseline(base, entry) : entry;
+    });
+    applySavedChangesToSnapshot(SERVER_DOOR_SNAPSHOT_KEY, savedBaselines, deletedIds);
     return true;
   } catch (err) {
     console.warn('Could not save door orders to server:', err);
