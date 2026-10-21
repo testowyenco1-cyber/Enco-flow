@@ -1140,6 +1140,31 @@ async function startServer() {
       const action = typeof req.body?.action === 'string' ? req.body.action : 'add';
       const producer = typeof req.body?.producer === 'string' ? req.body.producer.trim() : '';
       const model = typeof req.body?.model === 'string' ? req.body.model.trim() : '';
+      if (action === 'replaceCatalog') {
+        const incoming = req.body?.catalog;
+        if (!incoming || !Array.isArray(incoming.producers) || !incoming.modelsByProducer || typeof incoming.modelsByProducer !== 'object' || Array.isArray(incoming.modelsByProducer)) {
+          return res.status(400).json({ success: false, error: 'Słownik SN musi zawierać listę producers oraz obiekt modelsByProducer.' });
+        }
+        const producers = incoming.producers.map((value: unknown) => typeof value === 'string' ? value.trim() : '').filter((value: string) => value.length > 0);
+        if (producers.length !== incoming.producers.length || producers.some((value: string) => value.length > 120) ||
+            new Set(producers.map((value: string) => value.toLocaleLowerCase('pl'))).size !== producers.length) {
+          return res.status(400).json({ success: false, error: 'Nazwy producentów muszą być niepuste i unikalne (maks. 120 znaków).' });
+        }
+        const modelsByProducer: Record<string, string[]> = {};
+        for (const name of producers) {
+          const models = incoming.modelsByProducer[name];
+          if (models !== undefined && !Array.isArray(models)) return res.status(400).json({ success: false, error: `Modele producenta ${name} muszą być listą.` });
+          const cleaned = (Array.isArray(models) ? models : []).map((value: unknown) => typeof value === 'string' ? value.trim() : '');
+          if (cleaned.some((value: string) => !value || value.length > 120) ||
+              new Set(cleaned.map((value: string) => value.toLocaleLowerCase('pl'))).size !== cleaned.length) {
+            return res.status(400).json({ success: false, error: `Modele producenta ${name} muszą być niepuste i unikalne (maks. 120 znaków).` });
+          }
+          modelsByProducer[name] = cleaned;
+        }
+        const catalog = { producers: [...producers].sort((a: string, b: string) => a.localeCompare(b, 'pl', { sensitivity: 'base' })), modelsByProducer };
+        writeJsonAtomically(SN_CATALOG_FILE, catalog);
+        return res.json({ success: true, ...catalog, timestamp: Date.now() });
+      }
       if (!producer || producer.length > 120 || (model && model.length > 120)) {
         return res.status(400).json({ success: false, error: 'Podaj poprawną nazwę producenta i opcjonalnie modelu (maks. 120 znaków).' });
       }
@@ -1205,6 +1230,32 @@ async function startServer() {
 
   app.post('/api/obudowa-variants', requireItemPermission('OBUDOWA'), (req, res) => {
     try {
+      if (Array.isArray(req.body?.variants)) {
+        const variants = req.body.variants;
+        const ids = new Set<string>();
+        for (const variant of variants) {
+          if (!variant || typeof variant.id !== 'string' || !variant.id.trim() ||
+              !['BEK', 'NZ'].includes(variant.type) || typeof variant.name !== 'string' || !variant.name.trim() ||
+              !Number.isFinite(Number(variant.width)) || Number(variant.width) <= 0 ||
+              !Number.isFinite(Number(variant.depth)) || Number(variant.depth) <= 0 ||
+              !Number.isFinite(Number(variant.height)) || Number(variant.height) <= 0) {
+            return res.status(400).json({ success: false, error: 'Nieprawidłowe dane wariantów obudów. Każdy rekord wymaga id, typu BEK/NZ, nazwy oraz poprawnych wymiarów.' });
+          }
+          if (ids.has(variant.id)) return res.status(400).json({ success: false, error: 'Identyfikatory wariantów obudów muszą być unikalne.' });
+          ids.add(variant.id);
+        }
+        const normalized = variants.map((variant: any) => ({
+          ...variant,
+          id: String(variant.id),
+          name: String(variant.name).trim(),
+          width: Number(variant.width),
+          depth: Number(variant.depth),
+          height: Number(variant.height),
+          isCustom: true,
+        }));
+        writeJsonAtomically(OBUDOWA_VARIANTS_FILE, normalized);
+        return res.json({ success: true, variants: normalized, timestamp: Date.now() });
+      }
       const incoming = req.body?.variant;
       const type = incoming?.type;
       const name = typeof incoming?.name === 'string' ? incoming.name.trim() : '';
