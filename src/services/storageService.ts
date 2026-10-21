@@ -73,8 +73,8 @@ function applyLocalDiffToBaseline(base: any, incoming: any): any {
   }
   const keyedArray = (value: any) => Array.isArray(value) && value.every((entry) => entry && typeof entry === 'object' && typeof entry.id === 'string');
   if (keyedArray(base) && keyedArray(incoming)) {
-    const next = new Map<string, any>(base.map((entry: any) => [entry.id, entry]));
-    const incomingMap = new Map<string, any>(incoming.map((entry: any) => [entry.id, entry]));
+    const next = new Map<string, any>(base.map((entry: any) => [entry.id, entry] as [string, any]));
+    const incomingMap = new Map<string, any>(incoming.map((entry: any) => [entry.id, entry] as [string, any]));
     for (const id of new Set([...next.keys(), ...incomingMap.keys()])) {
       const previous = next.get(id);
       const current = incomingMap.get(id);
