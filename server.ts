@@ -1145,7 +1145,7 @@ async function startServer() {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) serverDoorOrders = parsed;
       }
-      const bases = new Map<string, any>((Array.isArray(baseDoorOrders) ? baseDoorOrders : []).filter((entry: any) => entry && typeof entry.id === 'string').map((entry: any) => [String(entry.id), entry]));
+      const bases = new Map<string, any>((Array.isArray(baseDoorOrders) ? baseDoorOrders : []).filter((entry: any) => entry && typeof entry.id === 'string').map((entry: any) => [String(entry.id), entry] as [string, any]));
       const mergedIncoming: any[] = [];
       for (const incoming of doorOrders) {
         if (!incoming || typeof incoming.id !== 'string') return res.status(400).json({ success: false, error: 'Każde zamówienie drzwi musi mieć identyfikator.' });
