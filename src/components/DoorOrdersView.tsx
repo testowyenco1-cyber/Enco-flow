@@ -52,6 +52,7 @@ interface DoorOrdersViewProps {
 
 type DoorFilterTab = 'all' | 'overdue' | 'pending' | 'delivered';
 type DoorViewMode = 'table' | 'cards';
+type DoorSortMode = 'deliveryStatus' | 'deliveryDate' | 'orderDate' | 'document';
 
 export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
   doorOrders,
@@ -71,6 +72,7 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTab, setFilterTab] = useState<DoorFilterTab>('all');
   const [viewMode, setViewMode] = useState<DoorViewMode>('table');
+  const [sortMode, setSortMode] = useState<DoorSortMode>('deliveryStatus');
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const [orderToDelete, setOrderToDelete] = useState<DoorOrder | null>(null);
   const [isDoorFilesModalOpen, setIsDoorFilesModalOpen] = useState(false);
@@ -115,7 +117,7 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
   const filteredOrders = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
 
-    return doorOrders.filter((order) => {
+    const filtered = doorOrders.filter((order) => {
       // Filtr wg statusu
       const isDelivered = Boolean(order.terminDostawy && order.terminDostawy.trim() !== '');
       const check = checkDoorOrderOverdue(order.terminZamowienia, order.terminDostawy);
@@ -139,7 +141,27 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
 
       return true;
     });
-  }, [doorOrders, filterTab, searchQuery]);
+
+    const dateValue = (value?: string) => {
+      if (!value) return Number.POSITIVE_INFINITY;
+      const parsed = Date.parse(value);
+      return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
+    };
+    return filtered.sort((a, b) => {
+      if (sortMode === 'deliveryStatus') {
+        const rank = (order: DoorOrder) => {
+          if (order.terminDostawy?.trim()) return 2;
+          return checkDoorOrderOverdue(order.terminZamowienia, order.terminDostawy).isOverdue ? 0 : 1;
+        };
+        const difference = rank(a) - rank(b);
+        if (difference) return difference;
+        return dateValue(a.terminZamowienia) - dateValue(b.terminZamowienia);
+      }
+      if (sortMode === 'deliveryDate') return dateValue(a.terminDostawy) - dateValue(b.terminDostawy);
+      if (sortMode === 'orderDate') return dateValue(b.dataZamowienia) - dateValue(a.dataZamowienia);
+      return a.numerDokumentu.localeCompare(b.numerDokumentu, 'pl', { numeric: true, sensitivity: 'base' });
+    });
+  }, [doorOrders, filterTab, searchQuery, sortMode]);
 
   useEffect(() => {
     const closeZlDropdownOnOutsideClick = (event: MouseEvent) => {
@@ -440,8 +462,17 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
           )}
         </div>
 
-        {/* Zakładki filtrów i widoków */}
+        {/* Sortowanie, zakładki filtrów i widoków */}
         <div className="flex flex-wrap items-center justify-between md:justify-end gap-2.5">
+          <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+            <span>Sortuj:</span>
+            <select value={sortMode} onChange={(e) => setSortMode(e.target.value as DoorSortMode)} className="max-w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+              <option value="deliveryStatus">Status dostawy</option>
+              <option value="deliveryDate">Termin dostawy</option>
+              <option value="orderDate">Data zamówienia</option>
+              <option value="document">Numer dokumentu</option>
+            </select>
+          </label>
           {/* Zakładki szybkiego filtru */}
           <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl text-xs font-semibold">
             <button
@@ -557,7 +588,7 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                   <th className="w-[85px] text-right">Brutto</th>
                   <th className="w-[125px]">Numer ZL</th>
                   <th className="w-[180px]">Kontrahent</th>
-                  <th className="w-[105px]">Termin dostawy</th>
+                  <th className="w-[155px]">Termin dostawy / potwierdzenie</th>
                   <th className="w-[140px]">Uwagi</th>
                   <th className="w-[70px] text-center">Akcje</th>
                 </tr>
@@ -579,7 +610,7 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                   return (
                     <tr
                       key={doorOrd.id}
-                      className={`group align-top transition-colors hover:bg-blue-50/70 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'} ${overdueInfo.isOverdue ? '!bg-rose-50' : ''} ${isDelivered ? 'text-slate-600' : ''}`}
+                      className={`group align-top transition-colors ${isDelivered ? '!bg-blue-50 text-blue-950 hover:!bg-blue-100' : index % 2 === 0 ? 'bg-white hover:bg-blue-50/70' : 'bg-slate-50/60 hover:bg-blue-50/70'} ${overdueInfo.isOverdue ? '!bg-rose-50 hover:!bg-rose-100' : ''} ${isDelivered ? 'border-l-4 border-l-blue-500' : ''}`}
                     >
                       <td className="border-r border-slate-100 px-2 py-2">
                         {canManageDoors ? <input aria-label="Numer dokumentu" className={cellInput + " font-mono font-bold"} value={row.numerDokumentu} onChange={(e) => patch('numerDokumentu', e.target.value)} /> : <button type="button" onClick={() => onOpenDoorOrder ? onOpenDoorOrder(doorOrd) : toggleExpand(doorOrd.id)} className="font-mono font-bold text-blue-700 hover:text-blue-900 hover:underline text-left">{doorOrd.numerDokumentu}</button>}
@@ -663,13 +694,21 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                           })()}
                         </div>
                       </td>
-                      <td className={`min-w-0 border-r border-slate-100 px-1.5 py-2 font-mono ${isDelivered ? 'text-emerald-700' : 'text-slate-500'}`}>{canManageDoors ? <input aria-label="Termin dostawy" type="date" className={cellInput} value={row.terminDostawy || ''} onChange={(e) => patch('terminDostawy', e.target.value)} /> : doorOrd.terminDostawy ? formatDatePL(doorOrd.terminDostawy) : '—'}</td>
+                      <td className={`min-w-0 border-r border-slate-100 px-1.5 py-2 font-mono ${isDelivered ? 'text-blue-800 font-semibold' : 'text-slate-600'}`}>
+                        <div className="flex min-w-0 flex-col items-start gap-1.5">
+                          {canManageDoors ? <input aria-label="Termin dostawy" type="date" className={cellInput} value={row.terminDostawy || ''} onChange={(e) => patch('terminDostawy', e.target.value)} /> : doorOrd.terminDostawy ? formatDatePL(doorOrd.terminDostawy) : '—'}
+                          {isDelivered ? (
+                            <span className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-100 px-2 py-1 text-[10px] font-bold text-blue-800"><CheckCircle2 className="h-3 w-3" /> Dostawa potwierdzona</span>
+                          ) : canManageDoors ? (
+                            <button type="button" onClick={() => onQuickConfirmDelivery(doorOrd)} title="Oznacz zamówienie jako dostarczone i potwierdź dostawę" className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-white px-2 py-1 text-[10px] font-bold text-blue-700 shadow-xs transition-colors hover:border-blue-400 hover:bg-blue-600 hover:text-white"><CheckSquare className="h-3 w-3" /> Oznacz jako dostarczone</button>
+                          ) : null}
+                        </div>
+                      </td>
                       <td className="border-r border-slate-100 px-2 py-2 leading-snug break-words"><div className="whitespace-pre-wrap break-words">{canManageDoors ? <textarea aria-label="Uwagi" className={cellInput + " resize-none overflow-hidden whitespace-pre-wrap break-words"} rows={2} ref={(element) => { if (element) { element.style.height = 'auto'; element.style.height = `${element.scrollHeight}px`; } }} value={row.uwagi || ''} onChange={(e) => patch('uwagi', e.target.value)} /> : doorOrd.uwagi || '—'}</div></td>
                       <td className="min-w-0 px-1 py-2 text-center">
                         <div className="flex items-center justify-center gap-1">
                           {!canManageDoors ? <span className="text-[10px] text-slate-500">Podgląd</span> : <>
-                            {!isDelivered && <button type="button" onClick={() => onQuickConfirmDelivery(doorOrd)} title="Potwierdź dostawę" className="rounded p-1.5 text-emerald-700 hover:bg-emerald-100"><CheckSquare className="h-4 w-4" /></button>}
-                            <button type="button" onClick={() => setOrderToDelete(doorOrd)} title="Usuń" className="rounded p-1.5 text-rose-600 hover:bg-rose-100"><Trash2 className="h-4 w-4" /></button>
+                            <button type="button" onClick={() => setOrderToDelete(doorOrd)} title="Usuń zamówienie drzwi" className="rounded p-1.5 text-rose-600 hover:bg-rose-100"><Trash2 className="h-4 w-4" /></button>
                           </>}
                         </div>
                       </td>
