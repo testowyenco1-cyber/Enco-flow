@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, RefreshCw, Zap, Layers, AlertTriangle, Lock, CircuitBoard, Menu, X, ChevronDown, Archive, ShieldCheck, Download, Save, LoaderCircle, CheckCircle2, CalendarDays, UsersRound, ListTodo } from 'lucide-react';
+import { Plus, RefreshCw, Zap, Layers, AlertTriangle, Lock, CircuitBoard, Menu, X, ChevronDown, Archive, ShieldCheck, Download, Save, LoaderCircle, CheckCircle2, CalendarDays, UsersRound, ListTodo, Database } from 'lucide-react';
 import type { UserRoleProfile } from '../types/userRole';
 import type { AuthUser } from '../types/auth';
 import { UserRoleSelector } from './UserRoleSelector';
@@ -14,7 +14,7 @@ interface HeaderProps {
   isSavingChanges: boolean;
   onSaveChanges: () => void;
   onOpenArchive: () => void;
-  onOpenCustomers: () => void;
+  onOpenDatabases: () => void;
   archiveActive: boolean;
   archiveCount: number;
   activeTab?: string;
@@ -47,7 +47,7 @@ const orderFilters = [
 
 export const Header: React.FC<HeaderProps> = ({
   sidebarOpen, onToggleSidebar,
-  onNewOrder, onNewDoorOrder, onRefresh, onSaveChanges, hasPendingChanges, isSavingChanges, onOpenArchive, onOpenCustomers, archiveActive, archiveCount,
+  onNewOrder, onNewDoorOrder, onRefresh, onSaveChanges, hasPendingChanges, isSavingChanges, onOpenArchive, onOpenDatabases, archiveActive, archiveCount,
   activeTab = 'all', onSelectTab, problemCount = 0,
   activeModule = 'orders', onSelectModule,
   doorOrdersCount = 0, doorOverdueCount = 0,
@@ -224,7 +224,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="min-w-0 flex-1 break-words leading-snug">Archiwum zleceń</span>
                 <span className="text-xs text-slate-400">{archiveCount}</span>
               </button>
-              <button type="button" onClick={onOpenCustomers} className="w-full min-w-0 flex items-center gap-3 rounded-lg px-3 py-3 text-left text-sm text-slate-200 hover:bg-slate-800"><UsersRound className="w-4 h-4 shrink-0"/><span className="min-w-0 flex-1 break-words leading-snug">Baza klientów</span></button>
+              <button type="button" onClick={onOpenDatabases} className="w-full min-w-0 flex items-center gap-3 rounded-lg px-3 py-3 text-left text-sm text-slate-200 hover:bg-slate-800"><Database className="w-4 h-4 shrink-0"/><span className="min-w-0 flex-1 break-words leading-snug">Bazy danych</span></button>
               <button type="button" onClick={() => {  onRefresh(); }}
                 className="w-full min-w-0 flex items-start gap-3 rounded-lg px-3 py-3 text-left text-sm text-slate-200 hover:bg-slate-800">
                 <RefreshCw className="w-4 h-4 shrink-0 mt-0.5" />
