@@ -289,15 +289,6 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
     );
   };
 
-  const selectProject = (record: SNRecord, value: string) => {
-    if (value === '__custom__') {
-      patchRecord(record.id, { linkedOrderId: undefined });
-      return;
-    }
-    const order = orders.find(item => item.id === value);
-    if (order) patchRecord(record.id, { linkedOrderId: order.id, projekt: orderLabel(order) });
-  };
-
   return <section className="space-y-4">
     <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex items-center gap-3">
