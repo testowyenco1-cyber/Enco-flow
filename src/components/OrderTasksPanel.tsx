@@ -135,7 +135,7 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
   };
 
   return (
-              <aside className={"sticky top-4 flex max-h-[calc(100vh-2rem)] min-h-[420px] shrink-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-[width] duration-200 " + (isOpen ? "w-[360px]" : "w-[52px]")}>
+              <aside className={"sticky top-4 flex max-h-[calc(100vh-2rem)] min-h-[420px] shrink-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-[width] duration-200 " + (isOpen ? "w-full lg:w-[360px]" : "w-full lg:w-[52px]")}>
             <div className={"flex items-start justify-between gap-2 border-b border-slate-200 bg-slate-900 px-3 py-4 text-white " + (!isOpen ? "flex-col items-center" : "")}>
               <div className={"min-w-0 " + (!isOpen ? "hidden" : "")}>
                 <div className="flex items-center gap-2 text-sm font-bold"><BellRing className="h-4 w-4 text-blue-300" /> Zadania i przypomnienia</div>
