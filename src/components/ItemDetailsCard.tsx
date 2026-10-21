@@ -693,11 +693,14 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         OBUDOWA: [
           { key: 'typObudowy', label: 'Typ obudowy (BEK/NZ)' },
           { key: 'rozmiar', label: 'Rozmiar stacji' },
+          { key: 'szerokosc', label: 'Szerokość obudowy' },
+          { key: 'glebokosc', label: 'Głębokość obudowy' },
+          { key: 'wysokosc', label: 'Wysokość obudowy' },
         ],
       };
       const required = requiredByType[item.type] || [];
       const missing = required.filter(({ key }) => {
-        const value = d[key] ?? (key === 'model' && d.typRozdzielnicy ? d.typRozdzielnicy : '');
+        const value = key === 'liczbaPol' ? (d.liczbaPol || d.iloscPol || '') : d[key] ?? (key === 'model' && d.typRozdzielnicy ? d.typRozdzielnicy : '');
         return typeof value === 'string' ? value.trim() === '' : value === null || value === undefined;
       });
       if (missing.length > 0) {
