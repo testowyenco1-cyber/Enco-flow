@@ -354,7 +354,7 @@ export async function saveSingleOrderToServer(order: Order): Promise<boolean> {
     const payload = await res.json().catch(() => null);
     if (!res.ok) {
       if (res.status === 409 && payload?.conflict) {
-        window.alert(payload.error || 'Wykryto konflikt zmian. Odśwież zlecenie i spróbuj ponownie.');
+        window.alert((payload.error || 'Wykryto konflikt zmian. Odśwież zlecenie i spróbuj ponownie.') + (Array.isArray(payload.fields) && payload.fields.length ? '\n\nPola objęte konfliktem: ' + payload.fields.join(', ') : ''));
       }
       return false;
     }
@@ -389,7 +389,7 @@ export async function saveOrdersToServer(orders: Order[]): Promise<boolean> {
     const payload = await res.json().catch(() => null);
     if (!res.ok) {
       if (res.status === 409 && payload?.conflict) {
-        window.alert(payload.error || 'Wykryto konflikt zmian. Odśwież dane i spróbuj ponownie.');
+        window.alert((payload.error || 'Wykryto konflikt zmian. Odśwież dane i spróbuj ponownie.') + (Array.isArray(payload.fields) && payload.fields.length ? '\n\nPola objęte konfliktem: ' + payload.fields.join(', ') : ''));
       }
       return false;
     }
@@ -481,7 +481,7 @@ export async function saveDoorOrdersToServer(doorOrders: DoorOrder[]): Promise<b
     const payload = await res.json().catch(() => null);
     if (!res.ok) {
       if (res.status === 409 && payload?.conflict) {
-        window.alert(payload.error || 'Wykryto konflikt zmian w zamówieniu drzwi. Odśwież dane i spróbuj ponownie.');
+        window.alert((payload.error || 'Wykryto konflikt zmian w zamówieniu drzwi. Odśwież dane i spróbuj ponownie.') + (Array.isArray(payload.fields) && payload.fields.length ? '\n\nPola objęte konfliktem: ' + payload.fields.join(', ') : ''));
       }
       return false;
     }
