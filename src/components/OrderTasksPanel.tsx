@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BellRing, CalendarDays, Check, ChevronRight, ClipboardList, LoaderCircle, Plus, RefreshCw, UserRound, Users, X } from 'lucide-react';
+import { BellRing, CalendarDays, Check, ChevronRight, ClipboardList, LoaderCircle, Plus, RefreshCw, UserRound, Users, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import type { AuthDepartmentId } from '../types/auth';
 import type { EncoTask, EncoTaskStatus, TaskAssigneeUser } from '../types/tasks';
 import type { UserRoleProfile } from '../types/userRole';
@@ -44,7 +44,10 @@ function dueLabel(value: string, status: EncoTaskStatus): { label: string; style
 }
 
 export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, projectName, client, currentProfile }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(() => {
+    try { return window.localStorage.getItem('enco-flow-order-tasks-panel') !== 'collapsed'; }
+    catch { return true; }
+  });
   const [tasks, setTasks] = useState<EncoTask[]>([]);
   const [users, setUsers] = useState<TaskAssigneeUser[]>([]);
   const [loading, setLoading] = useState(false);
@@ -58,6 +61,11 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
   const [assigneeType, setAssigneeType] = useState<'department' | 'person'>('department');
   const [department, setDepartment] = useState<AuthDepartmentId>('dzial_handlowy');
   const [userId, setUserId] = useState('');
+
+  useEffect(() => {
+    try { window.localStorage.setItem('enco-flow-order-tasks-panel', isOpen ? 'open' : 'collapsed'); }
+    catch { /* Panel remains usable when storage is unavailable. */ }
+  }, [isOpen]);
 
   const load = async () => {
     setLoading(true);
@@ -127,33 +135,19 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
   };
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setIsOpen((open) => !open)}
-        className="fixed right-0 top-1/2 z-[60] flex -translate-y-1/2 flex-col items-center gap-2 rounded-l-xl border border-r-0 border-blue-700 bg-blue-700 px-2.5 py-3 text-white shadow-lg transition hover:bg-blue-800"
-        aria-label={isOpen ? 'Zamknij panel zadań' : 'Otwórz zadania i przypomnienia'}
-        title="Zadania i przypomnienia"
-      >
-        <ClipboardList className="h-5 w-5" />
-        <span className="[writing-mode:vertical-rl] rotate-180 text-[11px] font-bold tracking-wide">Zadania</span>
-        {activeCount > 0 && <span className="min-w-5 rounded-full bg-white px-1 text-center text-[10px] font-black text-blue-700">{activeCount > 99 ? '99+' : activeCount}</span>}
-      </button>
-
-      {isOpen && (
-        <div className="fixed inset-0 z-50">
-          <button type="button" aria-label="Zamknij panel" onClick={() => setIsOpen(false)} className="absolute inset-0 bg-slate-950/35" />
-          <aside className="absolute inset-y-0 right-0 flex w-full max-w-[440px] flex-col border-l border-slate-200 bg-white shadow-2xl">
-            <div className="flex items-start justify-between gap-3 border-b border-slate-200 bg-slate-900 px-5 py-4 text-white">
-              <div className="min-w-0">
+              <aside className={"sticky top-4 flex max-h-[calc(100vh-2rem)] min-h-[420px] shrink-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-[width] duration-200 " + (isOpen ? "w-[360px]" : "w-[52px]")}>
+            <div className={"flex items-start justify-between gap-2 border-b border-slate-200 bg-slate-900 px-3 py-4 text-white " + (!isOpen ? "flex-col items-center" : "")}>
+              <div className={"min-w-0 " + (!isOpen ? "hidden" : "")}>
                 <div className="flex items-center gap-2 text-sm font-bold"><BellRing className="h-4 w-4 text-blue-300" /> Zadania i przypomnienia</div>
                 <p className="mt-1 truncate text-[11px] text-slate-300">{orderNumber} · {projectName || client}</p>
                 <p className="mt-1 text-[11px] text-slate-400">{activeCount} aktywne {activeCount === 1 ? 'zadanie' : 'zadania'}</p>
               </div>
-              <button type="button" onClick={() => setIsOpen(false)} className="rounded-lg p-1.5 text-slate-300 hover:bg-slate-800 hover:text-white" aria-label="Zamknij"><X className="h-4 w-4" /></button>
+              <button type="button" onClick={() => setIsOpen((open) => !open)} className="rounded-lg p-1.5 text-slate-300 hover:bg-slate-800 hover:text-white" aria-label={isOpen ? "Zwiń panel zadań" : "Rozwiń panel zadań"} title={isOpen ? "Zwiń panel" : "Rozwiń panel"}>{isOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-5 w-5" />}</button>
             </div>
 
-            <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+            {isOpen && (
+            <>
+<div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
               <button type="button" onClick={() => setIsFormOpen((open) => !open)} disabled={!canCreateTask} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
                 <Plus className="h-4 w-4" /> Nowe zadanie
               </button>
@@ -244,9 +238,9 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
               })}
             </div>
             <div className="border-t border-slate-200 bg-slate-50 px-4 py-3 text-[10px] text-slate-500">Zmiany zadań są zapisywane na serwerze po kliknięciu „Zapisz zadanie” lub zmianie statusu.</div>
+
+            </>
+          )}
           </aside>
-        </div>
-      )}
-    </>
   );
 };
