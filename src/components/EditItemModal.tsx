@@ -48,6 +48,12 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
   const [snError, setSnError] = useState<string | null>(null);
   const [customSnProducer, setCustomSnProducer] = useState(false);
   const [customSnModel, setCustomSnModel] = useState(false);
+  const [snCatalog, setSnCatalog] = useState<{ producers: string[]; modelsByProducer: Record<string, string[]> }>({
+    producers: [...SN_PRODUCERS],
+    modelsByProducer: { ...SN_MODELS_BY_PRODUCER },
+  });
+  const [snCatalogMessage, setSnCatalogMessage] = useState<string | null>(null);
+  const [snCatalogError, setSnCatalogError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen && item) {
@@ -98,6 +104,30 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
       setSnError(null);
     }
   }, [isOpen, item?.id]);
+
+  useEffect(() => {
+    if (!isOpen || item?.type !== 'ROZDZIELNICA_SN') return;
+    let cancelled = false;
+    fetch('/api/sn-catalog')
+      .then(async response => {
+        if (!response.ok) throw new Error('Nie udało się pobrać katalogu producentów i modeli SN.');
+        const data = await response.json();
+        if (!data.success || !Array.isArray(data.producers) || !data.modelsByProducer) throw new Error('Nieprawidłowa odpowiedź katalogu SN.');
+        if (!cancelled) setSnCatalog({ producers: data.producers, modelsByProducer: data.modelsByProducer });
+      })
+      .catch(error => {
+        if (!cancelled) setSnCatalogError(error instanceof Error ? error.message : 'Błąd pobierania katalogu SN.');
+      });
+    return () => { cancelled = true; };
+  }, [isOpen, item?.id, item?.type]);
+
+  useEffect(() => {
+    if (!isOpen || item?.type !== 'ROZDZIELNICA_SN') return;
+    const producer = String(details.producent || '');
+    const model = String(details.model || details.typRozdzielnicy || '');
+    setCustomSnProducer(Boolean(producer && !snCatalog.producers.includes(producer)));
+    setCustomSnModel(Boolean(model && (!producer || !(snCatalog.modelsByProducer[producer] || []).includes(model))));
+  }, [snCatalog, isOpen, item?.id]);
 
   // Wszystkie hooki muszą wykonać się przed warunkowym zakończeniem renderowania.
   if (!isOpen || !item) return null;
@@ -204,7 +234,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
     }
     setCustomSnProducer(false);
     const currentModel = details.model || details.typRozdzielnicy || '';
-    const allowed = newProducer ? (SN_MODELS_BY_PRODUCER[newProducer as SNProducer] || []) : [];
+    const allowed = newProducer ? (snCatalog.modelsByProducer[newProducer] || []) : [];
     const isModelStillValid = allowed.includes(currentModel);
     const nextModel = isModelStillValid && !customSnModel ? currentModel : '';
     setCustomSnModel(false);
@@ -233,6 +263,50 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
       konfiguracjaPol: prev.konfiguracjaPol || DEFAULT_SN_CONFIG,
     }));
     setSnError(null);
+  };
+
+  const saveSnProducer = async () => {
+    const producer = String(details.producent || '').trim();
+    if (!producer) return;
+    setSnCatalogError(null);
+    setSnCatalogMessage(null);
+    try {
+      const response = await fetch('/api/sn-catalog', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ producer }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'Nie udało się zapisać producenta.');
+      setSnCatalog({ producers: data.producers, modelsByProducer: data.modelsByProducer });
+      setDetails(prev => ({ ...prev, producent: data.canonicalProducer || producer, model: '', typRozdzielnicy: '' }));
+      setCustomSnProducer(false);
+      setCustomSnModel(true);
+      setSnCatalogMessage('Producent został zapisany na stałe i będzie dostępny dla wszystkich użytkowników.');
+    } catch (error) {
+      setSnCatalogError(error instanceof Error ? error.message : 'Błąd zapisu producenta.');
+    }
+  };
+
+  const saveSnModel = async () => {
+    const producer = String(details.producent || '').trim();
+    const model = String(details.model || details.typRozdzielnicy || '').trim();
+    if (!producer || !model) return;
+    setSnCatalogError(null);
+    setSnCatalogMessage(null);
+    try {
+      const response = await fetch('/api/sn-catalog', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ producer, model }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'Nie udało się zapisać modelu.');
+      const canonicalProducer = data.canonicalProducer || producer;
+      setSnCatalog({ producers: data.producers, modelsByProducer: data.modelsByProducer });
+      setDetails(prev => ({ ...prev, producent: canonicalProducer, model, typRozdzielnicy: model }));
+      setCustomSnProducer(false);
+      setCustomSnModel(false);
+      setSnCatalogMessage('Model został zapisany na stałe i będzie dostępny przy kolejnych zleceniach.');
+    } catch (error) {
+      setSnCatalogError(error instanceof Error ? error.message : 'Błąd zapisu modelu.');
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -497,6 +571,8 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
 
                 {/* 1. Producent & 2. Model (w dwóch prostych krokach) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {snCatalogMessage && <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-800">{snCatalogMessage}</div>}
+                  {snCatalogError && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-700">{snCatalogError}</div>}
                   {/* Krok 1: Producent */}
                   <div>
                     <label className="block text-xs font-bold text-slate-800 mb-1.5">
@@ -509,7 +585,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                         className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden font-semibold text-slate-900 cursor-pointer"
                       >
                         <option value="">— Wybierz producenta SN —</option>
-                        {SN_PRODUCERS.map((prod) => <option key={prod} value={prod}>{prod}</option>)}
+                        {snCatalog.producers.map((prod) => <option key={prod} value={prod}>{prod}</option>)}
                         <option value="__CUSTOM__">+ Wpisz własnego producenta</option>
                       </select>
                     ) : (
@@ -521,6 +597,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                           placeholder="Wpisz nazwę producenta"
                           className="w-full text-xs px-3 py-2 border border-blue-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden font-semibold text-slate-900"
                         />
+                        <button type="button" onClick={() => void saveSnProducer()} disabled={!String(details.producent || '').trim()} className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50">Zapisz producenta na stałe</button>
                         <button type="button" onClick={() => { setCustomSnProducer(false); setCustomSnModel(false); setDetails(prev => ({ ...prev, producent: '', model: '', typRozdzielnicy: '' })); }} className="text-[11px] text-blue-700 hover:underline">Wybierz z listy producentów</button>
                       </div>
                     )}
@@ -548,7 +625,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                         {!details.producent ? <option value="">Najpierw wybierz producenta...</option> : (
                           <>
                             <option value="">— Wybierz model ({details.producent}) —</option>
-                            {(SN_MODELS_BY_PRODUCER[details.producent as SNProducer] || []).map((mod) => <option key={mod} value={mod}>{mod}</option>)}
+                            {(snCatalog.modelsByProducer[details.producent] || []).map((mod) => <option key={mod} value={mod}>{mod}</option>)}
                             <option value="__CUSTOM__">+ Wpisz własny model</option>
                           </>
                         )}
@@ -565,6 +642,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                           placeholder="Wpisz nazwę modelu"
                           className="w-full text-xs px-3 py-2 border border-blue-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden font-semibold text-slate-900"
                         />
+                        <button type="button" onClick={() => void saveSnModel()} disabled={!String(details.producent || '').trim() || !String(details.model || details.typRozdzielnicy || '').trim()} className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50">Zapisz model na stałe</button>
                         <button type="button" onClick={() => { setCustomSnModel(false); setDetails(prev => ({ ...prev, model: '', typRozdzielnicy: '' })); }} className="text-[11px] text-blue-700 hover:underline">Wybierz model z listy</button>
                       </div>
                     )}
