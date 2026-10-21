@@ -174,29 +174,18 @@ export function sanitizeOrders(parsed: any[]): Order[] {
       };
 
       if (it.type === 'ROZDZIELNICA_SN') {
-        let snProducer = it.details?.producent;
-        if (
-          !snProducer ||
-          (snProducer !== 'Schneider Electric' &&
-            snProducer !== 'EATON' &&
-            snProducer !== 'Siemens')
-        ) {
-          if (snProducer === 'ABB') snProducer = 'EATON';
-          else if (
-            snProducer &&
-            (snProducer.includes('ZPUE') || snProducer.includes('Siemens'))
-          )
-            snProducer = 'Siemens';
-          else snProducer = 'Schneider Electric';
+        let snProducer = it.details?.producent || '';
+        if (snProducer === 'ABB') snProducer = 'EATON';
+        else if (snProducer && !['Schneider Electric', 'EATON', 'Siemens'].includes(snProducer)) {
+          if (snProducer.includes('ZPUE') || snProducer.includes('Siemens')) snProducer = 'Siemens';
+          else snProducer = '';
         }
 
-        let snModel = it.details?.model || it.details?.typRozdzielnicy;
-        if (snProducer === 'Schneider Electric') snModel = 'AirSeT';
-        else if (snProducer === 'EATON') snModel = 'Xiria';
-        else if (snProducer === 'Siemens') snModel = '8DJH 24 Blue GIS';
-
-        const polCount = it.details?.liczbaPol ?? it.details?.iloscPol ?? 3;
-        const snConfig = it.details?.konfiguracjaPol || 'L-L-L-T';
+        // Do not invent technical choices while sanitizing: only preserve values
+        // that were actually entered in this order.
+        const snModel = it.details?.model || it.details?.typRozdzielnicy || '';
+        const polCount = it.details?.liczbaPol ?? it.details?.iloscPol ?? '';
+        const snConfig = it.details?.konfiguracjaPol || '';
 
         return {
           ...baseItem,
@@ -205,7 +194,7 @@ export function sanitizeOrders(parsed: any[]): Order[] {
             producent: snProducer,
             model: snModel,
             typRozdzielnicy: snModel,
-            liczbaPol: Number(polCount) || 3,
+            liczbaPol: polCount === '' ? '' : Number(polCount),
             konfiguracjaPol: snConfig,
           },
         };
