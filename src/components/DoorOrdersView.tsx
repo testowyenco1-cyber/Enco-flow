@@ -609,7 +609,7 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                   return (
                     <tr
                       key={doorOrd.id}
-                      className={`group align-top transition-colors ${isDelivered ? '!bg-blue-50 text-blue-950 hover:!bg-blue-100' : index % 2 === 0 ? 'bg-white hover:bg-blue-50/70' : 'bg-slate-50/60 hover:bg-blue-50/70'} ${overdueInfo.isOverdue ? '!bg-rose-50 hover:!bg-rose-100' : ''} ${isDelivered ? 'border-l-4 border-l-blue-500' : ''}`}
+                      className={`group align-top transition-colors ${isDelivered ? '!bg-blue-100/70 text-blue-950 hover:!bg-blue-100' : index % 2 === 0 ? 'bg-white hover:bg-blue-50/70' : 'bg-slate-50/60 hover:bg-blue-50/70'} ${overdueInfo.isOverdue ? '!bg-rose-100/70 hover:!bg-rose-100' : ''} ${isDelivered ? 'border-l-4 border-l-blue-500' : ''}`}
                     >
                       <td className="border-r border-slate-100 px-2 py-2">
                         {canManageDoors ? <input aria-label="Numer dokumentu" className={cellInput + " font-mono font-bold"} value={row.numerDokumentu} onChange={(e) => patch('numerDokumentu', e.target.value)} /> : <button type="button" onClick={() => onOpenDoorOrder ? onOpenDoorOrder(doorOrd) : toggleExpand(doorOrd.id)} className="font-mono font-bold text-blue-700 hover:text-blue-900 hover:underline text-left">{doorOrd.numerDokumentu}</button>}
