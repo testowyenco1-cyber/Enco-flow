@@ -94,6 +94,8 @@ async function startServer() {
   const OBUDOWA_VARIANTS_FILE = path.join(DATA_DIR, 'obudowa_variants.json');
   const SN_SWITCHGEAR_FILE = path.join(DATA_DIR, 'sn_switchgear.json');
   const DOOR_CATALOG_FILE = path.join(DATA_DIR, 'door_catalog.json');
+  const TASKS_FILE = path.join(DATA_DIR, 'tasks.json');
+  if (!fs.existsSync(TASKS_FILE)) fs.writeFileSync(TASKS_FILE, '[]', 'utf-8');
 
   // Seed initial data if files do not exist
   let currentOrders = INITIAL_ORDERS;
@@ -774,6 +776,129 @@ async function startServer() {
       writeJsonAtomically(CUSTOMERS_FILE, updated);
       return res.json({ success: true, customers: updated, timestamp: Date.now() });
     } catch (err) { console.error('Error deleting customer:', err); return res.status(500).json({ success: false, error: 'Błąd usuwania firmy' }); }
+  });
+
+
+  // Shared task register used by both the order-side panel and the Action Plan.
+  function readTasks(): any[] {
+    const parsed = JSON.parse(fs.readFileSync(TASKS_FILE, 'utf-8'));
+    return Array.isArray(parsed) ? parsed : [];
+  }
+  function saveTasks(tasks: any[]) {
+    writeJsonAtomically(TASKS_FILE, tasks);
+  }
+  function taskDepartmentLabel(id: string): string {
+    const labels: Record<string, string> = {
+      dzial_handlowy: 'Dział Handlowy',
+      logistyka: 'Logistyka',
+      pyskowice: 'Produkcja – Pyskowice',
+      plochocinska: 'Produkcja – Płochocińska',
+    };
+    return labels[id] || id;
+  }
+  function taskPublicRecord(task: any) {
+    return task;
+  }
+
+  app.get('/api/tasks/meta', (req: any, res) => {
+    try {
+      const users = loadAuthUsers()
+        .filter((user) => user.active)
+        .map((user) => ({
+          id: user.id, username: user.username, displayName: user.displayName,
+          departments: user.departments, isAdmin: user.isAdmin,
+        }));
+      return res.json({ success: true, users });
+    } catch (err) {
+      console.error('Reading task assignees failed:', err);
+      return res.status(500).json({ success: false, error: 'Nie udało się pobrać listy osób.' });
+    }
+  });
+
+  app.get('/api/tasks', (_req, res) => {
+    try {
+      return res.json({ success: true, tasks: readTasks().map(taskPublicRecord), timestamp: Date.now() });
+    } catch (err) {
+      console.error('Reading tasks failed:', err);
+      return res.status(500).json({ success: false, error: 'Nie udało się pobrać zadań.' });
+    }
+  });
+
+  app.post('/api/tasks', (req: any, res) => {
+    try {
+      const actor = req.authUser as AuthUser;
+      const profile = profileForAuthUser(actor);
+      if (actor.departments.length === 0 && !actor.isAdmin) {
+        return res.status(403).json({ success: false, error: 'Konto tylko do podglądu nie może tworzyć zadań.' });
+      }
+      const orderId = typeof req.body?.orderId === 'string' ? req.body.orderId : '';
+      const description = typeof req.body?.description === 'string' ? req.body.description.trim() : '';
+      const dueDate = typeof req.body?.dueDate === 'string' ? req.body.dueDate : '';
+      const assigneeType = req.body?.assigneeType;
+      const orders = fs.existsSync(ORDERS_FILE) ? JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf-8')) : INITIAL_ORDERS;
+      const order = Array.isArray(orders) ? orders.find((item: any) => item.id === orderId) : null;
+      if (!order) return res.status(404).json({ success: false, error: 'Nie znaleziono zlecenia powiązanego z zadaniem.' });
+      if (!description || description.length > 500) return res.status(400).json({ success: false, error: 'Opis zadania jest wymagany (maksymalnie 500 znaków).' });
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate) || Number.isNaN(new Date(dueDate + 'T00:00:00').getTime())) {
+        return res.status(400).json({ success: false, error: 'Wybierz prawidłowy termin wykonania.' });
+      }
+      const users = loadAuthUsers().filter((user) => user.active);
+      let assigneeDepartment: string | undefined;
+      let assigneeUserId: string | undefined;
+      let assigneeName = '';
+      if (assigneeType === 'department') {
+        assigneeDepartment = req.body?.assigneeDepartment;
+        if (!ALLOWED_DEPARTMENTS.includes(assigneeDepartment as AuthDepartmentId)) {
+          return res.status(400).json({ success: false, error: 'Wybierz prawidłowy dział odpowiedzialny.' });
+        }
+        assigneeName = taskDepartmentLabel(assigneeDepartment!);
+      } else if (assigneeType === 'person') {
+        assigneeUserId = typeof req.body?.assigneeUserId === 'string' ? req.body.assigneeUserId : '';
+        const assignee = users.find((user) => user.id === assigneeUserId);
+        if (!assignee) return res.status(400).json({ success: false, error: 'Wybierz aktywną osobę odpowiedzialną.' });
+        assigneeName = assignee.displayName;
+        assigneeDepartment = assignee.departments[0];
+      } else {
+        return res.status(400).json({ success: false, error: 'Wybierz osobę albo dział odpowiedzialny.' });
+      }
+      const now = new Date().toISOString();
+      const task = {
+        id: 'task_' + randomBytes(12).toString('hex'),
+        orderId, orderNumber: String(order.orderNumber || ''), projectName: String(order.projectName || ''),
+        client: String(order.client || ''), description, assigneeType, assigneeDepartment, assigneeUserId,
+        assigneeName, dueDate, status: 'todo', createdByUserId: actor.id, createdByName: actor.displayName,
+        createdAt: now, updatedAt: now,
+      };
+      const tasks = readTasks();
+      tasks.push(task);
+      saveTasks(tasks);
+      return res.status(201).json({ success: true, task });
+    } catch (err) {
+      console.error('Creating task failed:', err);
+      return res.status(500).json({ success: false, error: 'Nie udało się utworzyć zadania.' });
+    }
+  });
+
+  app.patch('/api/tasks/:taskId', (req: any, res) => {
+    try {
+      const actor = req.authUser as AuthUser;
+      if (!actor.isAdmin && actor.departments.length === 0) {
+        return res.status(403).json({ success: false, error: 'Konto tylko do podglądu nie może zmieniać zadań.' });
+      }
+      const status = req.body?.status;
+      if (!['todo', 'in_progress', 'done'].includes(status)) {
+        return res.status(400).json({ success: false, error: 'Nieprawidłowy status zadania.' });
+      }
+      const tasks = readTasks();
+      const index = tasks.findIndex((task) => task.id === req.params.taskId);
+      if (index < 0) return res.status(404).json({ success: false, error: 'Nie znaleziono zadania.' });
+      tasks[index] = { ...tasks[index], status, updatedAt: new Date().toISOString() };
+      saveTasks(tasks);
+      return res.json({ success: true, task: tasks[index] });
+    } catch (err) {
+      console.error('Updating task failed:', err);
+      return res.status(500).json({ success: false, error: 'Nie udało się zmienić statusu zadania.' });
+    }
   });
 
   // 1. Orders API
