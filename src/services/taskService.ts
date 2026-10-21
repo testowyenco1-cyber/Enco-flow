@@ -21,14 +21,37 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
       },
     });
   } catch {
-    throw new TaskApiError('Nie można połączyć się z serwerem ENCO Flow.', 0);
+    throw new TaskApiError('Nie można połączyć się z serwerem ENCO Flow. Sprawdź połączenie i spróbuj ponownie.', 0);
   }
-  const body = await response.json().catch(() => ({}));
+
+  const rawBody = await response.text();
+  let body: any = {};
+  try {
+    body = rawBody ? JSON.parse(rawBody) : {};
+  } catch {
+    // Serwer po błędzie może zwrócić stronę HTML zamiast odpowiedzi JSON.
+  }
+
   if (!response.ok) {
+    const serverMessage =
+      (typeof body?.error === 'string' && body.error) ||
+      (typeof body?.message === 'string' && body.message);
+    const diagnostic = serverMessage || (
+      rawBody.trim().startsWith('<')
+        ? 'Serwer zwrócił stronę HTML zamiast danych API.'
+        : rawBody.trim().slice(0, 180)
+    );
     throw new TaskApiError(
-      typeof body?.error === 'string' ? body.error : 'Nie udało się wykonać operacji na zadaniu.',
+      diagnostic
+        ? `Operacja na zadaniu nie powiodła się (HTTP ${response.status}): ${diagnostic}`
+        : `Operacja na zadaniu nie powiodła się (HTTP ${response.status}). Spróbuj ponownie.`,
       response.status
     );
+  }
+
+  if (!rawBody.trim()) return {} as T;
+  if (Object.keys(body).length === 0 && rawBody.trim().startsWith('<')) {
+    throw new TaskApiError('Serwer zwrócił stronę HTML zamiast danych API. Sprawdź, czy aplikacja jest uruchomiona w aktualnej wersji.', response.status);
   }
   return body as T;
 }
