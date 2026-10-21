@@ -594,9 +594,9 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
               </thead>
               <tbody className="divide-y divide-slate-200 text-slate-800">
                 {filteredOrders.map((doorOrd, index) => {
-                  const overdueInfo = checkDoorOrderOverdue(doorOrd.terminZamowienia, doorOrd.terminDostawy);
-                  const isDelivered = Boolean(doorOrd.terminDostawy && doorOrd.terminDostawy.trim());
                   const row = draftsById[doorOrd.id] || doorOrd;
+                  const overdueInfo = checkDoorOrderOverdue(row.terminZamowienia, row.terminDostawy);
+                  const isDelivered = Boolean(row.terminDostawy && row.terminDostawy.trim());
                   const zlSearch = zlSearchQuery.trim().toLowerCase();
                   const filteredZlOrders = orders.filter((availableOrder) =>
                     !zlSearch ||
@@ -697,7 +697,19 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                         <div className="flex min-w-0 flex-col items-start gap-1.5">
                           {canManageDoors ? <input aria-label="Termin dostawy" type="date" className={cellInput} value={row.terminDostawy || ''} onChange={(e) => patch('terminDostawy', e.target.value)} /> : doorOrd.terminDostawy ? formatDatePL(doorOrd.terminDostawy) : '—'}
                           {isDelivered ? (
-                            <span className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-100 px-2 py-1 text-[10px] font-bold text-blue-800"><CheckCircle2 className="h-3 w-3" /> Dostawa potwierdzona</span>
+                            <>
+                              <span className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-100 px-2 py-1 text-[10px] font-bold text-blue-800"><CheckCircle2 className="h-3 w-3" /> Dostawa potwierdzona</span>
+                              {canManageDoors && (
+                                <button
+                                  type="button"
+                                  onClick={() => patch('terminDostawy', '')}
+                                  title="Cofnij przypadkowe potwierdzenie dostawy; następnie kliknij „Zapisz zmiany”"
+                                  className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-white px-2 py-1 text-[10px] font-bold text-rose-700 shadow-xs transition-colors hover:border-rose-400 hover:bg-rose-50"
+                                >
+                                  Cofnij dostawę
+                                </button>
+                              )}
+                            </>
                           ) : canManageDoors ? (
                             <button type="button" onClick={() => onQuickConfirmDelivery(doorOrd)} title="Oznacz zamówienie jako dostarczone i potwierdź dostawę" className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-white px-2 py-1 text-[10px] font-bold text-blue-700 shadow-xs transition-colors hover:border-blue-400 hover:bg-blue-600 hover:text-white"><CheckSquare className="h-3 w-3" /> Oznacz jako dostarczone</button>
                           ) : null}
