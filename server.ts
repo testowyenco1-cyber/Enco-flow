@@ -827,7 +827,6 @@ async function startServer() {
   app.post('/api/tasks', (req: any, res) => {
     try {
       const actor = req.authUser as AuthUser;
-      const profile = profileForAuthUser(actor);
       if (actor.departments.length === 0 && !actor.isAdmin) {
         return res.status(403).json({ success: false, error: 'Konto tylko do podglądu nie może tworzyć zadań.' });
       }
