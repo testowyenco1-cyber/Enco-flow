@@ -7,7 +7,6 @@ import {
   SNProducer,
   DEFAULT_SN_CONFIG,
   SN_CONFIG_EXAMPLES,
-  validateSNCombination,
   DoorOrder,
   formatDatePL,
   checkDoorOrderOverdue,
