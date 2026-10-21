@@ -46,6 +46,8 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
   const [notes, setNotes] = useState(item?.notes || '');
   const [details, setDetails] = useState<Record<string, any>>(item?.details || {});
   const [snError, setSnError] = useState<string | null>(null);
+  const [customSnProducer, setCustomSnProducer] = useState(false);
+  const [customSnModel, setCustomSnModel] = useState(false);
 
   useEffect(() => {
     if (isOpen && item) {
@@ -63,6 +65,10 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
         if (!initialDetails.model && initialDetails.typRozdzielnicy) {
           initialDetails.model = initialDetails.typRozdzielnicy;
         }
+        const initialModel = initialDetails.model || initialDetails.typRozdzielnicy || '';
+        const initialProducer = initialDetails.producent || '';
+        setCustomSnProducer(Boolean(initialProducer && !SN_PRODUCERS.includes(initialProducer as SNProducer)));
+        setCustomSnModel(Boolean(initialModel && (!initialProducer || !SN_PRODUCERS.includes(initialProducer as SNProducer) || !(SN_MODELS_BY_PRODUCER[initialProducer as SNProducer] || []).includes(initialModel))));
       }
       if (item.type === 'OBUDOWA') {
         if (!initialDetails.typObudowy) {
@@ -186,11 +192,19 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
   };
 
   const handleSnProducerChange = (newProducer: string) => {
+    if (newProducer === '__CUSTOM__') {
+      setCustomSnProducer(true);
+      setCustomSnModel(true);
+      setDetails((prev) => ({ ...prev, producent: '', model: '', typRozdzielnicy: '', konfiguracjaPol: prev.konfiguracjaPol || DEFAULT_SN_CONFIG }));
+      setSnError(null);
+      return;
+    }
+    setCustomSnProducer(false);
     const currentModel = details.model || details.typRozdzielnicy || '';
     const allowed = newProducer ? (SN_MODELS_BY_PRODUCER[newProducer as SNProducer] || []) : [];
     const isModelStillValid = allowed.includes(currentModel);
-    const nextModel = isModelStillValid ? currentModel : '';
-
+    const nextModel = isModelStillValid && !customSnModel ? currentModel : '';
+    setCustomSnModel(false);
     setDetails((prev) => ({
       ...prev,
       producent: newProducer,
@@ -202,6 +216,13 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
   };
 
   const handleSnModelChange = (newModel: string) => {
+    if (newModel === '__CUSTOM__') {
+      setCustomSnModel(true);
+      setDetails((prev) => ({ ...prev, model: '', typRozdzielnicy: '', konfiguracjaPol: prev.konfiguracjaPol || DEFAULT_SN_CONFIG }));
+      setSnError(null);
+      return;
+    }
+    setCustomSnModel(false);
     setDetails((prev) => ({
       ...prev,
       model: newModel,
@@ -217,8 +238,11 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
     if (item.type === 'ROZDZIELNICA_SN') {
       const activeModel = details.model || details.typRozdzielnicy || '';
       const validation = validateSNCombination(details.producent, activeModel);
-      if (!validation.isValid) {
-        setSnError(validation.error || 'Nieprawidłowa kombinacja producent–model.');
+      const customCombinationValid = customSnProducer || customSnModel
+        ? Boolean(String(details.producent || '').trim() && String(activeModel || '').trim())
+        : validation.isValid;
+      if (!customCombinationValid) {
+        setSnError(validation.error || 'Wprowadź producenta i model rozdzielnicy SN.');
         return;
       }
 
@@ -473,20 +497,30 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                     <label className="block text-xs font-bold text-slate-800 mb-1.5">
                       1. Producent <span className="text-rose-600">*</span>
                     </label>
-                    <select
-                      value={details.producent || ''}
-                      onChange={(e) => handleSnProducerChange(e.target.value)}
-                      className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden font-semibold text-slate-900 cursor-pointer"
-                    >
-                      <option value="">— Wybierz producenta SN —</option>
-                      {SN_PRODUCERS.map((prod) => (
-                        <option key={prod} value={prod}>
-                          {prod}
-                        </option>
-                      ))}
-                    </select>
+                    {!customSnProducer ? (
+                      <select
+                        value={details.producent || ''}
+                        onChange={(e) => handleSnProducerChange(e.target.value)}
+                        className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden font-semibold text-slate-900 cursor-pointer"
+                      >
+                        <option value="">— Wybierz producenta SN —</option>
+                        {SN_PRODUCERS.map((prod) => <option key={prod} value={prod}>{prod}</option>)}
+                        <option value="__CUSTOM__">+ Wpisz własnego producenta</option>
+                      </select>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <input
+                          autoFocus
+                          value={details.producent || ''}
+                          onChange={(e) => handleDetailChange('producent', e.target.value)}
+                          placeholder="Wpisz nazwę producenta"
+                          className="w-full text-xs px-3 py-2 border border-blue-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden font-semibold text-slate-900"
+                        />
+                        <button type="button" onClick={() => { setCustomSnProducer(false); setCustomSnModel(false); setDetails(prev => ({ ...prev, producent: '', model: '', typRozdzielnicy: '' })); }} className="text-[11px] text-blue-700 hover:underline">Wybierz z listy producentów</button>
+                      </div>
+                    )}
                     <p className="text-[11px] text-slate-500 mt-1">
-                      Wybierz: Schneider Electric, EATON lub Siemens
+                      Możesz wybrać z listy lub wpisać własnego producenta.
                     </p>
                   </div>
 
@@ -495,29 +529,36 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                     <label className="block text-xs font-bold text-slate-800 mb-1.5">
                       2. Model <span className="text-rose-600">*</span>
                     </label>
-                    <select
-                      value={details.model || details.typRozdzielnicy || ''}
-                      onChange={(e) => handleSnModelChange(e.target.value)}
-                      disabled={!details.producent}
-                      className={`w-full text-xs px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-hidden font-semibold cursor-pointer ${
-                        !details.producent
-                          ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-                          : 'bg-white border-slate-300 text-slate-900'
-                      }`}
-                    >
-                      {!details.producent ? (
-                        <option value="">Najpierw wybierz producenta...</option>
-                      ) : (
-                        <>
-                          <option value="">— Wybierz model ({details.producent}) —</option>
-                          {(SN_MODELS_BY_PRODUCER[details.producent as SNProducer] || []).map((mod) => (
-                            <option key={mod} value={mod}>
-                              {mod}
-                            </option>
-                          ))}
-                        </>
-                      )}
-                    </select>
+                    {!customSnModel ? (
+                      <select
+                        value={details.model || details.typRozdzielnicy || ''}
+                        onChange={(e) => handleSnModelChange(e.target.value)}
+                        disabled={!details.producent}
+                        className={`w-full text-xs px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-hidden font-semibold cursor-pointer ${
+                          !details.producent
+                            ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                            : 'bg-white border-slate-300 text-slate-900'
+                        }`}
+                      >
+                        {!details.producent ? <option value="">Najpierw wybierz producenta...</option> : (
+                          <>
+                            <option value="">— Wybierz model ({details.producent}) —</option>
+                            {(SN_MODELS_BY_PRODUCER[details.producent as SNProducer] || []).map((mod) => <option key={mod} value={mod}>{mod}</option>)}
+                            <option value="__CUSTOM__">+ Wpisz własny model</option>
+                          </>
+                        )}
+                      </select>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <input
+                          value={details.model || details.typRozdzielnicy || ''}
+                          onChange={(e) => handleSnModelChange(e.target.value)}
+                          placeholder="Wpisz nazwę modelu"
+                          className="w-full text-xs px-3 py-2 border border-blue-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden font-semibold text-slate-900"
+                        />
+                        <button type="button" onClick={() => { setCustomSnModel(false); setDetails(prev => ({ ...prev, model: '', typRozdzielnicy: '' })); }} className="text-[11px] text-blue-700 hover:underline">Wybierz model z listy</button>
+                      </div>
+                    )}
                     <p className="text-[11px] text-slate-500 mt-1">
                       {details.producent === 'Schneider Electric' && 'Schneider Electric → AirSeT'}
                       {details.producent === 'EATON' && 'EATON → Xiria'}
