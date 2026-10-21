@@ -358,9 +358,9 @@ async function startServer() {
 
     const keyedArray = (value: any) => Array.isArray(value) && value.every((entry) => entry && typeof entry === 'object' && typeof entry.id === 'string');
     if (keyedArray(base) && keyedArray(incoming) && keyedArray(current)) {
-      const baseMap = new Map(base.map((entry: any) => [entry.id, entry]));
-      const incomingMap = new Map(incoming.map((entry: any) => [entry.id, entry]));
-      const currentMap = new Map(current.map((entry: any) => [entry.id, entry]));
+      const baseMap = new Map<string, any>(base.map((entry: any) => [entry.id, entry] as [string, any]));
+      const incomingMap = new Map<string, any>(incoming.map((entry: any) => [entry.id, entry] as [string, any]));
+      const currentMap = new Map<string, any>(current.map((entry: any) => [entry.id, entry] as [string, any]));
       const mergedMap = new Map(currentMap);
       for (const id of new Set([...baseMap.keys(), ...incomingMap.keys(), ...currentMap.keys()])) {
         const b: any = baseMap.get(id), n: any = incomingMap.get(id), cur: any = currentMap.get(id);
@@ -1020,7 +1020,7 @@ async function startServer() {
       if (requestedDeletes.length > 0 && !profile.canDeleteOrders) {
         return res.status(403).json({ success: false, error: 'Twoje konto nie ma uprawnień do usuwania zleceń.' });
       }
-      const bases = new Map<string, any>((Array.isArray(baseOrders) ? baseOrders : []).filter((entry: any) => entry && typeof entry.id === 'string').map((entry: any) => [String(entry.id), entry]));
+      const bases = new Map<string, any>((Array.isArray(baseOrders) ? baseOrders : []).filter((entry: any) => entry && typeof entry.id === 'string').map((entry: any) => [String(entry.id), entry] as [string, any]));
       const mergedIncoming: any[] = [];
       for (const incoming of orders) {
         if (!incoming || typeof incoming.id !== 'string') {
