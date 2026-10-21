@@ -97,7 +97,7 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
     if (initialData?.typObudowy && String(initialData.typObudowy).includes(' ')) {
       return String(initialData.typObudowy);
     }
-    return initialType === 'NZ' ? 'NZ 210/290' : 'BEK 250/350';
+    return '';
   });
 
   const [isCustomMode, setIsCustomMode] = useState<boolean>(() => {
@@ -106,19 +106,17 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
 
   // Custom dimensions state
   const [customName, setCustomName] = useState<string>(() => initialData?.isCustomSize ? (initialData?.rozmiar || '') : '');
-  const initialVariant = getObudowaVariantsForType(initialType).find((v) => v.name === (initialData?.rozmiar || (initialType === 'NZ' ? 'NZ 210/290' : 'BEK 250/350')));
+  const initialVariant = getObudowaVariantsForType(initialType).find((v) => v.name === initialData?.rozmiar);
   const [customWidth, setCustomWidth] = useState<string>(
-    initialData?.szerokosc !== undefined ? String(initialData.szerokosc) : String(initialVariant?.width ?? (initialType === 'NZ' ? 2.1 : 2.5))
+    initialData?.szerokosc !== undefined ? String(initialData.szerokosc) : String(initialVariant?.width ?? '')
   );
   const [customDepth, setCustomDepth] = useState<string>(
-    initialData?.glebokosc !== undefined ? String(initialData.glebokosc) : String(initialVariant?.depth ?? (initialType === 'NZ' ? 2.9 : 3.5))
+    initialData?.glebokosc !== undefined ? String(initialData.glebokosc) : String(initialVariant?.depth ?? '')
   );
   const [customHeight, setCustomHeight] = useState<string>(
     initialData?.wysokosc !== undefined
       ? String(initialData.wysokosc)
-      : initialType === 'NZ'
-      ? '2.66'
-      : '2.40'
+       : ''
   );
 
   // 3. Data gotowości
@@ -174,10 +172,10 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
       } else if (orderPlannedDate && !dataGotowosci) {
         setDataGotowosci(orderPlannedDate);
       }
-      const typeDefaultVariant = getObudowaVariantsForType(type).find((v) => v.name === (initialData.rozmiar || (type === 'NZ' ? 'NZ 210/290' : 'BEK 250/350')));
-      setCustomWidth(String(initialData.szerokosc ?? typeDefaultVariant?.width ?? (type === 'NZ' ? 2.1 : 2.5)));
-      setCustomDepth(String(initialData.glebokosc ?? typeDefaultVariant?.depth ?? (type === 'NZ' ? 2.9 : 3.5)));
-      setCustomHeight(String(initialData.wysokosc ?? (type === 'NZ' ? 2.66 : 2.4)));
+      const typeDefaultVariant = getObudowaVariantsForType(type).find((v) => v.name === initialData.rozmiar);
+      setCustomWidth(String(initialData.szerokosc ?? typeDefaultVariant?.width ?? ''));
+      setCustomDepth(String(initialData.glebokosc ?? typeDefaultVariant?.depth ?? ''));
+      setCustomHeight(String(initialData.wysokosc ?? typeDefaultVariant?.height ?? ''));
     }
   }, [initialData, orderPlannedDate]);
 
