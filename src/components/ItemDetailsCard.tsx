@@ -686,9 +686,66 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
           { key: 'rodzajGlowic', label: 'Rodzaj głowic kablowych' },
           { key: 'iloscGlowic', label: 'Liczba głowic kablowych' },
         ],
+        RYS_AKCEPTACJA: [
+          { key: 'dataWyslania', label: 'Data wysłania rysunków' },
+          { key: 'dataAkceptacji', label: 'Data akceptacji rysunków' },
+        ],
         KOLORY: [
           { key: 'kolorObudowy', label: 'Kolor obudowy' },
           { key: 'kolorDrzwi', label: 'Kolor drzwi' },
+        ],
+        OPISY: [
+          { key: 'wymaganeOpisy', label: 'Wymagane opisy' },
+          { key: 'sposobWykonania', label: 'Sposób wykonania opisów' },
+        ],
+        DRZWI: [
+          { key: 'ilosc', label: 'Liczba drzwi' },
+          { key: 'typ', label: 'Typ drzwi' },
+          { key: 'lokalizacja', label: 'Lokalizacja drzwi' },
+        ],
+        ZAP_SERWISPOL: [
+          { key: 'dataZapytania', label: 'Data zapytania SERWISPOL' },
+          { key: 'zakresUslugi', label: 'Zakres usługi SERWISPOL' },
+        ],
+        ZAP_JK: [
+          { key: 'dataZapytania', label: 'Data zapytania JK' },
+          { key: 'zakresUslugi', label: 'Zakres usługi JK' },
+        ],
+        ZAM_SERWISPOL: [
+          { key: 'dataZamowienia', label: 'Data zamówienia SERWISPOL' },
+          { key: 'zakresUslugi', label: 'Zakres zamówionej usługi SERWISPOL' },
+          { key: 'uzgodnionyTermin', label: 'Uzgodniony termin SERWISPOL' },
+        ],
+        ZAM_JK: [
+          { key: 'dataZamowienia', label: 'Data zamówienia JK' },
+          { key: 'zakresUslugi', label: 'Zakres zamówionej usługi JK' },
+          { key: 'uzgodnionyTermin', label: 'Uzgodniony termin JK' },
+        ],
+        ZLECENIE_MONTAZU: [
+          { key: 'zakresMontazu', label: 'Zakres montażu' },
+          { key: 'dataZlecenia', label: 'Data zlecenia montażu' },
+        ],
+        SZAFKA_TELEMECHANIKI: [
+          { key: 'typ', label: 'Typ szafki telemechaniki' },
+          { key: 'wyposazenie', label: 'Wyposażenie szafki telemechaniki' },
+          { key: 'typSterownika', label: 'Typ sterownika' },
+        ],
+        TABLICA_POMIAROWA: [
+          { key: 'kategoria', label: 'Kategoria tablicy pomiarowej' },
+        ],
+        RPW: [
+          { key: 'kategoria', label: 'Kategoria RPW' },
+        ],
+        TRANSFORMATOR_POTRZEB_WLASNYCH: [
+          { key: 'va', label: 'Moc transformatora potrzeb własnych (VA)' },
+        ],
+        WSKAZNIKI_ZWARC: [
+          { key: 'typ', label: 'Typ wskaźników zwarć' },
+          { key: 'ilosc', label: 'Liczba wskaźników zwarć' },
+        ],
+        POWYKONAWCZA: [
+          { key: 'statusDokumentacji', label: 'Status dokumentacji powykonawczej' },
+          { key: 'dataZakonczenia', label: 'Data gotowości dokumentacji powykonawczej' },
         ],
         OBUDOWA: [
           { key: 'typObudowy', label: 'Typ obudowy (BEK/NZ)' },
@@ -696,6 +753,15 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
           { key: 'szerokosc', label: 'Szerokość obudowy' },
           { key: 'glebokosc', label: 'Głębokość obudowy' },
           { key: 'wysokosc', label: 'Wysokość obudowy' },
+        ],
+        DATA_WYJAZDU: [
+          { key: 'dataTransportu', label: 'Data transportu / załadunku' },
+          { key: 'przewoznik', label: 'Przewoźnik' },
+          { key: 'adresDostawy', label: 'Adres dostawy' },
+        ],
+        DODATKOWE: [
+          { key: 'opis', label: 'Opis dodatkowego elementu' },
+          { key: 'specyfikacja', label: 'Specyfikacja dodatkowego elementu' },
         ],
       };
       const required = requiredByType[item.type] || [];
