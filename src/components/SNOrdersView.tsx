@@ -81,6 +81,8 @@ const makeId = () => `sn_${Date.now()}_${Math.random().toString(36).slice(2, 8)}
 
 export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNavigateToOrder }) => {
   const [records, setRecords] = useState<SNRecord[]>([]);
+  // Last server-confirmed version: send only changed rows to avoid overwriting edits from other users.
+  const [serverSnapshot, setServerSnapshot] = useState<SNRecord[]>([]);
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
   const [selectedType, setSelectedType] = useState<SNType>('SIEMENS');
   const [selectedCategory, setSelectedCategory] = useState<SNCategory>('DELIVERED');
@@ -106,6 +108,7 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
       const data = await response.json();
       if (!data.success || !Array.isArray(data.records)) throw new Error(data.error || 'Nieprawidłowe dane zestawienia SN.');
       setRecords(data.records);
+      setServerSnapshot(data.records);
       setDeletedIds([]);
       setNotice('');
     } catch (err) {
@@ -179,12 +182,13 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
   };
 
   const patchRecord = (id: string, patch: Partial<SNRecord>) => {
+    if (saving) return;
     setRecords(current => current.map(record => record.id === id ? { ...record, ...patch } : record));
     setNotice('');
   };
 
   const addRecord = () => {
-    if (!canEdit) return;
+    if (!canEdit || saving) return;
     const record: SNRecord = {
       id: makeId(), type: selectedType, category: selectedCategory, rodzaj: '', ilosc: 1,
       terminDostawy: '',
@@ -195,7 +199,7 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
   };
 
   const duplicateRecord = (id: string) => {
-    if (!canEdit) return;
+    if (!canEdit || saving) return;
     const source = records.find(record => record.id === id);
     if (!source) return;
     const copy: SNRecord = { ...source, id: makeId() };
@@ -208,7 +212,7 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
   };
 
   const removeRecord = (id: string) => {
-    if (!canEdit) return;
+    if (!canEdit || saving) return;
     setRecords(current => current.filter(record => record.id !== id));
     setDeletedIds(current => current.includes(id) ? current : [...current, id]);
     setNotice('');
@@ -219,15 +223,20 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
     setError('');
     setNotice('');
     try {
+      const changedRecords = records.filter(record => {
+        const previous = serverSnapshot.find(saved => saved.id === record.id);
+        return !previous || JSON.stringify(previous) !== JSON.stringify(record);
+      });
       const response = await fetch('/api/sn-switchgear', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ records, deletedIds }),
+        body: JSON.stringify({ records: changedRecords, deletedIds }),
       });
       if (!response.ok) throw new Error('Nie udało się zapisać zestawienia SN.');
       const data = await response.json();
       if (!data.success || !Array.isArray(data.records)) throw new Error(data.error || 'Błąd zapisu zestawienia SN.');
       setRecords(data.records);
+      setServerSnapshot(data.records);
       setDeletedIds([]);
       setNotice('Zestawienie rozdzielnic SN zapisano na serwerze.');
     } catch (err) {
@@ -318,7 +327,7 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
     {error && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
     {notice && <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{notice}</div>}
 
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+    <div className={`overflow-hidden rounded-xl border border-slate-200 bg-white ${saving ? 'pointer-events-none opacity-70' : ''}`}>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
         <div><h2 className="text-sm font-bold text-slate-900">{TYPES.find(type => type.key === selectedType)?.label} · {CATEGORIES.find(category => category.key === selectedCategory)?.label}</h2><p className="mt-0.5 text-xs text-slate-500">Pozycje: {visibleRecords.length}. Zmiany należy zapisać przyciskiem „Zapisz zestawienie”.</p></div>
         {canEdit && <button type="button" onClick={addRecord} className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100"><Plus className="h-3.5 w-3.5" /> Dodaj pozycję</button>}
