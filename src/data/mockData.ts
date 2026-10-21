@@ -184,9 +184,9 @@ export function createDefaultItemsForOrder(orderId: string, stationSize = ''): O
         break;
       case 'OBUDOWA': {
         const enclosureType = stationType || '';
-        const defaultVariant = getAllObudowaVariants().find((variant) =>
+        const defaultVariant = enclosureType ? getAllObudowaVariants().find((variant) =>
           variant.type === enclosureType && variant.name === (enclosureType === 'NZ' ? 'NZ 210/290' : 'BEK 250/350')
-        );
+        ) : undefined;
         const hasParsedCustomSize = Boolean(stationMatch && !matchedVariant);
         details = {
           typObudowy: enclosureType,
