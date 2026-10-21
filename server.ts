@@ -253,6 +253,71 @@ async function startServer() {
     });
   });
 
+  // SN switchgear catalog shared by all users and persisted on the server.
+  const SN_CATALOG_FILE = path.join(DATA_DIR, 'sn_catalog.json');
+  const DEFAULT_SN_CATALOG = {
+    producers: [
+      { name: 'Schneider Electric', models: ['AirSeT'] },
+      { name: 'EATON', models: ['Xiria'] },
+      { name: 'Siemens', models: ['8DJH 24 Blue GIS'] },
+    ],
+  };
+
+  app.get('/api/sn-catalog', (_req, res) => {
+    try {
+      if (!fs.existsSync(SN_CATALOG_FILE)) {
+        return res.json({ success: true, catalog: DEFAULT_SN_CATALOG });
+      }
+      const catalog = JSON.parse(fs.readFileSync(SN_CATALOG_FILE, 'utf-8'));
+      if (!catalog || !Array.isArray(catalog.producers)) {
+        return res.status(500).json({ success: false, error: 'Nieprawidłowy katalog rozdzielnic SN' });
+      }
+      return res.json({ success: true, catalog });
+    } catch (err) {
+      console.error('Error reading SN catalog:', err);
+      return res.status(500).json({ success: false, error: 'Błąd odczytu katalogu rozdzielnic SN' });
+    }
+  });
+
+  app.post('/api/sn-catalog', (req, res) => {
+    try {
+      const catalog = req.body?.catalog;
+      if (!catalog || !Array.isArray(catalog.producers)) {
+        return res.status(400).json({ success: false, error: 'Nieprawidłowy format katalogu rozdzielnic SN' });
+      }
+
+      const seenProducers = new Set<string>();
+      const normalized = {
+        producers: catalog.producers.map((producer: any) => {
+          const name = String(producer?.name || '').trim();
+          if (!name || name.length > 100) throw new Error('Nazwa producenta musi mieć od 1 do 100 znaków.');
+          const producerKey = name.toLocaleLowerCase('pl-PL');
+          if (seenProducers.has(producerKey)) throw new Error(`Producent "${name}" występuje więcej niż raz.`);
+          seenProducers.add(producerKey);
+
+          if (!Array.isArray(producer.models)) throw new Error(`Nieprawidłowa lista modeli producenta "${name}".`);
+          const seenModels = new Set<string>();
+          const models = producer.models.map((rawModel: any) => {
+            const model = String(rawModel || '').trim();
+            if (!model || model.length > 120) throw new Error('Nazwa modelu musi mieć od 1 do 120 znaków.');
+            const modelKey = model.toLocaleLowerCase('pl-PL');
+            if (seenModels.has(modelKey)) throw new Error(`Model "${model}" powtarza się u producenta "${name}".`);
+            seenModels.add(modelKey);
+            return model;
+          });
+          return { name, models };
+        }),
+      };
+
+      fs.writeFileSync(SN_CATALOG_FILE, JSON.stringify(normalized, null, 2), 'utf-8');
+      return res.json({ success: true, catalog: normalized, timestamp: Date.now() });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Błąd zapisu katalogu rozdzielnic SN';
+      console.error('Error writing SN catalog:', err);
+      return res.status(400).json({ success: false, error: message });
+    }
+  });
+
   // 2. Orders API
   app.get('/api/orders', (req, res) => {
     try {
