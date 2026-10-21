@@ -92,6 +92,10 @@ interface AppWorkspaceProps {
 
 function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspaceProps) {
   // Zachowaj stan paska menu między odświeżeniami strony w tej przeglądarce.
+  const [orderTasksPanelOpen, setOrderTasksPanelOpen] = useState<boolean>(() => {
+    try { return window.localStorage.getItem('enco-flow-order-tasks-panel') !== 'collapsed'; }
+    catch { return true; }
+  });
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
     try {
       return window.localStorage.getItem('enco_sidebar_open') === 'true';
@@ -626,7 +630,7 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
 
       {/* Main Viewport */}
       <main className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 transition-[padding] duration-200 ${sidebarOpen ? 'lg:pl-[clamp(236px,calc(16vw+16px),296px)]' : ''} ${
-        selectedOrder ? 'max-w-full lg:pr-3' : activeModule === 'doors' ? 'max-w-full 2xl:max-w-[1800px]' : 'max-w-[1800px]'
+        selectedOrder ? (orderTasksPanelOpen ? 'max-w-full lg:pr-[363px]' : 'max-w-full lg:pr-3') : activeModule === 'doors' ? 'max-w-full 2xl:max-w-[1800px]' : 'max-w-[1800px]'
       }`}>
         {activeModule === 'actions' ? (
           <ActionDashboardErrorBoundary onGoToOrders={() => navigate('/zlecenia')}>
@@ -697,6 +701,7 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
               setIsDoorOrderModalOpen(true);
             }}
             currentProfile={currentProfile}
+            onOrderTasksPanelOpenChange={setOrderTasksPanelOpen}
           />
         ) : archiveActive ? (
           <section className="space-y-4">
