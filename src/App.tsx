@@ -629,7 +629,7 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
         }}
         problemCount={problemOrdersCount}
         activeModule={activeModule}
-        onSelectModule={(mod) => navigate(mod === 'actions' ? '/dzialania' : mod === 'doors' ? '/drzwi' : mod === 'sn' ? '/rozdzielnice-sn' : mod === 'calendar' ? '/kalendarz' : '/zlecenia')}
+        onSelectModule={(mod) => navigate(mod === 'dashboard' ? '/dashboard' : mod === 'actions' ? '/dzialania' : mod === 'doors' ? '/drzwi' : mod === 'sn' ? '/rozdzielnice-sn' : mod === 'calendar' ? '/kalendarz' : '/zlecenia')}
         doorOrdersCount={doorOrders.length}
         doorOverdueCount={doorOverdueCount}
         currentProfile={currentProfile}
