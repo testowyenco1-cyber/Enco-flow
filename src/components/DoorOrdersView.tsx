@@ -696,22 +696,17 @@ export const DoorOrdersView: React.FC<DoorOrdersViewProps> = ({
                       <td className={`min-w-0 border-r border-slate-100 px-1.5 py-2 font-mono ${isDelivered ? 'text-blue-800 font-semibold' : 'text-slate-600'}`}>
                         <div className="flex min-w-0 flex-col items-start gap-1.5">
                           {canManageDoors ? <input aria-label="Termin dostawy" type="date" className={cellInput} value={row.terminDostawy || ''} onChange={(e) => patch('terminDostawy', e.target.value)} /> : doorOrd.terminDostawy ? formatDatePL(doorOrd.terminDostawy) : '—'}
-                          {isDelivered ? (
-                            <>
-                              <span className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-100 px-2 py-1 text-[10px] font-bold text-blue-800"><CheckCircle2 className="h-3 w-3" /> Dostawa potwierdzona</span>
-                              {canManageDoors && (
-                                <button
-                                  type="button"
-                                  onClick={() => patch('terminDostawy', '')}
-                                  title="Cofnij przypadkowe potwierdzenie dostawy; następnie kliknij „Zapisz zmiany”"
-                                  className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-white px-2 py-1 text-[10px] font-bold text-rose-700 shadow-xs transition-colors hover:border-rose-400 hover:bg-rose-50"
-                                >
-                                  Cofnij dostawę
-                                </button>
-                              )}
-                            </>
-                          ) : canManageDoors ? (
-                            <button type="button" onClick={() => onQuickConfirmDelivery(doorOrd)} title="Oznacz zamówienie jako dostarczone i potwierdź dostawę" className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-white px-2 py-1 text-[10px] font-bold text-blue-700 shadow-xs transition-colors hover:border-blue-400 hover:bg-blue-600 hover:text-white"><CheckSquare className="h-3 w-3" /> Oznacz jako dostarczone</button>
+                          {canManageDoors ? (
+                            <button
+                              type="button"
+                              onClick={() => isDelivered ? patch('terminDostawy', '') : onQuickConfirmDelivery(doorOrd)}
+                              title={isDelivered ? "Cofnij potwierdzenie dostawy; następnie kliknij „Zapisz zmiany”" : "Oznacz zamówienie jako dostarczone i potwierdź dostawę"}
+                              className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-bold shadow-xs transition-colors ${isDelivered ? 'border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-400 hover:bg-rose-100' : 'border-blue-200 bg-white text-blue-700 hover:border-blue-400 hover:bg-blue-600 hover:text-white'}`}
+                            >
+                              {isDelivered ? <><CheckCircle2 className="h-3 w-3" /> Dostarczono — cofnij</> : <><CheckSquare className="h-3 w-3" /> Oznacz jako dostarczone</>}
+                            </button>
+                          ) : isDelivered ? (
+                            <span className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-100 px-2 py-1 text-[10px] font-bold text-blue-800"><CheckCircle2 className="h-3 w-3" /> Dostawa potwierdzona</span>
                           ) : null}
                         </div>
                       </td>
