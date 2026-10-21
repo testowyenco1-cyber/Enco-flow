@@ -765,22 +765,60 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         ],
       };
       const required = requiredByType[item.type] || [];
+      const valueForKey = (key: string): any => {
+        switch (key) {
+          case 'liczbaPol': return d.liczbaPol ?? d.iloscPol ?? '';
+          case 'iloscPol': return d.iloscPol ?? d.liczbaPol ?? '';
+          case 'model': return d.model || d.typRozdzielnicy || '';
+          case 'typRozdzielnicy':
+            return item.type === 'ROZDZIELNICA_NN'
+              ? (d.typRozdzielnicy || d.typ || '')
+              : (d.typRozdzielnicy || '');
+          default: return d[key];
+        }
+      };
       const missing = required.filter(({ key }) => {
-        const value = key === 'liczbaPol' ? (d.liczbaPol || d.iloscPol || '') : d[key] ?? (key === 'model' && d.typRozdzielnicy ? d.typRozdzielnicy : '');
-        return typeof value === 'string' ? value.trim() === '' : value === null || value === undefined;
+        const value = valueForKey(key);
+        return typeof value === 'string'
+          ? value.trim() === ''
+          : value === null || value === undefined;
       });
       if (missing.length > 0) {
         window.alert(
-          `Nie można potwierdzić gotowości elementu „${item.name}”. Uzupełnij wymagane pola:\\n\\n• ${missing.map(({ label }) => label).join('\\n• ')}`
+          `Nie można potwierdzić gotowości elementu „${item.name}”. Uzupełnij wymagane pola:\n\n• ${missing.map(({ label }) => label).join('\n• ')}`
+        );
+        return;
+      }
+
+      const positiveNumberFields: Record<string, { key: string; label: string }[]> = {
+        ROZDZIELNICA_SN: [{ key: 'liczbaPol', label: 'Liczba pól rozdzielnicy SN' }],
+        ROZDZIELNICA_NN: [{ key: 'iloscPol', label: 'Liczba pól rozdzielnicy NN' }],
+        MOST: [
+          { key: 'dlugosc', label: 'Długość mostu kablowego' },
+          { key: 'iloscGlowic', label: 'Liczba głowic kablowych' },
+        ],
+        DRZWI: [{ key: 'ilosc', label: 'Liczba drzwi' }],
+        WSKAZNIKI_ZWARC: [{ key: 'ilosc', label: 'Liczba wskaźników zwarć' }],
+        TRANSFORMATOR_POTRZEB_WLASNYCH: [{ key: 'va', label: 'Moc transformatora potrzeb własnych (VA)' }],
+        OBUDOWA: [
+          { key: 'szerokosc', label: 'Szerokość obudowy' },
+          { key: 'glebokosc', label: 'Głębokość obudowy' },
+          { key: 'wysokosc', label: 'Wysokość obudowy' },
+        ],
+      };
+      const invalidNumbers = (positiveNumberFields[item.type] || []).filter(({ key }) => {
+        const value = valueForKey(key);
+        const number = typeof value === 'number' ? value : Number(String(value).replace(',', '.'));
+        const mustBeInteger = ['liczbaPol', 'iloscPol', 'iloscGlowic', 'ilosc'].includes(key);
+        return !Number.isFinite(number) || number <= 0 || (mustBeInteger && !Number.isInteger(number));
+      });
+      if (invalidNumbers.length > 0) {
+        window.alert(
+          `Nie można potwierdzić gotowości elementu „${item.name}”. Sprawdź poprawność pól liczbowych:\n\n• ${invalidNumbers.map(({ label }) => label).join('\n• ')}`
         );
         return;
       }
       if (item.type === 'ROZDZIELNICA_SN') {
-        const count = Number(d.liczbaPol ?? d.iloscPol);
-        if (!Number.isInteger(count) || count < 1) {
-          window.alert('Nie można potwierdzić gotowości: liczba pól rozdzielnicy SN musi być liczbą całkowitą większą od zera.');
-          return;
-        }
         const combo = validateSNCombination(d.producent || '', d.model || d.typRozdzielnicy || '', snCatalog.modelsByProducer);
         if (!combo.isValid) {
           window.alert(combo.error || 'Wybierz poprawnego producenta i model rozdzielnicy SN.');
