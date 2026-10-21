@@ -27,6 +27,7 @@ import {
 } from './services/storageService';
 import { Header } from './components/Header';
 import { DashboardView } from './components/DashboardView';
+import { DashboardModuleView } from './components/DashboardModuleView';
 import { ActionDashboardView } from './components/ActionDashboardView';
 import { OrderDetailView } from './components/OrderDetailView';
 import { DoorOrdersView } from './components/DoorOrdersView';
@@ -112,8 +113,9 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
   }, [sidebarOpen]);
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
   const [archiveSearch, setArchiveSearch] = useState('');
-  const [activeModule, setActiveModule] = useState<'orders' | 'doors' | 'sn' | 'calendar' | 'actions'>(() => {
+  const [activeModule, setActiveModule] = useState<'orders' | 'doors' | 'sn' | 'calendar' | 'actions' | 'dashboard'>(() => {
     const path = window.location.pathname;
+    if (path === '/dashboard') return 'dashboard';
     if (path === '/dzialania') return 'actions';
     if (path === '/kalendarz') return 'calendar';
     if (path === '/rozdzielnice-sn') return 'sn';
@@ -138,7 +140,12 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
   const navigate = (path: string) => {
     if (window.location.pathname !== path) window.history.pushState({}, '', path);
     setCurrentPath(path);
-    if (path === '/dzialania') {
+    if (path === '/dashboard') {
+      setActiveModule('dashboard');
+      setSelectedOrderId(null);
+      sessionStorage.setItem('enco_active_module', 'dashboard');
+      sessionStorage.removeItem('enco_selected_order_id');
+    } else if (path === '/dzialania') {
       setActiveModule('actions');
       setSelectedOrderId(null);
       sessionStorage.setItem('enco_active_module', 'actions');
@@ -173,7 +180,10 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
     const handlePopState = () => {
       const path = window.location.pathname;
       setCurrentPath(path);
-      if (path === '/dzialania') {
+      if (path === '/dashboard') {
+        setActiveModule('dashboard');
+        setSelectedOrderId(null);
+      } else if (path === '/dzialania') {
         setActiveModule('actions');
         setSelectedOrderId(null);
       } else if (path === '/kalendarz') {
@@ -632,7 +642,9 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
       <main className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 transition-[padding] duration-200 ${sidebarOpen ? 'lg:pl-[clamp(236px,calc(16vw+16px),296px)]' : ''} ${
         selectedOrder ? (orderTasksPanelOpen ? 'max-w-full lg:pr-[363px]' : 'max-w-full lg:pr-3') : activeModule === 'doors' ? 'max-w-full 2xl:max-w-[1800px]' : 'max-w-[1800px]'
       }`}>
-        {activeModule === 'actions' ? (
+        {activeModule === 'dashboard' ? (
+          <DashboardModuleView orders={activeOrders} onSelectOrder={handleSelectOrder} />
+        ) : activeModule === 'actions' ? (
           <ActionDashboardErrorBoundary onGoToOrders={() => navigate('/zlecenia')}>
             <ActionDashboardView
               orders={activeOrders}
