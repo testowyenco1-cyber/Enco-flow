@@ -93,8 +93,17 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
     let cancelled = false;
     fetch('/api/sn-catalog')
       .then(async (response) => {
-        if (!response.ok) throw new Error('Nie udało się pobrać słownika SN.');
-        return response.json();
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          const body = await response.text();
+          if (body.trimStart().toLowerCase().startsWith('<!doctype') || body.trimStart().startsWith('<html')) {
+            throw new Error('Endpoint /api/sn-catalog zwrócił stronę HTML zamiast JSON. Zatrzymaj serwer i uruchom ponownie aktualną wersję ENCO FLOW poleceniem: npm run dev.');
+          }
+          throw new Error('Endpoint /api/sn-catalog nie zwrócił danych JSON.');
+        }
+        const data = await response.json();
+        if (!response.ok) throw new Error(data?.error || 'Nie udało się pobrać słownika SN.');
+        return data;
       })
       .then((data) => {
         if (!cancelled && data?.success && Array.isArray(data.producers) && data.modelsByProducer) {
@@ -146,6 +155,14 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        const body = await response.text();
+        if (body.trimStart().toLowerCase().startsWith('<!doctype') || body.trimStart().startsWith('<html')) {
+          throw new Error('Endpoint /api/sn-catalog zwrócił stronę HTML zamiast JSON. Sprawdź, czy uruchomiony jest aktualny serwer ENCO FLOW (npm run dev).');
+        }
+        throw new Error('Endpoint /api/sn-catalog nie zwrócił danych JSON.');
+      }
       const data = await response.json();
       if (!response.ok || !data?.success) throw new Error(data?.error || 'Nie udało się zapisać słownika SN.');
       setSnCatalog({ producers: data.producers || [], modelsByProducer: data.modelsByProducer || {} });
