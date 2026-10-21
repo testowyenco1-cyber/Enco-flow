@@ -272,8 +272,8 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
           : typVal;
         entries.push({ label: 'Typ rozdzielnicy', value: typFormatted });
 
-        const polVal = d.iloscPol || d.liczbaPol || '8';
-        entries.push({ label: 'Ilość pól', value: `${polVal} pól (odpływów)` });
+        const polVal = d.iloscPol ?? d.liczbaPol ?? '';
+        if (polVal !== '') entries.push({ label: 'Ilość pól', value: `${polVal} pól (odpływów)` });
 
         const zlecData = d.dataWystawieniaZlecenia || d.dataZlecenia;
         if (zlecData) {
@@ -345,7 +345,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
       case 'ZAP_SERWISPOL':
       case 'ZAP_JK':
         if (d.dataZapytania) entries.push({ label: 'Data zapytania', value: d.dataZapytania });
-        entries.push({ label: 'Zakres usługi', value: d.zakresUslugi || 'montaż Stacji/Złącza' });
+        if (d.zakresUslugi) entries.push({ label: 'Zakres usługi', value: d.zakresUslugi });
         if (d.informacjeOWycenie) entries.push({ label: 'Informacje o wycenie', value: d.informacjeOWycenie });
         break;
 
