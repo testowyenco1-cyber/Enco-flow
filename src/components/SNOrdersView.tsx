@@ -12,6 +12,7 @@ interface SNRecord {
   rodzaj: string;
   ilosc: number;
   terminDostawy: string;
+  dostarczono?: boolean;
   nrZamowienia: string;
   projekt: string;
   linkedOrderId?: string;
@@ -355,9 +356,18 @@ export const SNOrdersView: React.FC<Props> = ({ orders, currentProfile, onNaviga
                 <td className="min-w-0 px-2 py-1"><input aria-label="Ilość" type="number" min="0" disabled={!canEdit} value={record.ilosc} onChange={event => patchRecord(record.id,{ilosc:Math.max(0,Number(event.target.value)||0)})} className={`${inputClass} min-w-0`}/></td>
                 <td className="min-w-0 px-2 py-2">
                   <div className="flex min-w-0 flex-col gap-1.5">
-                    <input aria-label="Termin dostawy" type="date" disabled={!canEdit || record.terminDostawy.trim().toLocaleLowerCase('pl') === 'dostarczono'} value={/^\d{4}-\d{2}-\d{2}$/.test(record.terminDostawy) ? record.terminDostawy : ''} onChange={event => patchRecord(record.id,{terminDostawy:event.target.value})} className={`${inputClass} min-w-0`}/>
+                    <input aria-label="Termin dostawy" type="date" disabled={!canEdit} value={/^\d{4}-\d{2}-\d{2}$/.test(record.terminDostawy) ? record.terminDostawy : ''} onChange={event => patchRecord(record.id,{terminDostawy:event.target.value})} className={`${inputClass} min-w-0`}/>
                     <label className="flex items-center gap-1 text-[10px] text-slate-600">
-                      <input aria-label="Dostarczono" type="checkbox" disabled={!canEdit} checked={record.terminDostawy.trim().toLocaleLowerCase('pl') === 'dostarczono'} onChange={event => patchRecord(record.id,{terminDostawy:event.target.checked ? 'dostarczono' : ''})} className="h-3 w-3 rounded border-slate-300"/>
+                      <input aria-label="Dostarczono" type="checkbox" disabled={!canEdit} checked={record.dostarczono === true || record.terminDostawy.trim().toLocaleLowerCase('pl') === 'dostarczono'} onChange={event => {
+                        if (event.target.checked) {
+                          const today = new Date();
+                          const todayLocal = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                          const currentDate = /^\d{4}-\d{2}-\d{2}$/.test(record.terminDostawy) ? record.terminDostawy : todayLocal;
+                          patchRecord(record.id, { terminDostawy: currentDate, dostarczono: true });
+                        } else {
+                          patchRecord(record.id, { dostarczono: false, terminDostawy: /^\d{4}-\d{2}-\d{2}$/.test(record.terminDostawy) ? record.terminDostawy : '' });
+                        }
+                      }} className="h-3 w-3 rounded border-slate-300"/>
                       Dostarczono
                     </label>
                   </div>
