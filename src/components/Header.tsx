@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, RefreshCw, Zap, Layers, AlertTriangle, Lock, CircuitBoard, Menu, X, ChevronDown, Archive, ShieldCheck, Download, Save, LoaderCircle, CheckCircle2, CalendarDays, UsersRound, ListTodo, Database } from 'lucide-react';
+import { Plus, RefreshCw, Zap, Layers, AlertTriangle, Lock, CircuitBoard, Menu, X, ChevronDown, Archive, ShieldCheck, Download, Save, LoaderCircle, CheckCircle2, CalendarDays, UsersRound, ListTodo, Database, LayoutDashboard } from 'lucide-react';
 import type { UserRoleProfile } from '../types/userRole';
 import type { AuthUser } from '../types/auth';
 import { UserRoleSelector } from './UserRoleSelector';
@@ -20,7 +20,7 @@ interface HeaderProps {
   activeTab?: string;
   onSelectTab?: (tab: string) => void;
   problemCount?: number;
-  activeModule?: 'orders' | 'doors' | 'sn' | 'calendar' | 'actions';
+  activeModule?: 'orders' | 'doors' | 'sn' | 'calendar' | 'actions' | 'dashboard';
   onSelectModule?: (module: 'orders' | 'doors' | 'sn' | 'calendar' | 'actions') => void;
   doorOrdersCount?: number;
   doorOverdueCount?: number;
@@ -31,6 +31,7 @@ interface HeaderProps {
 }
 
 const modules = [
+  { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
   { id: 'orders', label: 'Zlecenia stacji', Icon: Zap },
   { id: 'actions', label: 'Plan działań', Icon: ListTodo },
   { id: 'doors', label: 'Moduł Drzwi', Icon: Layers },
@@ -56,7 +57,7 @@ export const Header: React.FC<HeaderProps> = ({
   const selectedModule = modules.find((module) => module.id === activeModule) ?? modules[0];
   const SelectedIcon = archiveActive ? Archive : selectedModule.Icon;
 
-  const navigateModule = (id: 'orders' | 'doors' | 'sn' | 'calendar' | 'actions') => {
+  const navigateModule = (id: 'orders' | 'doors' | 'sn' | 'calendar' | 'actions' | 'dashboard') => {
     onSelectModule?.(id);
     
   };
