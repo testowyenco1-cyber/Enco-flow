@@ -62,6 +62,11 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
 }) => {
   const profile = currentProfile || USER_PROFILES.admin;
   const [itemsFilter, setItemsFilter] = useState<'all' | 'my_scope'>('all');
+  const [showHiddenItems, setShowHiddenItems] = useState(false);
+  const hiddenMainPositionTypes = ['OBUDOWA', 'ROZDZIELNICA_SN', 'ROZDZIELNICA_NN', 'KOLORY', 'ZAM_SERWISPOL'];
+  const isHiddenMainPosition = (item: OrderItem) => item.status === 'NOT_APPLICABLE' && hiddenMainPositionTypes.includes(item.type);
+  const hiddenItems = order.items.filter(isHiddenMainPosition);
+  const visibleItems = order.items.filter((item) => !isHiddenMainPosition(item));
   const [editingGeneralNotes, setEditingGeneralNotes] = useState(false);
   const [generalNotesInput, setGeneralNotesInput] = useState(order.generalNotes);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
@@ -520,7 +525,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-                  Elementy stacji transformatorowej ({order.items.length})
+                  Elementy stacji transformatorowej ({visibleItems.length})
                 </h2>
                 {!profile.canEditAll && profile.id !== 'ogolny' && (
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded text-white ${profile.badgeBg}`}>
@@ -535,8 +540,13 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
               </p>
             </div>
 
-            {/* Scope filter toggle for specialized roles */}
+            {/* Scope filter toggle and hidden main positions */}
             <div className="flex flex-wrap items-center gap-2">
+              {hiddenItems.length > 0 && (
+                <button type="button" onClick={() => setShowHiddenItems((shown) => !shown)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer" aria-expanded={showHiddenItems}>
+                  {showHiddenItems ? 'Ukryj ukryte' : `Pokaż ukryte (${hiddenItems.length})`}
+                </button>
+              )}
               {!profile.canEditAll && profile.id !== 'ogolny' && (
                 <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
                   <button
@@ -564,6 +574,20 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 </div>
               )}
 
+              {showHiddenItems && hiddenItems.length > 0 && (
+                <div className="mb-4 basis-full rounded-xl border border-amber-200 bg-amber-50/70 p-3">
+                  <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-amber-900">Ukryte pozycje główne</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {hiddenItems.map((item) => (
+                      <div key={item.id} className="flex items-center gap-2 rounded-lg border border-amber-200 bg-white px-3 py-2">
+                        <span className="text-xs font-semibold text-slate-800">{item.name}</span>
+                        <button type="button" onClick={() => handleItemStatusChange(item.id, 'NOT_ORDERED')} className="rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-blue-700 cursor-pointer" title={`Przywróć pozycję ${item.name} do panelu zlecenia`}>Przywróć</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Completeness Pill Stats */}
               <div className="flex flex-wrap items-center gap-1.5 text-xs">
                 <span className="font-bold text-emerald-900 bg-emerald-100 px-2.5 py-1 rounded-md border border-emerald-300 shadow-2xs">
@@ -588,7 +612,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
 
           {/* Elements Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 [&>*]:min-w-0">
-            {order.items
+            {visibleItems
               .filter((it) => {
                 if (itemsFilter === 'my_scope' && !profile.canEditAll) {
                   return canEditItemType(profile, it.type);
@@ -734,7 +758,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
           {/* Quick jump anchor bar */}
           <div className="flex items-center gap-1.5 text-xs text-slate-500 overflow-x-auto py-1">
             <span className="shrink-0 text-slate-400">Skocz do:</span>
-            {order.items.slice(0, 8).map((it) => (
+            {visibleItems.slice(0, 8).map((it) => (
               <button
                 key={it.id}
                 type="button"
@@ -749,7 +773,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
 
         {/* List of full item cards */}
         <div className="space-y-4">
-          {order.items.map((item) => {
+          {visibleItems.map((item) => {
             const isLastSNItem = item.type === 'ROZDZIELNICA_SN' && !order.items.slice(order.items.findIndex((entry) => entry.id === item.id) + 1).some((entry) => entry.type === 'ROZDZIELNICA_SN');
             const isLastNNItem = item.type === 'ROZDZIELNICA_NN' && !order.items.slice(order.items.findIndex((entry) => entry.id === item.id) + 1).some((entry) => entry.type === 'ROZDZIELNICA_NN');
             const itemIndex = order.items.findIndex((entry) => entry.id === item.id);
