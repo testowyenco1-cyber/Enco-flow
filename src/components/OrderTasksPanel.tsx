@@ -3,7 +3,7 @@ import { BellRing, CalendarDays, Check, ChevronRight, ClipboardList, LoaderCircl
 import type { AuthDepartmentId } from '../types/auth';
 import type { EncoTask, EncoTaskStatus, TaskAssigneeUser } from '../types/tasks';
 import type { UserRoleProfile } from '../types/userRole';
-import { createTask, deleteTask, ensureAutoReminder, fetchTaskAssignees, fetchTasks, updateTaskStatus } from '../services/taskService';
+import { createTask, ensureAutoReminder, fetchTaskAssignees, fetchTasks, updateTaskStatus } from '../services/taskService';
 
 interface Props {
   orderId: string;
@@ -128,32 +128,18 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
           : users.find((user) => user.id === userId)?.departments[0],
         assigneeUserId: assigneeType === 'person' ? userId : undefined,
       });
-      const autoTask = tasks.find((item) =>
-        item.orderId === orderId
-        && item.status !== 'done'
-        && item.description.startsWith('Brak zadań przypisanych do zlecenia.')
-      );
-      let autoTaskDeleted = false;
-      if (autoTask) {
-        try {
-          await deleteTask(autoTask.id);
-          autoTaskDeleted = true;
-        } catch {
-          // Ręczne zadanie zostało już zapisane; zgłosimy, jeśli usunięcie kontrolnego się nie powiedzie.
-        }
-      }
+      // Serwer usuwa automatyczne zadanie kontrolne w tej samej operacji, w której zapisuje zwykłe zadanie.
       setTasks((current) => [
         task,
-        ...current.filter((item) => item.id !== task.id && !(autoTaskDeleted && item.id === autoTask?.id)),
+        ...current.filter((item) => item.id !== task.id && !(
+          item.orderId === orderId
+          && item.description.startsWith('Brak zadań przypisanych do zlecenia.')
+        )),
       ]);
       setDescription('');
       setDueDate('');
       setIsFormOpen(false);
-      setNotice(autoTaskDeleted
-        ? 'Zadanie zapisano, a automatyczne zadanie kontrolne zostało trwale usunięte.'
-        : autoTask
-          ? 'Zadanie zapisano, ale nie udało się usunąć zadania kontrolnego. Kliknij „Odśwież” i spróbuj ponownie.'
-          : 'Zadanie zapisano na serwerze.');
+      setNotice('Zadanie zapisano na serwerze. Automatyczne zadanie kontrolne, jeśli istniało, zostało usunięte.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Nie udało się utworzyć zadania.');
     } finally {
