@@ -1548,8 +1548,8 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {([
               ['Data zlecenia / zamówienia', item.orderDate],
-              ['Planowana data gotowości', item.plannedDate],
-              ['Rzeczywista data zakończenia', item.completedDate],
+              [item.type === 'DATA_WYJAZDU' ? 'Planowana data wyjazdu' : 'Planowana data gotowości', item.plannedDate],
+              [item.type === 'DATA_WYJAZDU' ? 'Rzeczywista data wyjazdu' : 'Rzeczywista data zakończenia', item.completedDate],
             ] as const).map(([label, value]) => (
               <div key={label} className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3">
                 <div className="font-semibold text-slate-500">{label}</div>
