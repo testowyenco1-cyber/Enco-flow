@@ -3,7 +3,7 @@ import { BellRing, CalendarDays, Check, ChevronRight, ClipboardList, LoaderCircl
 import type { AuthDepartmentId } from '../types/auth';
 import type { EncoTask, EncoTaskStatus, TaskAssigneeUser } from '../types/tasks';
 import type { UserRoleProfile } from '../types/userRole';
-import { createTask, deleteTask, fetchTaskAssignees, fetchTasks, updateTaskStatus } from '../services/taskService';
+import { createTask, deleteTask, ensureAutoReminder, fetchTaskAssignees, fetchTasks, updateTaskStatus } from '../services/taskService';
 
 interface Props {
   orderId: string;
@@ -82,28 +82,14 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
       setUsers(allUsers);
       if (!userId && allUsers.length) setUserId(allUsers[0].id);
 
-      // Automatyczne zadanie kontrolne tworzymy tylko raz dla zlecenia:
-      // wyłącznie gdy nie ma jeszcze żadnego zadania i nie wszystkie pozycje są gotowe/nieuwzględnione.
-      const hasAnyOrderTask = allTasks.some((task) => task.orderId === orderId);
-      if (hasIncompleteMainItems && !hasAnyOrderTask) {
-        const now = new Date();
-        const today = [
-          now.getFullYear(),
-          String(now.getMonth() + 1).padStart(2, '0'),
-          String(now.getDate()).padStart(2, '0'),
-        ].join('-');
-        const latestEditor = users.find((user) => user.id === currentProfile.id)?.displayName
-          || currentProfile.name
-          || currentProfile.id;
-        const autoTask = await createTask({
-          orderId,
-          description: 'Brak zadań przypisanych do zlecenia. Należy sprawdzić zlecenie i zweryfikować wymagane elementy główne. Osoba, która wprowadziła ostatnią zmianę: ' + latestEditor + '.',
-          dueDate: today,
-          assigneeType: 'department',
-          assigneeDepartment: 'dzial_handlowy',
-        });
+      // Serwer atomowo sprawdza, czy zlecenie wymaga przypomnienia i czy nie istnieje już żadne zadanie.
+      // Dzięki temu równoczesne otwarcie zlecenia przez kilka osób nie tworzy duplikatów.
+      const autoTask = await ensureAutoReminder(orderId, hasIncompleteMainItems);
+      if (autoTask) {
         currentTasks = [autoTask, ...allTasks.filter((task) => task.id !== autoTask.id)];
         setNotice('Automatycznie utworzono zadanie kontrolne dla Działu Handlowego.');
+      } else {
+        currentTasks = allTasks;
       }
       setTasks(currentTasks);
     } catch (err) {
