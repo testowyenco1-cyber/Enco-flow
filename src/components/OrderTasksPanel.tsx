@@ -92,9 +92,12 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
           String(now.getMonth() + 1).padStart(2, '0'),
           String(now.getDate()).padStart(2, '0'),
         ].join('-');
+        const latestEditor = users.find((user) => user.id === currentProfile.id)?.displayName
+          || currentProfile.name
+          || currentProfile.id;
         const autoTask = await createTask({
           orderId,
-          description: 'Brak zadań przypisanych do zlecenia. Należy sprawdzić zlecenie i zweryfikować wymagane elementy główne.',
+          description: 'Brak zadań przypisanych do zlecenia. Należy sprawdzić zlecenie i zweryfikować wymagane elementy główne. Osoba, która wprowadziła ostatnią zmianę: ' + latestEditor + '.',
           dueDate: today,
           assigneeType: 'department',
           assigneeDepartment: 'dzial_handlowy',
