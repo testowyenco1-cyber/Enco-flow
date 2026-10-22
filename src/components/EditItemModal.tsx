@@ -511,7 +511,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Planowany termin zakończenia
+                    {item?.type === 'DATA_WYJAZDU' ? 'Planowana data wyjazdu' : 'Planowany termin zakończenia'}
                   </label>
                   <input
                     type="date"
@@ -520,12 +520,12 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                     className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden font-mono"
                   />
                   <span className="text-[11px] text-slate-400 mt-0.5 block">
-                    Oczekiwana realizacja
+                    {item?.type === 'DATA_WYJAZDU' ? 'Planowany termin wyjazdu' : 'Oczekiwana realizacja'}
                   </span>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Rzeczywista data zakończenia
+                    {item?.type === 'DATA_WYJAZDU' ? 'Rzeczywista data wyjazdu' : 'Rzeczywista data zakończenia'}
                   </label>
                   <input
                     type="date"
@@ -534,7 +534,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                     className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden font-mono"
                   />
                   <span className="text-[11px] text-slate-400 mt-0.5 block">
-                    Faktyczna gotowość
+                    {item?.type === 'DATA_WYJAZDU' ? 'Data faktycznego wyjazdu' : 'Faktyczna gotowość'}
                   </span>
                 </div>
               </div>
