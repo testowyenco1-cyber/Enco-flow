@@ -66,13 +66,6 @@ export async function fetchTaskAssignees(): Promise<TaskAssigneeUser[]> {
   return Array.isArray(result.users) ? result.users : [];
 }
 
-export async function ensureAutoReminder(orderId: string, hasIncompleteMainItems: boolean): Promise<EncoTask | null> {
-  const result = await requestJson<{ task: EncoTask | null }>('/api/tasks/auto-reminder', {
-    method: 'POST',
-    body: JSON.stringify({ orderId, hasIncompleteMainItems }),
-  });
-  return result.task || null;
-}
 
 export async function createTask(input: NewEncoTask): Promise<EncoTask> {
   const result = await requestJson<{ task: EncoTask }>('/api/tasks', {
