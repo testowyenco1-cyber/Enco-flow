@@ -103,7 +103,7 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
     void load();
     // Lista jest pobierana po otwarciu zlecenia; kolejne odświeżenie użytkownik uruchamia ręcznie.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderId]);
+  }, [orderId, hasIncompleteMainItems]);
 
   const orderTasks = useMemo(() => tasks
     .filter((task) => task.orderId === orderId)
