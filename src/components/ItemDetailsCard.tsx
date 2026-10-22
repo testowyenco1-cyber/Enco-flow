@@ -1545,9 +1545,9 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
               {canEdit ? 'Edytuj daty' : 'Podgląd'}
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {([
-              ['Data zlecenia / zamówienia', item.orderDate],
+              ...(item.type === 'DATA_WYJAZDU' ? [] : [['Data zlecenia / zamówienia', item.orderDate] as const]),
               [item.type === 'DATA_WYJAZDU' ? 'Planowana data wyjazdu' : 'Planowana data gotowości', item.plannedDate],
               [item.type === 'DATA_WYJAZDU' ? 'Rzeczywista data wyjazdu' : 'Rzeczywista data zakończenia', item.completedDate],
             ] as const).map(([label, value]) => (
