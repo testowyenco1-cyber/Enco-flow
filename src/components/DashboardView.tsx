@@ -540,43 +540,35 @@ const profile = currentProfile || USER_PROFILES.admin;
                       )}
                     </div>
 
-                    {/* Compact Item Matrix Strip (Poziom 1 Control Center format) with solid vibrant badges */}
-                    <div className="pt-1.5 flex flex-wrap items-center gap-1.5">
-                      {order.items.map((it) => {
-                        const meta = (it.status && STATUS_META[it.status]) || STATUS_META.NOT_ORDERED;
-                        const isProb = it.status === 'PROBLEM';
-                        const isRdy = it.status === 'READY';
-                        const isInProg = it.status === 'IN_PROGRESS';
-                        const isOrd = it.status === 'ORDERED';
+                    {/* Tablica etapów w stylu tablicy przystankowej: ukośne nazwy i jeden rząd znaczników */}
+                    <div className="pt-2 overflow-x-auto">
+                      <div className="flex min-w-max items-end border-b border-slate-200 pb-1">
+                        {order.items.map((it) => {
+                          const meta = (it.status && STATUS_META[it.status]) || STATUS_META.NOT_ORDERED;
+                          const dotColor =
+                            it.status === 'PROBLEM' ? 'bg-rose-600 ring-2 ring-rose-200' :
+                            it.status === 'READY' ? 'bg-emerald-600' :
+                            it.status === 'IN_PROGRESS' ? 'bg-amber-500 ring-2 ring-amber-100' :
+                            it.status === 'ORDERED' ? 'bg-blue-600' :
+                            'bg-slate-300';
 
-                        let badgeStyle = 'bg-slate-100 text-slate-700 border-slate-300 font-bold';
-                        let dotStyle = 'bg-slate-400';
-
-                        if (isProb) {
-                          badgeStyle = 'bg-rose-600 text-white border-rose-700 font-black shadow-2xs ring-1 ring-rose-400 animate-pulse';
-                          dotStyle = 'bg-white';
-                        } else if (isRdy) {
-                          badgeStyle = 'bg-emerald-600 text-white border-emerald-700 font-black shadow-2xs';
-                          dotStyle = 'bg-white';
-                        } else if (isInProg) {
-                          badgeStyle = 'bg-amber-500 text-slate-950 border-amber-600 font-black shadow-2xs ring-1 ring-amber-400/50';
-                          dotStyle = 'bg-slate-950';
-                        } else if (isOrd) {
-                          badgeStyle = 'bg-blue-600 text-white border-blue-700 font-black shadow-2xs';
-                          dotStyle = 'bg-white';
-                        }
-
-                        return (
-                          <div
-                            key={it.id}
-                            title={`${it.name || 'Element'}: ${meta?.label || 'Nie określono'}${it.notes ? ` (${it.notes})` : ''}`}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] border tracking-tight ${badgeStyle}`}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full ${dotStyle}`} />
-                            <span>{it.shortName || it.name}</span>
-                          </div>
-                        );
-                      })}
+                          return (
+                            <div
+                              key={it.id}
+                              className="relative flex h-[112px] w-[38px] shrink-0 flex-col items-center justify-end"
+                              title={`${it.name || 'Element'}: ${meta?.label || 'Nie określono'}${it.notes ? ` (${it.notes})` : ''}`}
+                            >
+                              <div className="absolute bottom-[25px] left-1/2 w-[100px] origin-bottom-left -translate-x-0 -rotate-45">
+                                <span className="block max-w-[100px] truncate text-[10px] font-semibold leading-3 text-slate-700">
+                                  {it.shortName || it.name}
+                                </span>
+                              </div>
+                              <span className={`mb-1 h-2.5 w-2.5 shrink-0 rounded-full ${dotColor}`} />
+                              <span className="h-1.5 w-px bg-slate-300" />
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
 
