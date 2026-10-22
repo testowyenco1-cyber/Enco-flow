@@ -319,7 +319,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         break;
 
       case 'RYS_AKCEPTACJA':
-        entries.push({ label: 'Data akceptacji', value: d.dataAkceptacji ? d.dataAkceptacji : '—' });
+        
         entries.push({ label: 'Informacje o zmianach', value: d.informacjeOZmianach ? d.informacjeOZmianach : '—' });
         break;
 
@@ -494,7 +494,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
       }
 
       case 'DATA_WYJAZDU':
-        entries.push({ label: 'Data załadunku', value: d.dataTransportu ? d.dataTransportu : '—' });
+        
         entries.push({ label: 'Przewoźnik', value: d.przewoznik ? d.przewoznik : '—' });
         entries.push({ label: 'Adres dostawy', value: d.adresDostawy ? d.adresDostawy : '—' });
         entries.push({ label: 'Kontakt na budowie', value: d.kontaktNaBudowie ? d.kontaktNaBudowie : '—' });
