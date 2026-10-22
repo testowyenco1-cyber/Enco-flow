@@ -911,6 +911,46 @@ async function startServer() {
     }
   });
 
+  // Idempotently create at most one automatic reminder when an order has unfinished main items and no tasks.
+  app.post('/api/tasks/auto-reminder', (req: any, res) => {
+    try {
+      const actor = req.authUser as AuthUser;
+      if (!actor.isAdmin && actor.departments.length === 0) {
+        return res.status(403).json({ success: false, error: 'Konto tylko do podglądu nie może tworzyć zadań.' });
+      }
+      const orderId = typeof req.body?.orderId === 'string' ? req.body.orderId : '';
+      const hasIncompleteMainItems = req.body?.hasIncompleteMainItems === true;
+      if (!orderId) return res.status(400).json({ success: false, error: 'Brak identyfikatora zlecenia.' });
+      if (!hasIncompleteMainItems) return res.json({ success: true, task: null });
+
+      const orders = fs.existsSync(ORDERS_FILE) ? JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf-8')) : INITIAL_ORDERS;
+      const order = Array.isArray(orders) ? orders.find((item: any) => item.id === orderId) : null;
+      if (!order) return res.status(404).json({ success: false, error: 'Nie znaleziono zlecenia.' });
+
+      const tasks = readTasks();
+      // Any existing task means this order does not need the no-tasks reminder.
+      if (tasks.some((task) => task.orderId === orderId)) return res.json({ success: true, task: null });
+
+      const now = new Date();
+      const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
+      const task = {
+        id: 'task_' + randomBytes(12).toString('hex'),
+        orderId, orderNumber: String(order.orderNumber || ''), projectName: String(order.projectName || ''),
+        client: String(order.client || ''),
+        description: 'Brak zadań przypisanych do zlecenia. Należy sprawdzić zlecenie i zweryfikować wymagane elementy główne. Osoba, która wprowadziła ostatnią zmianę: ' + actor.displayName + '.',
+        assigneeType: 'department', assigneeDepartment: 'dzial_handlowy', assigneeName: taskDepartmentLabel('dzial_handlowy'),
+        dueDate: today, status: 'todo', createdByUserId: actor.id, createdByName: actor.displayName,
+        createdAt: now.toISOString(), updatedAt: now.toISOString(),
+      };
+      tasks.push(task);
+      saveTasks(tasks);
+      return res.status(201).json({ success: true, task });
+    } catch (err) {
+      console.error('Creating automatic control task failed:', err);
+      return res.status(500).json({ success: false, error: 'Nie udało się utworzyć zadania kontrolnego.' });
+    }
+  });
+
   app.post('/api/tasks', (req: any, res) => {
     try {
       const actor = req.authUser as AuthUser;
@@ -956,8 +996,13 @@ async function startServer() {
         createdAt: now, updatedAt: now,
       };
       const tasks = readTasks();
-      tasks.push(task);
-      saveTasks(tasks);
+      // Adding a regular task makes the automatic no-tasks reminder unnecessary; remove it permanently.
+      const withoutReminder = tasks.filter((existing) =>
+        !(existing.orderId === orderId && typeof existing.description === 'string' &&
+          existing.description.startsWith('Brak zadań przypisanych do zlecenia.'))
+      );
+      withoutReminder.push(task);
+      saveTasks(withoutReminder);
       return res.status(201).json({ success: true, task });
     } catch (err) {
       console.error('Creating task failed:', err);
