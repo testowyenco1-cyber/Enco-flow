@@ -881,7 +881,6 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
         orderNumber={order.orderNumber}
         projectName={order.projectName}
         client={order.client}
-        hasIncompleteMainItems={order.items.some((item) => hiddenMainPositionTypes.includes(item.type) && item.status !== 'READY' && item.status !== 'NOT_APPLICABLE')}
         currentProfile={profile}
         onOpenChange={onOrderTasksPanelOpenChange}
       />
