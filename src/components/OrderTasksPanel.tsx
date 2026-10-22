@@ -10,6 +10,7 @@ interface Props {
   orderNumber: string;
   projectName: string;
   client: string;
+  hasIncompleteMainItems: boolean;
   currentProfile: UserRoleProfile;
   onOpenChange?: (isOpen: boolean) => void;
 }
@@ -44,7 +45,7 @@ function dueLabel(value: string, status: EncoTaskStatus): { label: string; style
   return { label: 'Termin', style: 'bg-blue-50 text-blue-700 border-blue-200' };
 }
 
-export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, projectName, client, currentProfile, onOpenChange }) => {
+export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, projectName, client, hasIncompleteMainItems, currentProfile, onOpenChange }) => {
   const [isOpen, setIsOpen] = useState(() => {
     try { return window.localStorage.getItem('enco-flow-order-tasks-panel') !== 'collapsed'; }
     catch { return true; }
@@ -77,9 +78,31 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
     setError('');
     try {
       const [allTasks, allUsers] = await Promise.all([fetchTasks(), fetchTaskAssignees()]);
-      setTasks(allTasks);
+      let currentTasks = allTasks;
       setUsers(allUsers);
       if (!userId && allUsers.length) setUserId(allUsers[0].id);
+
+      // Automatyczne zadanie kontrolne tworzymy tylko raz dla zlecenia:
+      // wyłącznie gdy nie ma jeszcze żadnego zadania i nie wszystkie pozycje są gotowe/nieuwzględnione.
+      const hasAnyOrderTask = allTasks.some((task) => task.orderId === orderId);
+      if (hasIncompleteMainItems && !hasAnyOrderTask) {
+        const now = new Date();
+        const today = [
+          now.getFullYear(),
+          String(now.getMonth() + 1).padStart(2, '0'),
+          String(now.getDate()).padStart(2, '0'),
+        ].join('-');
+        const autoTask = await createTask({
+          orderId,
+          description: 'Brak zadań przypisanych do zlecenia. Należy sprawdzić zlecenie i zweryfikować wymagane elementy główne.',
+          dueDate: today,
+          assigneeType: 'department',
+          assigneeDepartment: 'dzial_handlowy',
+        });
+        currentTasks = [autoTask, ...allTasks.filter((task) => task.id !== autoTask.id)];
+        setNotice('Automatycznie utworzono zadanie kontrolne dla Działu Handlowego.');
+      }
+      setTasks(currentTasks);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Nie udało się pobrać zadań.');
     } finally {
