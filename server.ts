@@ -1076,25 +1076,30 @@ async function startServer() {
     }
   });
 
-  // Only the generated no-tasks reminder may be permanently removed by this endpoint.
-  app.delete('/api/tasks/:taskId/auto-reminder', (req: any, res) => {
+  // Usuwanie zwykłego zadania; po usunięciu serwer ponownie ocenia, czy zlecenie wymaga przypomnienia.
+  app.delete('/api/tasks/:taskId', (req: any, res) => {
     try {
       const actor = req.authUser as AuthUser;
       if (!actor.isAdmin && actor.departments.length === 0) {
         return res.status(403).json({ success: false, error: 'Konto tylko do podglądu nie może usuwać zadań.' });
       }
       const tasks = readTasks();
-      const index = tasks.findIndex((task) => task.id === req.params.taskId);
-      if (index < 0) return res.status(404).json({ success: false, error: 'Nie znaleziono zadania.' });
-      if (typeof tasks[index].description !== 'string' || !tasks[index].description.startsWith('Brak zadań przypisanych do zlecenia.')) {
-        return res.status(400).json({ success: false, error: 'Można w ten sposób usunąć wyłącznie automatyczne zadanie kontrolne.' });
+      const task = tasks.find((item) => item.id === req.params.taskId);
+      if (!task) return res.status(404).json({ success: false, error: 'Nie znaleziono zadania.' });
+      const remaining = tasks.filter((item) => item.id !== task.id);
+      saveTasks(remaining);
+
+      if (!isAutoReminder(task)) {
+        const rawOrders = fs.existsSync(ORDERS_FILE) ? JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf-8')) : INITIAL_ORDERS;
+        const order = Array.isArray(rawOrders)
+          ? rawOrders.find((item: any) => String(item.id) === String(task.orderId))
+          : null;
+        if (order) syncAutoReminderForOrder(order, actor);
       }
-      tasks.splice(index, 1);
-      saveTasks(tasks);
       return res.json({ success: true });
     } catch (err) {
-      console.error('Deleting automatic control task failed:', err);
-      return res.status(500).json({ success: false, error: 'Nie udało się usunąć zadania kontrolnego.' });
+      console.error('Deleting task failed:', err);
+      return res.status(500).json({ success: false, error: 'Nie udało się usunąć zadania.' });
     }
   });
 
