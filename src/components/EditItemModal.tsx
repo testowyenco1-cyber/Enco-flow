@@ -494,8 +494,8 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
           ) : (
             <>
               {/* Dates */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
+              <div className={`grid grid-cols-1 gap-4 ${item?.type === 'DATA_WYJAZDU' ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
+                {item?.type !== 'DATA_WYJAZDU' && <div>
                   <label className="block text-xs font-bold text-blue-900 mb-1">
                     Data wystawienia zlecenia
                   </label>
@@ -508,7 +508,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                   <span className="text-[11px] text-blue-600 mt-0.5 block">
                     Kiedy zamówiono / zlecono etap
                   </span>
-                </div>
+                </div>}
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">
                     {item?.type === 'DATA_WYJAZDU' ? 'Planowana data wyjazdu' : 'Planowany termin zakończenia'}
