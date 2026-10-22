@@ -935,9 +935,17 @@ async function startServer() {
       // Jeśli zapisane dane zawierają rozpoznane pozycje główne, serwer jest źródłem prawdy.
       // Awaryjnie użyj flagi z widoku tylko wtedy, gdy starsze/niestandardowe typy pozycji
       // nie pasują do listy typów rozpoznawanych przez serwer.
-      const hasIncompleteMainItems = mainItems.length > 0
-        ? mainItems.some((item: any) => item.status !== 'READY' && item.status !== 'NOT_APPLICABLE')
-        : req.body?.hasIncompleteMainItems === true;
+      const hasIncompleteMainItems =
+        req.body?.hasIncompleteMainItems === true ||
+        mainItems.some((item: any) => item.status !== 'READY' && item.status !== 'NOT_APPLICABLE');
+
+      console.info('[auto-reminder] eligibility check', {
+        orderId,
+        clientFlag: req.body?.hasIncompleteMainItems === true,
+        matchedMainItems: mainItems.length,
+        mainItemStatuses: mainItems.map((item: any) => ({ type: item.type, status: item.status })),
+        hasIncompleteMainItems,
+      });
 
       const tasks = readTasks();
       const orderTasks = tasks.filter((task) => task.orderId === orderId);
