@@ -146,16 +146,13 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
         return [
           { key: 'kategoria', label: 'Kategoria / nr zamówienia NN', type: 'text' },
           { key: 'dostawca', label: 'Dostawca NN', type: 'text' },
-          { key: 'dataGotowosciFakt', label: 'Faktyczna data gotowości NN', type: 'date' },
-          { key: 'dataDostawyPlan', label: 'Planowana data dostawy NN', type: 'date' },
-          { key: 'dataPlDostawyPyskowice', label: 'Planowana dostawa NN do Pyskowic', type: 'date' },
+          { key: 'dataGotowosciFakt', label: 'Data gotowości - Płochocińska', type: 'date' },
+          { key: 'dataPlDostawyPyskowice', label: 'Data dostawy do Pyskowic', type: 'date' },
           { key: 'nnWPyskowicach', label: 'Rozdzielnica NN jest w Pyskowicach', type: 'checkbox' },
         ];
       case 'MOST':
         return [
-          { key: 'dataZlecenia', label: 'Data zlecenia mostów SN', type: 'date' },
-          { key: 'dataGotowosci', label: 'Data gotowości mostów SN', type: 'date' },
-          { key: 'dataPlDostawyPyskowice', label: 'Planowana dostawa mostów SN do Pyskowic', type: 'date' },
+          { key: 'dataPlDostawyPyskowice', label: 'Data dostawy do Pyskowic', type: 'date' },
           { key: 'mostSNPyskowicach', label: 'Mosty SN są w Pyskowicach', type: 'checkbox' },
         ];
       case 'SZAFKA_TELEMECHANIKI':
@@ -202,8 +199,8 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
         ];
       case 'POWYKONAWCZA':
         return [
-          { key: 'wagaDTRWyslana', label: 'Waga i DTR wysłane', type: 'checkbox' },
-          { key: 'dataPrzekazaniaDokumentacji', label: 'Data przekazania dokumentacji powykonawczej', type: 'date' },
+          { key: 'dataWysylkiDTR', label: 'Data wysyłki DTR', type: 'date' },
+          { key: 'dataPrzekazaniaDokumentacji', label: 'Data wysyłki dokumentacji Powykonawczej', type: 'date' },
         ];
       case 'DATA_WYJAZDU':
         return [
