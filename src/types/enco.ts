@@ -580,8 +580,8 @@ export const STATUS_META: Record<
     accentBorder: 'border-l-emerald-600',
   },
   NOT_APPLICABLE: {
-    label: 'BRAK / niepotrzebne',
-    shortLabel: 'BRAK',
+    label: 'Nie uwzględniono',
+    shortLabel: 'Nie uwzględniono',
     icon: '⚪',
     color: 'text-slate-500',
     bgBadge: 'bg-slate-100',
