@@ -81,3 +81,9 @@ export async function updateTaskStatus(taskId: string, status: EncoTaskStatus): 
   });
   return result.task;
 }
+
+export async function deleteTask(taskId: string): Promise<void> {
+  await requestJson<{ success: boolean }>('/api/tasks/' + encodeURIComponent(taskId), {
+    method: 'DELETE',
+  });
+}
