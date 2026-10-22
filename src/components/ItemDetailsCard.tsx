@@ -495,6 +495,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         if (d.kilometry !== undefined && d.kilometry !== '') entries.push({ label: 'Kilometry', value: String(d.kilometry) });
         if (d.cenaTransportu !== undefined && d.cenaTransportu !== '') entries.push({ label: 'Cena transportu (PLN)', value: String(d.cenaTransportu) });
         entries.push({ label: 'Numer faktury', value: d.numerFaktury ? String(d.numerFaktury) : '—' });
+        entries.push({ label: 'Adres dostawy', value: d.adresDostawy ? d.adresDostawy : '—' });
         break;
 
       case 'DODATKOWE':
