@@ -914,10 +914,15 @@ async function startServer() {
     // O przypomnieniu decyduje wyłącznie całościowy status zapisanego zlecenia,
     // a nie statusy poszczególnych pozycji głównych.
     const overallStatus = typeof order.status === 'string' ? order.status.trim().toUpperCase() : '';
-    const needsControl = overallStatus !== 'READY';
+    // Zlecenie dotyczące stacji wymaga przypomnienia także wtedy, gdy jego status
+    // całościowy to GOTOWE. Wykonanie zlecenia nie zwalnia z kontroli stacji.
+    const hasStationOrder = Array.isArray(order.items) && order.items.some((item: any) =>
+      MAIN_POSITION_TYPES.has(String(item?.type || '').trim().toUpperCase())
+    );
+    const needsControl = overallStatus !== 'READY' || hasStationOrder;
 
-    // Przypomnienie tworzymy, gdy zlecenie nie ma statusu GOTOWE
-    // ORAZ nie istnieje żadne zwykłe zadanie przypisane do tego zlecenia.
+    // Przypomnienie tworzymy, gdy zlecenie wymaga kontroli
+    // i nie istnieje żadne zwykłe zadanie przypisane do tego zlecenia.
     if (regularTasks.length > 0 || !needsControl) {
       if (reminders.length) {
         const removeIds = new Set(reminders.map((task) => task.id));
