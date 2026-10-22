@@ -911,18 +911,12 @@ async function startServer() {
     const forOrder = allTasks.filter((task) => String(task.orderId) === orderId);
     const reminders = forOrder.filter(isAutoReminder);
     const regularTasks = forOrder.filter((task) => !isAutoReminder(task));
-    const mainItems = Array.isArray(order.items)
-      ? order.items.filter((item: any) => MAIN_POSITION_TYPES.has(item.type))
-      : [];
-    // Pozycja główna jest ukończona WYŁĄCZNIE przy statusie READY albo NOT_APPLICABLE.
-    // Każdy inny status (NOT_ORDERED, ORDERED, IN_PROGRESS, PROBLEM i nieznany)
-    // oznacza, że zlecenie nadal wymaga kontroli.
-    const needsControl = mainItems.some((item: any) => {
-      const status = typeof item.status === 'string' ? item.status.trim().toUpperCase() : '';
-      return status !== 'READY' && status !== 'NOT_APPLICABLE';
-    });
+    // O przypomnieniu decyduje wyłącznie całościowy status zapisanego zlecenia,
+    // a nie statusy poszczególnych pozycji głównych.
+    const overallStatus = typeof order.status === 'string' ? order.status.trim().toUpperCase() : '';
+    const needsControl = overallStatus !== 'READY';
 
-    // Przypomnienie tworzymy, gdy co najmniej jedna pozycja główna nie jest ukończona
+    // Przypomnienie tworzymy, gdy zlecenie nie ma statusu GOTOWE
     // ORAZ nie istnieje żadne zwykłe zadanie przypisane do tego zlecenia.
     if (regularTasks.length > 0 || !needsControl) {
       if (reminders.length) {
