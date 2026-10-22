@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Order, ITEM_DEFINITIONS, STATUS_META, ItemStatus } from '../types/enco';
 import { Search, LayoutDashboard, ArrowUpDown } from 'lucide-react';
-import { formatDatePL } from '../utils/dateUtils';
 import type { EncoTask } from '../types/tasks';
 import { fetchTasks } from '../services/taskService';
 
@@ -11,6 +10,12 @@ interface DashboardModuleViewProps {
 }
 
 const isTaskOrdered = (status: ItemStatus) => status !== 'NOT_ORDERED' && status !== 'NOT_APPLICABLE';
+
+const formatDepartureDate = (date?: string) => {
+  if (!date) return '—';
+  const match = date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? `${match[3]}.${match[2]}.${match[1]}` : date;
+};
 
 export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders, onSelectOrder }) => {
   const columns = ITEM_DEFINITIONS;
@@ -105,7 +110,7 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
                         </td>
                       );
                     })}
-                    <td className="sticky right-[76px] z-10 border-b border-l border-slate-100 bg-white px-1 py-2 text-center text-[10px] tabular-nums text-slate-700 group-hover:bg-blue-50/70" title={order.departureDate ? `Planowany wyjazd: ${formatDatePL(order.departureDate)}` : 'Brak daty wyjazdu'}>{order.departureDate ? formatDatePL(order.departureDate) : '—'}</td>
+                    <td className="sticky right-[76px] z-10 border-b border-l border-slate-100 bg-white px-1 py-2 text-center text-[10px] tabular-nums text-slate-700 group-hover:bg-blue-50/70" title={order.departureDate ? `Planowany wyjazd: ${formatDepartureDate(order.departureDate)}` : 'Brak daty wyjazdu'}>{order.departureDate ? formatDepartureDate(order.departureDate) : '—'}</td>
                     <td className="sticky right-0 z-10 border-b border-l border-slate-100 bg-white px-2 py-2 text-center group-hover:bg-blue-50/70">
                       <span className="inline-flex min-w-7 justify-center rounded bg-slate-100 px-1.5 py-1 font-bold tabular-nums text-slate-700">{tasksLoading ? '…' : activeTaskCount}</span>
                     </td>
