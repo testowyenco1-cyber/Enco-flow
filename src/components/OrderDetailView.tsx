@@ -73,6 +73,23 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
   const [isOrderFilesModalOpen, setIsOrderFilesModalOpen] = useState(false);
   const [selectedFolderForModal, setSelectedFolderForModal] = useState<string>('01_Dokumentacja_Glowna');
 
+  useEffect(() => {
+    let targetType = '';
+    try {
+      targetType = sessionStorage.getItem('enco_dashboard_target_item_type') || '';
+      if (targetType) sessionStorage.removeItem('enco_dashboard_target_item_type');
+    } catch {}
+    if (!targetType) return;
+    const timer = window.setTimeout(() => {
+      const target = document.getElementById(`item-section-${targetType}`);
+      if (!target) return;
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
+      window.setTimeout(() => target.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2'), 2200);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [order.id]);
+
   type LinkedSNRecord = {
     id: string;
     type: string;
