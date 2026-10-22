@@ -935,8 +935,14 @@ async function startServer() {
         if (remaining.length !== tasks.length) saveTasks(remaining);
         return res.json({ success: true, task: null });
       }
-      // Any existing task means this order does not need the no-tasks reminder.
-      if (tasks.some((task) => task.orderId === orderId)) return res.json({ success: true, task: null });
+      // Return an existing reminder to concurrent clients; regular tasks suppress the reminder.
+      const orderTasks = tasks.filter((task) => task.orderId === orderId);
+      const existingReminder = orderTasks.find((task) =>
+        typeof task.description === 'string' && task.description.startsWith('Brak zadań przypisanych do zlecenia.')
+      );
+      if (orderTasks.length > 0) {
+        return res.json({ success: true, task: orderTasks.length === 1 ? (existingReminder || null) : null });
+      }
 
       const now = new Date();
       const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
