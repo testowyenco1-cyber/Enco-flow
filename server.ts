@@ -1010,7 +1010,7 @@ async function startServer() {
       const dueDate = typeof req.body?.dueDate === 'string' ? req.body.dueDate : '';
       const assigneeType = req.body?.assigneeType;
       const orders = fs.existsSync(ORDERS_FILE) ? JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf-8')) : INITIAL_ORDERS;
-      const order = Array.isArray(orders) ? orders.find((item: any) => item.id === orderId) : null;
+      const order = Array.isArray(orders) ? orders.find((item: any) => String(item.id) === orderId) : null;
       if (!order) return res.status(404).json({ success: false, error: 'Nie znaleziono zlecenia powiązanego z zadaniem.' });
       if (!description || description.length > 500) return res.status(400).json({ success: false, error: 'Opis zadania jest wymagany (maksymalnie 500 znaków).' });
       if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDate) || Number.isNaN(new Date(dueDate + 'T00:00:00').getTime())) {
@@ -1046,7 +1046,7 @@ async function startServer() {
       const tasks = readTasks();
       // Zwykłe zadanie i usunięcie przypomnienia zapisujemy w jednej operacji.
       const withoutReminder = tasks.filter((existing) =>
-        !(existing.orderId === orderId && isAutoReminder(existing))
+        !(String(existing.orderId) === orderId && isAutoReminder(existing))
       );
       withoutReminder.push(task);
       saveTasks(withoutReminder);
