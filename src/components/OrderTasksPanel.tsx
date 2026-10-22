@@ -77,7 +77,6 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
     setError('');
     try {
       const [allTasks, allUsers] = await Promise.all([fetchTasks(), fetchTaskAssignees()]);
-      let currentTasks = allTasks;
       setUsers(allUsers);
       if (!userId && allUsers.length) setUserId(allUsers[0].id);
 
@@ -100,6 +99,7 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
     .filter((task) => showCompleted || task.status !== 'done')
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || b.createdAt.localeCompare(a.createdAt)), [tasks, orderId, showCompleted]);
   const activeCount = tasks.filter((task) => String(task.orderId) === String(orderId) && task.status !== 'done').length;
+  const showSalesReminder = activeCount === 0 && (currentProfile.id === 'dzial_handlowy' || currentProfile.id === 'admin');
   const canCreateTask = currentProfile.id !== 'ogolny';
 
   const handleCreate = async (event: React.FormEvent) => {
@@ -122,7 +122,7 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
             setDescription('');
       setDueDate('');
       setIsFormOpen(false);
-      setNotice('Zadanie zapisano na serwerze. Automatyczne zadanie kontrolne, jeśli istniało, zostało usunięte.');
+      setNotice('Zadanie zapisano na serwerze.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Nie udało się utworzyć zadania.');
     } finally {
@@ -160,6 +160,12 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
             </div>
 
             <>
+{showSalesReminder && (
+  <div className="mx-3 mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-3 text-xs text-amber-900">
+    <div className="font-bold">Przypomnienie dla Działu Handlowego</div>
+    <p className="mt-1">Wszystkie zadania dla tego zlecenia są wykonane lub nie ma żadnych zadań. Sprawdź zlecenie i wykonaj dalsze czynności handlowe.</p>
+  </div>
+)}
 <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
               <button type="button" onClick={() => setIsFormOpen((open) => !open)} disabled={!canCreateTask} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
                 <Plus className="h-4 w-4" /> Nowe zadanie
