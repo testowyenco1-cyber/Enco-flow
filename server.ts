@@ -264,7 +264,7 @@ async function startServer() {
               item.type === 'ZAM_SERWISPOL' ||
               item.type === 'ZAP_JK' ||
               item.type === 'ZAM_JK' ||
-              item.type === 'ZLECENIE_MONTAZU'
+        'ZLECENIE_MONTAZU', 'ZLECENIE MONTAŻU', 'ZLECENIE_MONTAŻU', 'POWYKONAWCZA', 'DATA_WYJAZDU', 'DODATKOWE',
             ) {
               targetFolder = '10_Podwykonawcy_i_Montaz';
             } else if (item.type === 'SZAFKA_TELEMECHANIKI') targetFolder = '11_Telemechanika_i_Lacznosc';
@@ -932,12 +932,11 @@ async function startServer() {
         'ZLECENIE_MONTAZU', 'ZLECENIE MONTAŻU', 'ZLECENIE_MONTAŻU', 'POWYKONAWCZA', 'DATA_WYJAZDU', 'DODATKOWE',
       ]);
       const mainItems = Array.isArray(order.items) ? order.items.filter((item: any) => mainPositionTypes.has(item.type)) : [];
-      // Jeśli zapisane dane zawierają rozpoznane pozycje główne, serwer jest źródłem prawdy.
-      // Awaryjnie użyj flagi z widoku tylko wtedy, gdy starsze/niestandardowe typy pozycji
-      // nie pasują do listy typów rozpoznawanych przez serwer.
-      const hasIncompleteMainItems =
-        req.body?.hasIncompleteMainItems === true ||
-        mainItems.some((item: any) => item.status !== 'READY' && item.status !== 'NOT_APPLICABLE');
+      // Serwer ocenia najnowszy zapisany stan. Flaga z przeglądarki jest tylko
+      // awaryjnym źródłem dla starych danych bez rozpoznanych pozycji głównych.
+      const hasIncompleteMainItems = mainItems.length > 0
+        ? mainItems.some((item: any) => item.status !== 'READY' && item.status !== 'NOT_APPLICABLE')
+        : req.body?.hasIncompleteMainItems === true;
 
       console.info('[auto-reminder] eligibility check', {
         orderId,
