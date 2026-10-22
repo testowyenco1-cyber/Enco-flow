@@ -891,74 +891,6 @@ async function startServer() {
   function taskPublicRecord(task: any) {
     return task;
   }
-  // Automatyczne przypomnienie kontrolne — jedna reguła po stronie serwera.
-  const AUTO_REMINDER_PREFIX = 'Brak zadań przypisanych do zlecenia.';
-  const MAIN_POSITION_TYPES = new Set([
-    'OBUDOWA', 'ROZDZIELNICA_SN', 'ROZDZIELNICA_NN', 'TABLICA_POMIAROWA', 'RPW', 'MOST',
-    'SZAFKA_TELEMECHANIKI', 'TRANSFORMATOR_POTRZEB_WLASNYCH', 'WSKAZNIKI_ZWARC',
-    'RYS_AKCEPTACJA', 'KOLORY', 'OPISY', 'DRZWI', 'ZAP_SERWISPOL', 'ZAM_SERWISPOL',
-    'ZLECENIE_MONTAZU', 'ZLECENIE MONTAŻU', 'ZLECENIE_MONTAŻU',
-    'POWYKONAWCZA', 'DATA_WYJAZDU', 'DODATKOWE',
-  ]);
-
-  function isAutoReminder(task: any): boolean {
-    return typeof task?.description === 'string' && task.description.startsWith(AUTO_REMINDER_PREFIX);
-  }
-
-  function syncAutoReminderForOrder(order: any, actor: AuthUser): any | null {
-    const allTasks = readTasks();
-    const orderId = String(order.id);
-    const forOrder = allTasks.filter((task) => String(task.orderId) === orderId);
-    const reminders = forOrder.filter(isAutoReminder);
-    const regularTasks = forOrder.filter((task) => !isAutoReminder(task));
-    // O przypomnieniu decyduje wyłącznie całościowy status zapisanego zlecenia,
-    // a nie statusy poszczególnych pozycji głównych.
-    const overallStatus = typeof order.status === 'string' ? order.status.trim().toUpperCase() : '';
-    const needsControl = overallStatus !== 'READY';
-
-    // Przypomnienie tworzymy, gdy zlecenie nie ma statusu GOTOWE
-    // oraz nie istnieje żadne zwykłe zadanie przypisane do tego zlecenia.
-    if (regularTasks.length > 0 || !needsControl) {
-      if (reminders.length) {
-        const removeIds = new Set(reminders.map((task) => task.id));
-        saveTasks(allTasks.filter((task) => !removeIds.has(task.id)));
-      }
-      return null;
-    }
-
-    // Napraw ewentualne duplikaty, zachowując najstarsze istniejące przypomnienie.
-    if (reminders.length > 0) {
-      const keep = reminders[0];
-      if (reminders.length > 1) {
-        const removeIds = new Set(reminders.slice(1).map((task) => task.id));
-        saveTasks(allTasks.filter((task) => !removeIds.has(task.id)));
-      }
-      return keep;
-    }
-
-    const now = new Date();
-    const dueDate = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
-    const reminder = {
-      id: 'task_' + randomBytes(12).toString('hex'),
-      orderId,
-      orderNumber: String(order.orderNumber || ''),
-      projectName: String(order.projectName || ''),
-      client: String(order.client || ''),
-      description: AUTO_REMINDER_PREFIX + ' Należy sprawdzić zlecenie i zweryfikować wymagane elementy główne. Osoba, która wprowadziła ostatnią zmianę: ' + actor.displayName + '.',
-      assigneeType: 'department',
-      assigneeDepartment: 'dzial_handlowy',
-      assigneeName: taskDepartmentLabel('dzial_handlowy'),
-      dueDate,
-      status: 'todo',
-      createdByUserId: actor.id,
-      createdByName: actor.displayName,
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString(),
-    };
-    saveTasks([...allTasks, reminder]);
-    return reminder;
-  }
-
   app.get('/api/tasks/meta', (req: any, res) => {
     try {
       const users = loadAuthUsers()
@@ -980,22 +912,6 @@ async function startServer() {
     } catch (err) {
       console.error('Reading tasks failed:', err);
       return res.status(500).json({ success: false, error: 'Nie udało się pobrać zadań.' });
-    }
-  });
-
-  // Jedyny endpoint synchronizacji; decyzja jest podejmowana na podstawie zapisanego zlecenia.
-  app.post('/api/tasks/auto-reminder', (req: any, res) => {
-    try {
-      const actor = req.authUser as AuthUser;
-      const orderId = typeof req.body?.orderId === 'string' ? req.body.orderId : '';
-      if (!orderId) return res.status(400).json({ success: false, error: 'Brak identyfikatora zlecenia.' });
-      const rawOrders = fs.existsSync(ORDERS_FILE) ? JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf-8')) : INITIAL_ORDERS;
-      const order = Array.isArray(rawOrders) ? rawOrders.find((item: any) => String(item.id) === orderId) : null;
-      if (!order) return res.status(404).json({ success: false, error: 'Nie znaleziono zlecenia.' });
-      return res.json({ success: true, task: syncAutoReminderForOrder(order, actor) });
-    } catch (err) {
-      console.error('Synchronizing control reminder failed:', err);
-      return res.status(500).json({ success: false, error: 'Nie udało się zsynchronizować przypomnienia.' });
     }
   });
 
@@ -1044,12 +960,8 @@ async function startServer() {
         createdAt: now, updatedAt: now,
       };
       const tasks = readTasks();
-      // Zwykłe zadanie i usunięcie przypomnienia zapisujemy w jednej operacji.
-      const withoutReminder = tasks.filter((existing) =>
-        !(String(existing.orderId) === orderId && isAutoReminder(existing))
-      );
-      withoutReminder.push(task);
-      saveTasks(withoutReminder);
+      tasks.push(task);
+      saveTasks(tasks);
       return res.status(201).json({ success: true, task });
     } catch (err) {
       console.error('Creating task failed:', err);
@@ -1079,7 +991,6 @@ async function startServer() {
     }
   });
 
-  // Usuwanie zwykłego zadania; po usunięciu serwer ponownie ocenia, czy zlecenie wymaga przypomnienia.
   app.delete('/api/tasks/:taskId', (req: any, res) => {
     try {
       const actor = req.authUser as AuthUser;
@@ -1092,13 +1003,6 @@ async function startServer() {
       const remaining = tasks.filter((item) => item.id !== task.id);
       saveTasks(remaining);
 
-      if (!isAutoReminder(task)) {
-        const rawOrders = fs.existsSync(ORDERS_FILE) ? JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf-8')) : INITIAL_ORDERS;
-        const order = Array.isArray(rawOrders)
-          ? rawOrders.find((item: any) => String(item.id) === String(task.orderId))
-          : null;
-        if (order) syncAutoReminderForOrder(order, actor);
-      }
       return res.json({ success: true });
     } catch (err) {
       console.error('Deleting task failed:', err);
@@ -1190,23 +1094,6 @@ async function startServer() {
       writeJsonAtomically(ORDERS_FILE, ordersToSave);
       currentOrders = ordersToSave;
 
-      // Automatyczne przypomnienie jest rozliczane przy zapisie zlecenia, a nie tylko
-      // przy otwarciu panelu zadań. Sprawdzamy już zapisany, scalony stan zlecenia.
-      for (const savedOrder of mergedIncoming) {
-        try {
-          syncAutoReminderForOrder(savedOrder, actor);
-        } catch (reminderError) {
-          console.error('Could not synchronize control reminder after order save:', savedOrder.id, reminderError);
-        }
-      }
-      if (requestedDeletes.length) {
-        const tasks = readTasks();
-        const deletedOrderIds = new Set(requestedDeletes);
-        const withoutDeletedOrderReminders = tasks.filter((task) =>
-          !(deletedOrderIds.has(String(task.orderId)) && isAutoReminder(task))
-        );
-        if (withoutDeletedOrderReminders.length !== tasks.length) saveTasks(withoutDeletedOrderReminders);
-      }
 
       return res.json({ success: true, count: ordersToSave.length, orders: ordersToSave, timestamp: Date.now() });
     } catch (err) {
