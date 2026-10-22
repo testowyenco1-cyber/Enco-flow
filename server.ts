@@ -264,7 +264,12 @@ async function startServer() {
               item.type === 'ZAM_SERWISPOL' ||
               item.type === 'ZAP_JK' ||
               item.type === 'ZAM_JK' ||
-        'ZLECENIE_MONTAZU', 'ZLECENIE MONTAŻU', 'ZLECENIE_MONTAŻU', 'POWYKONAWCZA', 'DATA_WYJAZDU', 'DODATKOWE',
+              item.type === 'ZLECENIE_MONTAZU' ||
+              item.type === 'ZLECENIE MONTAŻU' ||
+              item.type === 'ZLECENIE_MONTAŻU' ||
+              item.type === 'POWYKONAWCZA' ||
+              item.type === 'DATA_WYJAZDU' ||
+              item.type === 'DODATKOWE'
             ) {
               targetFolder = '10_Podwykonawcy_i_Montaz';
             } else if (item.type === 'SZAFKA_TELEMECHANIKI') targetFolder = '11_Telemechanika_i_Lacznosc';
