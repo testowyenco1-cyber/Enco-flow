@@ -53,7 +53,7 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
         <span className="text-xs text-slate-500">{activeOrders.length} zleceń</span>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="overflow-hidden bg-white">
         <div className="max-h-[calc(100dvh-190px)] overflow-auto">
           <table className="w-full min-w-max border-separate border-spacing-0 text-[11px]">
             <colgroup>
@@ -101,11 +101,13 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
                       const status = item?.status;
                       const meta = status ? STATUS_META[status] : undefined;
                       return (
-                        <td key={column.type} title={item ? column.name + ': ' + (meta?.label || status) : column.name + ': brak pozycji'} className="w-[30px] border-b border-r border-slate-100 px-0 py-1 text-center">
+                        <td key={column.type} title={item ? column.name + ': ' + (meta?.label || status) : column.name + ': brak pozycji'} className="w-[30px] border-b border-slate-100/80 px-0 py-1 text-center">
                           {item ? (
-                            <span className={'mx-auto inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-sm px-0.5 text-[10px] font-black shadow-sm ' + (status === 'NOT_ORDERED' ? 'bg-slate-200 text-slate-500' : status === 'ORDERED' ? 'bg-blue-600 text-white ring-1 ring-blue-700' : status === 'IN_PROGRESS' ? 'bg-amber-400 text-slate-950 ring-1 ring-amber-600' : status === 'READY' ? 'bg-emerald-600 text-white ring-1 ring-emerald-700' : status === 'PROBLEM' ? 'bg-rose-600 text-white ring-1 ring-rose-700' : 'bg-slate-200 text-slate-500')}>
-                              {status === 'NOT_APPLICABLE' ? '—' : status === 'NOT_ORDERED' ? '·' : status === 'ORDERED' ? 'Z' : status === 'IN_PROGRESS' ? 'R' : status === 'READY' ? '✓' : status === 'PROBLEM' ? '!' : '·'}
-                            </span>
+                            <button type="button" onClick={(event) => { event.stopPropagation(); if (status === 'NOT_APPLICABLE') return; try { sessionStorage.setItem('enco_dashboard_target_item_type', column.type); } catch {} onSelectOrder(order.id); }} aria-label={`Otwórz element ${column.name} w zleceniu ${order.orderNumber}`} title={item ? `Otwórz ${column.name} w zleceniu` : column.name} className="mx-auto flex h-[24px] min-w-[24px] items-center justify-center rounded-md transition hover:scale-110 hover:ring-2 hover:ring-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                              <span className={'inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-sm px-0.5 text-[10px] font-black shadow-sm ' + (status === 'NOT_ORDERED' ? 'bg-slate-200 text-slate-500' : status === 'ORDERED' ? 'bg-blue-600 text-white ring-1 ring-blue-700' : status === 'IN_PROGRESS' ? 'bg-amber-400 text-slate-950 ring-1 ring-amber-600' : status === 'READY' ? 'bg-emerald-600 text-white ring-1 ring-emerald-700' : status === 'PROBLEM' ? 'bg-rose-600 text-white ring-1 ring-rose-700' : 'bg-slate-200 text-slate-500')}>
+                                {status === 'NOT_APPLICABLE' ? '—' : status === 'NOT_ORDERED' ? '·' : status === 'ORDERED' ? 'Z' : status === 'IN_PROGRESS' ? 'R' : status === 'READY' ? '✓' : status === 'PROBLEM' ? '!' : '·'}
+                              </span>
+                            </button>
                           ) : <span className="text-slate-200">·</span>}
                         </td>
                       );
