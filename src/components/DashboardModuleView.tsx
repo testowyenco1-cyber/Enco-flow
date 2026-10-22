@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Order, ITEM_DEFINITIONS, STATUS_META, ItemStatus } from '../types/enco';
 import { Search, LayoutDashboard } from 'lucide-react';
+import { formatDatePL } from '../utils/dateUtils';
 import type { EncoTask } from '../types/tasks';
 import { fetchTasks } from '../services/taskService';
 
@@ -40,6 +41,7 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
             <colgroup>
               <col style={{ width: 185 }} />
               {columns.map((column) => <col key={column.type} style={{ width: 30 }} />)}
+              <col style={{ width: 88 }} />
               <col style={{ width: 76 }} />
             </colgroup>
             <thead className="sticky top-0 z-20 bg-slate-100">
@@ -57,6 +59,7 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
                     </div>
                   </th>
                 ))}
+                <th scope="col" title="Planowana data wyjazdu pobierana bezpośrednio ze zlecenia" className="sticky right-[76px] z-30 min-w-[88px] border-b border-l border-slate-200 bg-slate-100 px-1 py-2 text-center font-bold text-slate-700">Wyjazd</th>
                 <th scope="col" title="Liczba aktualnych zadań z panelu zadań i przypomnień (bez wykonanych)" className="sticky right-0 z-30 min-w-[76px] border-b border-l border-slate-200 bg-slate-100 px-2 py-2 text-center font-bold text-slate-700">
                   <span className="block">Zadania</span>
                   <span className="mt-1 block text-[10px] font-normal text-slate-400">aktywn.</span>
@@ -89,6 +92,7 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
                         </td>
                       );
                     })}
+                    <td className="sticky right-[76px] z-10 border-b border-l border-slate-100 bg-white px-1 py-2 text-center text-[10px] tabular-nums text-slate-700 group-hover:bg-blue-50/70" title={order.departureDate ? `Planowany wyjazd: ${formatDatePL(order.departureDate)}` : 'Brak daty wyjazdu'}>{order.departureDate ? formatDatePL(order.departureDate) : '—'}</td>
                     <td className="sticky right-0 z-10 border-b border-l border-slate-100 bg-white px-2 py-2 text-center group-hover:bg-blue-50/70">
                       <span className="inline-flex min-w-7 justify-center rounded bg-slate-100 px-1.5 py-1 font-bold tabular-nums text-slate-700">{tasksLoading ? '…' : activeTaskCount}</span>
                     </td>
