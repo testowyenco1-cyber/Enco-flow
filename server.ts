@@ -914,12 +914,16 @@ async function startServer() {
     const mainItems = Array.isArray(order.items)
       ? order.items.filter((item: any) => MAIN_POSITION_TYPES.has(item.type))
       : [];
-    const needsControl = mainItems.some((item: any) =>
-      item.status !== 'READY' && item.status !== 'NOT_APPLICABLE'
-    );
+    // Pozycja główna jest ukończona WYŁĄCZNIE przy statusie READY albo NOT_APPLICABLE.
+    // Każdy inny status (NOT_ORDERED, ORDERED, IN_PROGRESS, PROBLEM i nieznany)
+    // oznacza, że zlecenie nadal wymaga kontroli.
+    const needsControl = mainItems.some((item: any) => {
+      const status = typeof item.status === 'string' ? item.status.trim().toUpperCase() : '';
+      return status !== 'READY' && status !== 'NOT_APPLICABLE';
+    });
 
-    // Przypomnienie istnieje wyłącznie wtedy, gdy są nieukończone pozycje główne
-    // i nie ma żadnego zwykłego zadania przypisanego do zlecenia.
+    // Przypomnienie tworzymy, gdy co najmniej jedna pozycja główna nie jest ukończona
+    // ORAZ nie istnieje żadne zwykłe zadanie przypisane do tego zlecenia.
     if (regularTasks.length > 0 || !needsControl) {
       if (reminders.length) {
         const removeIds = new Set(reminders.map((task) => task.id));
