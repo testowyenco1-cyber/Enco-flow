@@ -301,9 +301,8 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         }
         if (d.kategoria) entries.push({ label: 'Kategoria', value: String(d.kategoria) });
         if (d.dostawca) entries.push({ label: 'Dostawca', value: String(d.dostawca) });
-        if (d.dataGotowosciFakt) entries.push({ label: 'Faktyczna data gotowości', value: String(d.dataGotowosciFakt).split('-').reverse().join('.') });
-        if (d.dataDostawyPlan) entries.push({ label: 'Planowana data dostawy', value: String(d.dataDostawyPlan).split('-').reverse().join('.') });
-        if (d.dataPlDostawyPyskowice) entries.push({ label: 'Planowana dostawa do Pyskowic', value: String(d.dataPlDostawyPyskowice).split('-').reverse().join('.') });
+        if (d.dataGotowosciFakt) entries.push({ label: 'Data gotowości - Płochocińska', value: String(d.dataGotowosciFakt).split('-').reverse().join('.') });
+        if (d.dataPlDostawyPyskowice) entries.push({ label: 'Data dostawy do Pyskowic', value: String(d.dataPlDostawyPyskowice).split('-').reverse().join('.') });
         entries.push({ label: 'NN w Pyskowicach', value: d.nnWPyskowicach ? 'Tak' : 'Nie' });
         break;
 
@@ -315,13 +314,11 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         if (d.iloscGlowic) entries.push({ label: 'Ilość głowic', value: d.iloscGlowic });
         if (d.terminRealizacji) entries.push({ label: 'Termin realizacji', value: d.terminRealizacji });
         if (d.dataZlecenia) entries.push({ label: 'Data zlecenia', value: String(d.dataZlecenia).split('-').reverse().join('.') });
-        if (d.dataGotowosci) entries.push({ label: 'Data gotowości', value: String(d.dataGotowosci).split('-').reverse().join('.') });
-        if (d.dataPlDostawyPyskowice) entries.push({ label: 'Planowana dostawa do Pyskowic', value: String(d.dataPlDostawyPyskowice).split('-').reverse().join('.') });
+        if (d.dataPlDostawyPyskowice) entries.push({ label: 'Data dostawy do Pyskowic', value: String(d.dataPlDostawyPyskowice).split('-').reverse().join('.') });
         entries.push({ label: 'Mosty SN w Pyskowicach', value: d.mostSNPyskowicach ? 'Tak' : 'Nie' });
         break;
 
       case 'RYS_AKCEPTACJA':
-        if (d.dataWyslania) entries.push({ label: 'Data wysłania', value: d.dataWyslania });
         if (d.dataAkceptacji) entries.push({ label: 'Data akceptacji', value: d.dataAkceptacji });
         if (d.informacjeOZmianach) entries.push({ label: 'Informacje o zmianach', value: d.informacjeOZmianach });
         break;
@@ -440,9 +437,8 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
 
       case 'POWYKONAWCZA':
         if (d.statusDokumentacji) entries.push({ label: 'Status dokumentacji', value: d.statusDokumentacji });
-        if (d.dataZakonczenia) entries.push({ label: 'Data gotowości dokumentacji', value: String(d.dataZakonczenia).split('-').reverse().join('.') });
-        entries.push({ label: 'Waga i DTR wysłane', value: d.wagaDTRWyslana ? 'Tak' : 'Nie' });
-        if (d.dataPrzekazaniaDokumentacji) entries.push({ label: 'Data przekazania dokumentacji', value: String(d.dataPrzekazaniaDokumentacji).split('-').reverse().join('.') });
+        if (d.dataWysylkiDTR) entries.push({ label: 'Data wysyłki DTR', value: String(d.dataWysylkiDTR).split('-').reverse().join('.') });
+        if (d.dataPrzekazaniaDokumentacji) entries.push({ label: 'Data wysyłki dokumentacji Powykonawczej', value: String(d.dataPrzekazaniaDokumentacji).split('-').reverse().join('.') });
         break;
 
       case 'OBUDOWA': {
