@@ -929,7 +929,7 @@ async function startServer() {
         'OBUDOWA', 'ROZDZIELNICA_SN', 'ROZDZIELNICA_NN', 'TABLICA_POMIAROWA', 'RPW', 'MOST',
         'SZAFKA_TELEMECHANIKI', 'TRANSFORMATOR_POTRZEB_WLASNYCH', 'WSKAZNIKI_ZWARC',
         'RYS_AKCEPTACJA', 'KOLORY', 'OPISY', 'DRZWI', 'ZAP_SERWISPOL', 'ZAM_SERWISPOL',
-        'ZLECENIE_MONTAZU', 'ZLECENIE MONTAŻU', 'POWYKONAWCZA', 'DATA_WYJAZDU', 'DODATKOWE',
+        'ZLECENIE_MONTAZU', 'ZLECENIE MONTAŻU', 'ZLECENIE_MONTAŻU', 'POWYKONAWCZA', 'DATA_WYJAZDU', 'DODATKOWE',
       ]);
       const mainItems = Array.isArray(order.items) ? order.items.filter((item: any) => mainPositionTypes.has(item.type)) : [];
       // Jeśli zapisane dane zawierają rozpoznane pozycje główne, serwer jest źródłem prawdy.
