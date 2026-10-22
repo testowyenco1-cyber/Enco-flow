@@ -10,6 +10,7 @@ interface StatusSwitcherProps {
   variant?: 'dropdown' | 'segmented' | 'compact-cycle';
   readOnly?: boolean;
   readOnlyNotice?: string;
+  notApplicableLabel?: string;
 }
 
 export const StatusSwitcher: React.FC<StatusSwitcherProps> = ({
@@ -19,6 +20,7 @@ export const StatusSwitcher: React.FC<StatusSwitcherProps> = ({
   variant = 'segmented',
   readOnly = false,
   readOnlyNotice,
+  notApplicableLabel,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -62,7 +64,10 @@ export const StatusSwitcher: React.FC<StatusSwitcherProps> = ({
   }, [isOpen]);
 
   const statuses: ItemStatus[] = ['NOT_ORDERED', 'ORDERED', 'IN_PROGRESS', 'READY', 'PROBLEM', 'NOT_APPLICABLE'];
-  const currentMeta = (currentStatus && STATUS_META[currentStatus]) || STATUS_META.NOT_ORDERED;
+  const baseCurrentMeta = (currentStatus && STATUS_META[currentStatus]) || STATUS_META.NOT_ORDERED;
+  const currentMeta = currentStatus === 'NOT_APPLICABLE' && notApplicableLabel
+    ? { ...baseCurrentMeta, label: notApplicableLabel, shortLabel: notApplicableLabel }
+    : baseCurrentMeta;
 
   // READ-ONLY MODE
   if (readOnly) {
@@ -99,7 +104,10 @@ export const StatusSwitcher: React.FC<StatusSwitcherProps> = ({
     return (
       <div className="inline-flex flex-wrap items-center p-1 bg-slate-200/80 rounded-lg border border-slate-300 shadow-2xs gap-0.5">
         {statuses.map((st) => {
-          const meta = STATUS_META[st];
+          const baseMeta = STATUS_META[st];
+          const meta = st === 'NOT_APPLICABLE' && notApplicableLabel
+            ? { ...baseMeta, label: notApplicableLabel, shortLabel: notApplicableLabel }
+            : baseMeta;
           const isActive = currentStatus === st;
 
           let activeClass = 'bg-slate-700 text-white shadow-xs font-bold';
