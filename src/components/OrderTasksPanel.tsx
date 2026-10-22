@@ -82,17 +82,17 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
       setUsers(allUsers);
       if (!userId && allUsers.length) setUserId(allUsers[0].id);
 
-      // Serwer atomowo sprawdza, czy zlecenie wymaga przypomnienia i czy nie istnieje już żadne zadanie.
-      // Dzięki temu równoczesne otwarcie zlecenia przez kilka osób nie tworzy duplikatów.
+      // Serwer sprawdza zapisany status zlecenia i porządkuje przypomnienia przed zwróceniem wyniku.
+      // Identyfikatory porównujemy jako tekst, tak samo jak po stronie API.
       const autoTask = await ensureAutoReminder(orderId, hasIncompleteMainItems);
       if (autoTask) {
         currentTasks = [autoTask, ...allTasks.filter((task) => task.id !== autoTask.id)];
-        setNotice('Automatycznie utworzono zadanie kontrolne dla Działu Handlowego.');
+        setNotice('Przypomnienie kontrolne dla Działu Handlowego jest aktywne.');
       } else {
         // The server may have removed a stale reminder because the order is complete or has a regular task.
         // Filter the pre-request snapshot too, otherwise the deleted reminder remains visible until refresh.
         currentTasks = allTasks.filter((task) => !(
-          task.orderId === orderId &&
+          String(task.orderId) === String(orderId) &&
           task.description.startsWith('Brak zadań przypisanych do zlecenia.')
         ));
       }
@@ -111,10 +111,10 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
   }, [orderId, hasIncompleteMainItems]);
 
   const orderTasks = useMemo(() => tasks
-    .filter((task) => task.orderId === orderId)
+    .filter((task) => String(task.orderId) === String(orderId))
     .filter((task) => showCompleted || task.status !== 'done')
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || b.createdAt.localeCompare(a.createdAt)), [tasks, orderId, showCompleted]);
-  const activeCount = tasks.filter((task) => task.orderId === orderId && task.status !== 'done').length;
+  const activeCount = tasks.filter((task) => String(task.orderId) === String(orderId) && task.status !== 'done').length;
   const canCreateTask = currentProfile.id !== 'ogolny';
 
   const handleCreate = async (event: React.FormEvent) => {
@@ -137,7 +137,7 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
       setTasks((current) => [
         task,
         ...current.filter((item) => item.id !== task.id && !(
-          item.orderId === orderId
+          String(item.orderId) === String(orderId)
           && item.description.startsWith('Brak zadań przypisanych do zlecenia.')
         )),
       ]);
