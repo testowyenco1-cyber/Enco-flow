@@ -89,7 +89,12 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
         currentTasks = [autoTask, ...allTasks.filter((task) => task.id !== autoTask.id)];
         setNotice('Automatycznie utworzono zadanie kontrolne dla Działu Handlowego.');
       } else {
-        currentTasks = allTasks;
+        // The server may have removed a stale reminder because the order is complete or has a regular task.
+        // Filter the pre-request snapshot too, otherwise the deleted reminder remains visible until refresh.
+        currentTasks = allTasks.filter((task) => !(
+          task.orderId === orderId &&
+          task.description.startsWith('Brak zadań przypisanych do zlecenia.')
+        ));
       }
       setTasks(currentTasks);
     } catch (err) {
