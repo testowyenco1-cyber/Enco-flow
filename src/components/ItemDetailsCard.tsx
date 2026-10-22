@@ -1578,7 +1578,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
                     ['Data wysyłki dokumentacji Powykonawczej', d.dataPrzekazaniaDokumentacji],
                   ]
                 : [
-                    ...(item.type === 'DATA_WYJAZDU' ? [] : [['Data zlecenia / zamówienia', item.orderDate] as [string, string | undefined]),
+                    ...(item.type === 'DATA_WYJAZDU' ? [] : [['Data zlecenia / zamówienia', item.orderDate] as [string, string | undefined]]),
                     [item.type === 'DATA_WYJAZDU' ? 'Planowana data wyjazdu' : 'Planowana data gotowości', item.plannedDate],
                     [item.type === 'DATA_WYJAZDU' ? 'Rzeczywista data wyjazdu' : 'Rzeczywista data zakończenia', item.completedDate],
                   ];
