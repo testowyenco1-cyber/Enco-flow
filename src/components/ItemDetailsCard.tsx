@@ -1426,6 +1426,11 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
             variant="segmented"
             readOnly={!canEdit}
             readOnlyNotice={permHint.reason}
+            notApplicableLabel={
+              ['OBUDOWA', 'ROZDZIELNICA_SN', 'ROZDZIELNICA_NN', 'KOLORY', 'ZAM_SERWISPOL'].includes(item.type)
+                ? 'Nie uwzględniono'
+                : undefined
+            }
           />
           {item.status === 'NOT_APPLICABLE' && (
             <button
