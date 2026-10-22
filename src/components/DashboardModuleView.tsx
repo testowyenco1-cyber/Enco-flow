@@ -39,35 +39,28 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
           <table className="w-full min-w-max border-separate border-spacing-0 text-[11px]">
             <colgroup>
               <col style={{ width: 210 }} />
-              {columns.map((column) => <col key={column.type} style={{ width: 62 }} />)}
+              {columns.map((column) => <col key={column.type} style={{ width: 38 }} />)}
               <col style={{ width: 76 }} />
             </colgroup>
             <thead className="sticky top-0 z-20 bg-slate-100">
               <tr>
-                <th scope="col" rowSpan={2} className="sticky left-0 z-30 min-w-[210px] border-b border-r border-slate-200 bg-slate-100 px-3 py-2 text-left font-bold text-slate-700">
+                <th scope="col" className="sticky left-0 z-30 min-w-[210px] border-b border-r border-slate-200 bg-slate-100 px-3 py-2 text-left font-bold text-slate-700">
                   <span className="block">Nazwa stacji / ZL</span>
                   <span className="mt-1 block text-[10px] font-normal text-slate-400">Stacja / numer zlecenia</span>
                 </th>
                 {columns.map((column) => (
-                  <th key={column.type} scope="col" title={column.description} className="h-8 border-b border-r border-slate-200 px-1 py-1 text-center font-bold text-slate-600">
-                    <span className="block truncate">{column.shortName}</span>
-                  </th>
-                ))}
-                <th scope="col" rowSpan={2} title="Liczba aktualnych zadań z panelu zadań i przypomnień (bez wykonanych)" className="sticky right-0 z-30 min-w-[76px] border-b border-l border-slate-200 bg-slate-100 px-2 py-2 text-center font-bold text-slate-700">
-                  <span className="block">Zadania</span>
-                  <span className="mt-1 block text-[10px] font-normal text-slate-400">aktywn.</span>
-                </th>
-              </tr>
-              <tr>
-                {columns.map((column) => (
-                  <th key={column.type} title={column.description} className="h-[96px] w-[62px] border-b border-r border-slate-200 bg-white p-0 align-bottom">
-                    <div className="relative h-[96px] overflow-visible">
-                      <span className="absolute bottom-[9px] left-[12px] block origin-bottom-left -rotate-45 whitespace-nowrap text-[10px] font-normal text-slate-500">
+                  <th key={column.type} scope="col" title={column.description} className="h-[118px] w-[38px] min-w-[38px] border-b border-r border-slate-200 bg-white p-0 align-bottom">
+                    <div className="relative h-[118px] w-[38px] overflow-visible">
+                      <span className="absolute bottom-[9px] left-[12px] block origin-bottom-left -rotate-45 whitespace-nowrap text-[10px] font-semibold text-slate-600">
                         {column.name}
                       </span>
                     </div>
                   </th>
                 ))}
+                <th scope="col" title="Liczba aktualnych zadań z panelu zadań i przypomnień (bez wykonanych)" className="sticky right-0 z-30 min-w-[76px] border-b border-l border-slate-200 bg-slate-100 px-2 py-2 text-center font-bold text-slate-700">
+                  <span className="block">Zadania</span>
+                  <span className="mt-1 block text-[10px] font-normal text-slate-400">aktywn.</span>
+                </th>
               </tr>
             </thead>
             <tbody>
