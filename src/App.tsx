@@ -471,9 +471,15 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
       normalizedOrderNumber = val.normalized;
     }
 
+    const syncedItems = updatedFields.departureDate !== undefined
+      ? current.items.map((item) => item.type === 'DATA_WYJAZDU'
+          ? { ...item, plannedDate: updatedFields.departureDate!, updatedAt: new Date().toISOString() }
+          : item)
+      : current.items;
     const updated: Order = {
       ...current,
       ...updatedFields,
+      items: syncedItems,
       orderNumber: normalizedOrderNumber,
       updatedAt: new Date().toISOString(),
     };
@@ -517,6 +523,7 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
     const updatedOrder: Order = {
       ...selectedOrder,
       items: updatedItems,
+      departureDate: updatedItem.type === 'DATA_WYJAZDU' ? updatedItem.plannedDate : selectedOrder.departureDate,
       status: computedStatus,
       updatedAt: new Date().toISOString(),
     };
