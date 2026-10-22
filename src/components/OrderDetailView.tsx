@@ -199,6 +199,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
     onUpdateOrderStatus(order.id, {
       ...order,
       items: updatedItems,
+      departureDate: order.items.some((item) => item.id === itemId && item.type === 'DATA_WYJAZDU') ? plannedDate : order.departureDate,
       updatedAt: new Date().toISOString(),
     });
   };
