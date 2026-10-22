@@ -558,7 +558,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    Wszystkie ({order.items.length})
+                    Wszystkie ({visibleItems.length})
                   </button>
                   <button
                     type="button"
@@ -569,7 +569,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    <span>Moje do edycji ({order.items.filter((it) => canEditItemType(profile, it.type)).length})</span>
+                    <span>Moje do edycji ({visibleItems.filter((it) => canEditItemType(profile, it.type)).length})</span>
                   </button>
                 </div>
               )}
