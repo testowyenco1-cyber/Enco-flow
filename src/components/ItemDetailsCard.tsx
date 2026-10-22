@@ -10,6 +10,10 @@ import {
   validateSNCombination,
   formatDimensionM,
   checkReadinessOverdue,
+  findMatchingDoorOrder,
+  formatDatePL,
+  formatPLN,
+  checkDoorOrderOverdue,
   DoorOrder,
 } from '../types/enco';
 import { StatusSwitcher } from './StatusSwitcher';
@@ -334,13 +338,39 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         if (d.sposobWykonania) entries.push({ label: 'Sposób wykonania', value: d.sposobWykonania });
         break;
 
-      case 'DRZWI':
-        if (d.numerDokumentu) entries.push({ label: 'Dokument zamówienia (PZD)', value: d.numerDokumentu });
-        if (d.ilosc) entries.push({ label: 'Ilość', value: d.ilosc });
-        if (d.typ) entries.push({ label: 'Typ', value: d.typ });
-        if (d.lokalizacja) entries.push({ label: 'Lokalizacja', value: d.lokalizacja });
-        if (d.dodatkoweWyposazenie) entries.push({ label: 'Dodatkowe wyposażenie', value: d.dodatkoweWyposazenie });
+      case 'DRZWI': {
+        // Dane zamówienia pobieramy na bieżąco z modułu „Drzwi”,
+        // bez kopiowania ich do details elementu głównego.
+        const linkedDoorOrder = findMatchingDoorOrder(doorOrders, orderNumber, d.numerDokumentu);
+        if (linkedDoorOrder) {
+          const deliveryStatus = checkDoorOrderOverdue(
+            linkedDoorOrder.terminZamowienia,
+            linkedDoorOrder.terminDostawy,
+          );
+          entries.push(
+            { label: 'Numer dokumentu PZD', value: linkedDoorOrder.numerDokumentu || '—' },
+            { label: 'Kategoria / zamówienie', value: linkedDoorOrder.kategoria || '—' },
+            { label: 'Kontrahent / realizacje', value: linkedDoorOrder.kontrahentRealizacje || '—' },
+            { label: 'Data zamówienia', value: formatDatePL(linkedDoorOrder.dataZamowienia) },
+            { label: 'Termin z zamówienia', value: formatDatePL(linkedDoorOrder.terminZamowienia) },
+            { label: 'Termin dostawy', value: formatDatePL(linkedDoorOrder.terminDostawy) },
+            { label: 'Status dostawy', value: deliveryStatus.label },
+            { label: 'Wartość netto', value: formatPLN(linkedDoorOrder.wartoscNetto) },
+            { label: 'Wartość brutto', value: formatPLN(linkedDoorOrder.wartoscBrutto) },
+            { label: 'Uwagi z modułu Drzwi', value: linkedDoorOrder.uwagi?.trim() || '—' },
+          );
+        } else {
+          entries.push({
+            label: 'Powiązanie z modułem Drzwi',
+            value: 'Nie znaleziono zamówienia PZD przypisanego do tego zlecenia',
+          });
+        }
+        if (d.ilosc) entries.push({ label: 'Ilość drzwi', value: d.ilosc });
+        if (d.typ) entries.push({ label: 'Typ drzwi', value: d.typ });
+        if (d.lokalizacja) entries.push({ label: 'Lokalizacja drzwi', value: d.lokalizacja });
+        if (d.dodatkoweWyposazenie) entries.push({ label: 'Dodatkowe wyposażenie drzwi', value: d.dodatkoweWyposazenie });
         break;
+      }
 
       case 'ZAP_SERWISPOL':
       case 'ZAP_JK':
