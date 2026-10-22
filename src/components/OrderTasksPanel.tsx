@@ -142,11 +142,33 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
           : users.find((user) => user.id === userId)?.departments[0],
         assigneeUserId: assigneeType === 'person' ? userId : undefined,
       });
-      setTasks((current) => [task, ...current.filter((item) => item.id !== task.id)]);
+      const autoTask = tasks.find((item) =>
+        item.orderId === orderId
+        && item.status !== 'done'
+        && item.description.startsWith('Brak zadań przypisanych do zlecenia.')
+      );
+      let completedAutoTask: EncoTask | null = null;
+      if (autoTask) {
+        try {
+          completedAutoTask = await updateTaskStatus(autoTask.id, 'done');
+        } catch {
+          // Ręczne zadanie zostało już zapisane; pozostawiamy komunikat o ewentualnym błędzie zamknięcia zadania kontrolnego.
+        }
+      }
+      setTasks((current) => [
+        task,
+        ...current
+          .filter((item) => item.id !== task.id)
+          .map((item) => completedAutoTask && item.id === completedAutoTask.id ? completedAutoTask : item),
+      ]);
       setDescription('');
       setDueDate('');
       setIsFormOpen(false);
-      setNotice('Zadanie zapisano na serwerze.');
+      setNotice(completedAutoTask
+        ? 'Zadanie zapisano. Automatyczne zadanie kontrolne zostało zakończone i zniknęło z aktywnej listy.'
+        : autoTask
+          ? 'Zadanie zapisano, ale nie udało się automatycznie zakończyć zadania kontrolnego. Kliknij „Odśwież” i spróbuj ponownie.'
+          : 'Zadanie zapisano na serwerze.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Nie udało się utworzyć zadania.');
     } finally {
