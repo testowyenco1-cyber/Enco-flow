@@ -914,10 +914,9 @@ async function startServer() {
   // Idempotently create at most one automatic reminder when an order has unfinished main items and no tasks.
   app.post('/api/tasks/auto-reminder', (req: any, res) => {
     try {
+      // Generowanie przypomnienia jest automatyczną funkcją systemu, a nie ręcznym tworzeniem zadania.
+      // Każdy zalogowany użytkownik może je wyzwolić; zadanie i tak trafia do Działu Handlowego.
       const actor = req.authUser as AuthUser;
-      if (!actor.isAdmin && actor.departments.length === 0) {
-        return res.status(403).json({ success: false, error: 'Konto tylko do podglądu nie może tworzyć zadań.' });
-      }
       const orderId = typeof req.body?.orderId === 'string' ? req.body.orderId : '';
       if (!orderId) return res.status(400).json({ success: false, error: 'Brak identyfikatora zlecenia.' });
 
@@ -933,8 +932,12 @@ async function startServer() {
         'ZLECENIE_MONTAZU', 'ZLECENIE MONTAŻU', 'POWYKONAWCZA', 'DATA_WYJAZDU', 'DODATKOWE',
       ]);
       const mainItems = Array.isArray(order.items) ? order.items.filter((item: any) => mainPositionTypes.has(item.type)) : [];
-      const hasIncompleteMainItems = mainItems.length > 0 &&
-        mainItems.some((item: any) => item.status !== 'READY' && item.status !== 'NOT_APPLICABLE');
+      // Jeśli zapisane dane zawierają rozpoznane pozycje główne, serwer jest źródłem prawdy.
+      // Awaryjnie użyj flagi z widoku tylko wtedy, gdy starsze/niestandardowe typy pozycji
+      // nie pasują do listy typów rozpoznawanych przez serwer.
+      const hasIncompleteMainItems = mainItems.length > 0
+        ? mainItems.some((item: any) => item.status !== 'READY' && item.status !== 'NOT_APPLICABLE')
+        : req.body?.hasIncompleteMainItems === true;
 
       const tasks = readTasks();
       const orderTasks = tasks.filter((task) => task.orderId === orderId);
