@@ -52,7 +52,7 @@ function defaultDepartment(profile: UserRoleProfile): DepartmentFilter {
   return 'all';
 }
 
-export const ActionDashboardView: React.FC<Props> = ({ onSelectOrder, currentProfile }) => {
+export const ActionDashboardView: React.FC<Props> = ({ orders, onSelectOrder, currentProfile }) => {
   const profile = currentProfile || USER_PROFILES.admin;
   const [tasks, setTasks] = useState<EncoTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,6 +115,10 @@ export const ActionDashboardView: React.FC<Props> = ({ onSelectOrder, currentPro
   const activeCount = tasks.filter((task) => task.status !== 'done').length;
   const overdueCount = tasks.filter(isOverdue).length;
   const completedCount = tasks.filter((task) => task.status === 'done').length;
+  const showSalesReminders = profile.id === 'dzial_handlowy' || profile.id === 'admin';
+  const ordersNeedingSalesFollowUp = showSalesReminders
+    ? orders.filter((order) => !tasks.some((task) => String(task.orderId) === String(order.id) && task.status !== 'done'))
+    : [];
 
   return (
     <div className="space-y-5">
@@ -150,6 +154,19 @@ export const ActionDashboardView: React.FC<Props> = ({ onSelectOrder, currentPro
           </div>
         </div>
         {error && <div role="alert" className="mx-4 mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</div>}
+        {showSalesReminders && ordersNeedingSalesFollowUp.length > 0 && (
+          <section className="mx-4 mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
+            <h2 className="text-sm font-bold">Przypomnienia dla Działu Handlowego</h2>
+            <p className="mt-1 text-xs">W tych zleceniach wszystkie zadania są wykonane lub nie ma żadnych zadań. Sprawdź zlecenie i wykonaj dalsze czynności handlowe.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {ordersNeedingSalesFollowUp.map((order) => (
+                <button key={String(order.id)} type="button" onClick={() => onSelectOrder(String(order.id))} className="rounded-lg border border-amber-300 bg-white px-3 py-2 text-left text-xs font-semibold text-amber-900 hover:bg-amber-100">
+                  {String(order.orderNumber || order.number || order.zlNumber || 'Zlecenie')} {order.projectName || order.client ? `· ${order.projectName || order.client}` : ''}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
         {loading && tasks.length === 0 ? <div className="flex items-center justify-center gap-2 p-10 text-xs text-slate-500"><LoaderCircle className="h-4 w-4 animate-spin" /> Pobieranie zadań…</div>
           : visibleTasks.length === 0 ? <div className="p-10 text-center"><CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-emerald-500" /><h2 className="text-sm font-bold text-slate-800">Brak zadań spełniających wybrane kryteria</h2><p className="mt-1 text-xs text-slate-500">Zadania dodaje się z panelu „Zadania i przypomnienia” przy konkretnym zleceniu.</p></div>
           : <div className="overflow-x-auto"><table className="w-full min-w-[950px] text-left"><thead className="border-b border-slate-200 bg-slate-50"><tr className="text-[10px] uppercase tracking-wide text-slate-500"><th className="px-4 py-3">ZL / projekt</th><th className="px-4 py-3">Zadanie</th><th className="px-4 py-3">Odpowiedzialny</th><th className="px-4 py-3">Termin</th><th className="px-4 py-3">Dodano</th><th className="px-4 py-3">Status</th></tr></thead><tbody className="divide-y divide-slate-100">
