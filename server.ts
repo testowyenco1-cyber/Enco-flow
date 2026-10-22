@@ -919,29 +919,48 @@ async function startServer() {
         return res.status(403).json({ success: false, error: 'Konto tylko do podglądu nie może tworzyć zadań.' });
       }
       const orderId = typeof req.body?.orderId === 'string' ? req.body.orderId : '';
-      const hasIncompleteMainItems = req.body?.hasIncompleteMainItems === true;
       if (!orderId) return res.status(400).json({ success: false, error: 'Brak identyfikatora zlecenia.' });
 
       const orders = fs.existsSync(ORDERS_FILE) ? JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf-8')) : INITIAL_ORDERS;
       const order = Array.isArray(orders) ? orders.find((item: any) => item.id === orderId) : null;
       if (!order) return res.status(404).json({ success: false, error: 'Nie znaleziono zlecenia.' });
 
+      // Determine completion from the latest server-side order data, not a potentially stale browser flag.
+      const mainPositionTypes = new Set([
+        'OBUDOWA', 'ROZDZIELNICA_SN', 'ROZDZIELNICA_NN', 'TABLICA_POMIAROWA', 'RPW', 'MOST',
+        'SZAFKA_TELEMECHANIKI', 'TRANSFORMATOR_POTRZEB_WLASNYCH', 'WSKAZNIKI_ZWARC',
+        'RYS_AKCEPTACJA', 'KOLORY', 'OPISY', 'DRZWI', 'ZAP_SERWISPOL', 'ZAM_SERWISPOL',
+        'ZLECENIE_MONTAZU', 'ZLECENIE MONTAŻU', 'POWYKONAWCZA', 'DATA_WYJAZDU', 'DODATKOWE',
+      ]);
+      const mainItems = Array.isArray(order.items) ? order.items.filter((item: any) => mainPositionTypes.has(item.type)) : [];
+      const hasIncompleteMainItems = mainItems.length > 0 &&
+        mainItems.some((item: any) => item.status !== 'READY' && item.status !== 'NOT_APPLICABLE');
+
       const tasks = readTasks();
+      const orderTasks = tasks.filter((task) => task.orderId === orderId);
+      const isReminder = (task: any) => typeof task.description === 'string' &&
+        task.description.startsWith('Brak zadań przypisanych do zlecenia.');
+
       if (!hasIncompleteMainItems) {
-        const remaining = tasks.filter((task) =>
-          !(task.orderId === orderId && typeof task.description === 'string' &&
-            task.description.startsWith('Brak zadań przypisanych do zlecenia.'))
-        );
+        const remaining = tasks.filter((task) => !(task.orderId === orderId && isReminder(task)));
         if (remaining.length !== tasks.length) saveTasks(remaining);
         return res.json({ success: true, task: null });
       }
-      // Return an existing reminder to concurrent clients; regular tasks suppress the reminder.
-      const orderTasks = tasks.filter((task) => task.orderId === orderId);
-      const existingReminder = orderTasks.find((task) =>
-        typeof task.description === 'string' && task.description.startsWith('Brak zadań przypisanych do zlecenia.')
-      );
-      if (orderTasks.length > 0) {
-        return res.json({ success: true, task: orderTasks.length === 1 ? (existingReminder || null) : null });
+
+      // Any regular task suppresses the reminder. Clean up any stale reminder as well.
+      if (orderTasks.some((task) => !isReminder(task))) {
+        const remaining = tasks.filter((task) => !(task.orderId === orderId && isReminder(task)));
+        if (remaining.length !== tasks.length) saveTasks(remaining);
+        return res.json({ success: true, task: null });
+      }
+
+      // Return one existing reminder to concurrent clients and remove any accidental duplicates.
+      const existingReminders = orderTasks.filter(isReminder);
+      if (existingReminders.length > 0) {
+        const keep = existingReminders[0];
+        const remaining = tasks.filter((task) => !(task.orderId === orderId && isReminder(task) && task.id !== keep.id));
+        if (remaining.length !== tasks.length) saveTasks(remaining);
+        return res.json({ success: true, task: keep });
       }
 
       const now = new Date();
