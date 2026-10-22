@@ -1427,8 +1427,8 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
             readOnly={!canEdit}
             readOnlyNotice={permHint.reason}
             notApplicableLabel={
-              ['OBUDOWA', 'ROZDZIELNICA_SN', 'ROZDZIELNICA_NN', 'KOLORY', 'ZAM_SERWISPOL'].includes(item.type)
-                ? 'Nie uwzględniono'
+              ["OBUDOWA","ROZDZIELNICA_SN","ROZDZIELNICA_NN","TABLICA_POMIAROWA","RPW","MOST","SZAFKA_TELEMECHANIKI","TRANSFORMATOR_POTRZEB_WLASNYCH","WSKAZNIKI_ZWARC","RYS_AKCEPTACJA","KOLORY","OPISY","DRZWI","ZAP_SERWISPOL","ZAM_SERWISPOL","ZLECENIE_MONTAZU","POWYKONAWCZA","DATA_WYJAZDU","DODATKOWE"].includes(item.type)
+                ? '- Nie uwzględniono'
                 : undefined
             }
           />
