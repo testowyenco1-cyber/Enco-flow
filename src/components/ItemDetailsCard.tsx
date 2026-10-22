@@ -1546,18 +1546,55 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
             </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {([
-              ...(item.type === 'DATA_WYJAZDU' ? [] : [['Data zlecenia / zamówienia', item.orderDate] as const]),
-              [item.type === 'DATA_WYJAZDU' ? 'Planowana data wyjazdu' : 'Planowana data gotowości', item.plannedDate],
-              [item.type === 'DATA_WYJAZDU' ? 'Rzeczywista data wyjazdu' : 'Rzeczywista data zakończenia', item.completedDate],
-            ] as const).map(([label, value]) => (
-              <div key={label} className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3">
-                <div className="font-semibold text-slate-500">{label}</div>
-                <div className="mt-1 font-mono font-bold text-slate-800">
-                  {value ? value.split('-').reverse().join('.') : '—'}
+            {(() => {
+              const d = item.details || {};
+              const formatDate = (value: unknown) => {
+                if (typeof value !== 'string' || !value) return '';
+                return /^\\d{4}-\\d{2}-\\d{2}$/.test(value) ? value.split('-').reverse().join('.') : value;
+              };
+              const acceptanceDate = orderItems.find((related) => related.type === 'RYS_AKCEPTACJA')?.details?.dataAkceptacji;
+              const dates: [string, string | undefined][] = item.type === 'ROZDZIELNICA_NN'
+                ? [
+                    ['Data zlecenia / zamówienia', item.orderDate],
+                    ['Planowana data gotowości', item.plannedDate],
+                    ['Data gotowości - Płochocińska', d.dataGotowosciFakt],
+                    ['Data dostawy do Pyskowic', d.dataPlDostawyPyskowice],
+                  ]
+                : item.type === 'MOST'
+                ? [
+                    ['Data zlecenia / zamówienia', item.orderDate],
+                    ['Data dostawy do Pyskowic', d.dataPlDostawyPyskowice],
+                  ]
+                : item.type === 'RYS_AKCEPTACJA'
+                ? [['Data akceptacji', d.dataAkceptacji]]
+                : item.type === 'KOLORY' || item.type === 'OPISY'
+                ? [['Data akceptacji', acceptanceDate]]
+                : item.type === 'ZAP_SERWISPOL'
+                ? [['Data zapytania', d.dataZapytania]]
+                : item.type === 'ZAM_SERWISPOL'
+                ? [
+                    ['Data zlecenia', d.dataZamowienia],
+                    ['Przewidywana data wykonania prac', d.uzgodnionyTermin],
+                  ]
+                : item.type === 'POWYKONAWCZA'
+                ? [
+                    ['Data wysyłki DTR', d.dataWysylkiDTR],
+                    ['Data wysyłki dokumentacji Powykonawczej', d.dataPrzekazaniaDokumentacji],
+                  ]
+                : [
+                    ...(item.type === 'DATA_WYJAZDU' ? [] : [['Data zlecenia / zamówienia', item.orderDate] as [string, string | undefined]),
+                    [item.type === 'DATA_WYJAZDU' ? 'Planowana data wyjazdu' : 'Planowana data gotowości', item.plannedDate],
+                    [item.type === 'DATA_WYJAZDU' ? 'Rzeczywista data wyjazdu' : 'Rzeczywista data zakończenia', item.completedDate],
+                  ];
+              return dates.map(([label, value]) => (
+                <div key={label} className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <div className="font-semibold text-slate-500">{label}</div>
+                  <div className="mt-1 font-mono font-bold text-slate-800">
+                    {formatDate(value) || '—'}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ));
+            })()}
           </div>
         </div>
 
