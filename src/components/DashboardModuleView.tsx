@@ -56,8 +56,8 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
           <table className="w-full min-w-max border-separate border-spacing-0 text-[11px]">
             <colgroup>
               <col style={{ width: 240 }} />
+              <col style={{ width: 112 }} />
               {columns.map((column) => <col key={column.type} style={{ width: 34 }} />)}
-              <col style={{ width: 88 }} />
               <col style={{ width: 76 }} />
             </colgroup>
             <thead className="sticky top-0 z-20 bg-white">
@@ -66,6 +66,7 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
                   <span className="block">Nazwa stacji / ZL</span>
                   <span className="mt-1 block text-[10px] font-normal text-slate-400">Stacja / numer zlecenia</span>
                 </th>
+                <th scope="col" title="Data wyjazdu pobierana ze zlecenia. Kliknij, aby sortować." className="sticky left-[240px] z-30 min-w-[112px] bg-slate-50 px-2 py-2 text-center font-semibold text-slate-700"><button type="button" onClick={() => setDepartureSort((current) => current === null ? "asc" : current === "asc" ? "desc" : null)} className="inline-flex items-center justify-center gap-1 rounded-md px-2 py-1 hover:bg-slate-200" aria-label="Sortuj po dacie wyjazdu">Wyjazd {departureSort === "asc" ? "↑" : departureSort === "desc" ? "↓" : <ArrowUpDown className="h-3 w-3" />}</button></th>
                 {columns.map((column) => (
                   <th key={column.type} scope="col" title={column.description} className="h-[144px] w-[34px] min-w-[34px] bg-slate-50 p-0 align-bottom">
                     <div className="flex h-[144px] w-[34px] items-end justify-center pb-3">
@@ -75,7 +76,6 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
                     </div>
                   </th>
                 ))}
-                <th scope="col" title="Kliknij, aby sortować po dacie wyjazdu" className="sticky right-[76px] z-30 min-w-[88px] bg-slate-50 px-1 py-1 text-center font-semibold text-slate-700"><button type="button" onClick={() => setDepartureSort((current) => current === null ? "asc" : current === "asc" ? "desc" : null)} className="inline-flex items-center justify-center gap-0.5 rounded px-1 py-1 hover:bg-slate-200" aria-label="Sortuj po dacie wyjazdu">{`Wyjazd${departureSort === "asc" ? " ↑" : departureSort === "desc" ? " ↓" : ""}`}<ArrowUpDown className="h-3 w-3" /></button></th>
                 <th scope="col" title="Liczba aktualnych zadań z panelu zadań i przypomnień (bez wykonanych)" className="sticky right-0 z-30 min-w-[76px] bg-slate-50 px-2 py-2 text-center font-semibold text-slate-700">
                   <span className="block">Zadania</span>
                   <span className="mt-1 block text-[10px] font-normal text-slate-400">aktywn.</span>
@@ -94,6 +94,7 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
                         <span className="block whitespace-normal break-words text-[10px] leading-snug text-slate-500">{order.orderNumber} · {order.client}</span>
                       </button>
                     </td>
+                    <td className="sticky left-[240px] z-10 bg-inherit px-2 py-2 text-center text-[11px] font-semibold tabular-nums text-slate-700 group-hover:bg-blue-50" title={order.departureDate ? `Planowany wyjazd: ${formatDepartureDate(order.departureDate)}` : "Nie wpisano daty wyjazdu w zleceniu"}>{order.departureDate ? formatDepartureDate(order.departureDate) : <span className="font-normal text-slate-400">Brak daty</span>}</td>
                     {columns.map((column) => {
                       const item = itemsByType.get(column.type);
                       const status = item?.status;
@@ -110,7 +111,6 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
                         </td>
                       );
                     })}
-                    <td className="sticky right-[76px] z-10 bg-inherit px-1 py-2 text-center text-[10px] tabular-nums text-slate-700 group-hover:bg-blue-50" title={order.departureDate ? `Planowany wyjazd: ${formatDepartureDate(order.departureDate)}` : 'Brak daty wyjazdu'}>{order.departureDate ? formatDepartureDate(order.departureDate) : '—'}</td>
                     <td className="sticky right-0 z-10 bg-inherit px-2 py-2 text-center group-hover:bg-blue-50">
                       <span className="inline-flex min-w-7 justify-center rounded bg-slate-100 px-1.5 py-1 font-bold tabular-nums text-slate-700">{tasksLoading ? '…' : activeTaskCount}</span>
                     </td>
