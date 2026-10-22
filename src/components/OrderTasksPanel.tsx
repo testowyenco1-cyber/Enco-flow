@@ -10,7 +10,6 @@ interface Props {
   orderNumber: string;
   projectName: string;
   client: string;
-  hasIncompleteMainItems: boolean;
   currentProfile: UserRoleProfile;
   onOpenChange?: (isOpen: boolean) => void;
 }
@@ -45,7 +44,7 @@ function dueLabel(value: string, status: EncoTaskStatus): { label: string; style
   return { label: 'Termin', style: 'bg-blue-50 text-blue-700 border-blue-200' };
 }
 
-export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, projectName, client, hasIncompleteMainItems, currentProfile, onOpenChange }) => {
+export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, projectName, client, currentProfile, onOpenChange }) => {
   const [isOpen, setIsOpen] = useState(() => {
     try { return window.localStorage.getItem('enco-flow-order-tasks-panel') !== 'collapsed'; }
     catch { return true; }
@@ -94,7 +93,7 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
     void load();
     // Lista jest pobierana po otwarciu zlecenia; kolejne odświeżenie użytkownik uruchamia ręcznie.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderId, hasIncompleteMainItems]);
+  }, [orderId]);
 
   const orderTasks = useMemo(() => tasks
     .filter((task) => String(task.orderId) === String(orderId))
