@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BellRing, CalendarDays, Check, ChevronRight, ClipboardList, LoaderCircle, Plus, RefreshCw, UserRound, Users, PanelRightClose, PanelRightOpen } from 'lucide-react';
+import { CalendarDays, Check, ChevronRight, ClipboardList, LoaderCircle, Plus, RefreshCw, UserRound, Users, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import type { AuthDepartmentId } from '../types/auth';
 import type { EncoTask, EncoTaskStatus, TaskAssigneeUser } from '../types/tasks';
 import type { UserRoleProfile } from '../types/userRole';
-import { createTask, ensureAutoReminder, fetchTaskAssignees, fetchTasks, updateTaskStatus } from '../services/taskService';
+import { createTask, fetchTaskAssignees, fetchTasks, updateTaskStatus } from '../services/taskService';
 
 interface Props {
   orderId: string;
@@ -82,21 +82,7 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
       setUsers(allUsers);
       if (!userId && allUsers.length) setUserId(allUsers[0].id);
 
-      // Serwer sprawdza zapisany status zlecenia i porządkuje przypomnienia przed zwróceniem wyniku.
-      // Identyfikatory porównujemy jako tekst, tak samo jak po stronie API.
-      const autoTask = await ensureAutoReminder(orderId, hasIncompleteMainItems);
-      if (autoTask) {
-        currentTasks = [autoTask, ...allTasks.filter((task) => task.id !== autoTask.id)];
-        setNotice('Przypomnienie kontrolne dla Działu Handlowego jest aktywne.');
-      } else {
-        // The server may have removed a stale reminder because the order is complete or has a regular task.
-        // Filter the pre-request snapshot too, otherwise the deleted reminder remains visible until refresh.
-        currentTasks = allTasks.filter((task) => !(
-          String(task.orderId) === String(orderId) &&
-          task.description.startsWith('Brak zadań przypisanych do zlecenia.')
-        ));
-      }
-      setTasks(currentTasks);
+      setTasks(allTasks);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Nie udało się pobrać zadań.');
     } finally {
@@ -133,15 +119,8 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
           : users.find((user) => user.id === userId)?.departments[0],
         assigneeUserId: assigneeType === 'person' ? userId : undefined,
       });
-      // Serwer usuwa automatyczne zadanie kontrolne w tej samej operacji, w której zapisuje zwykłe zadanie.
-      setTasks((current) => [
-        task,
-        ...current.filter((item) => item.id !== task.id && !(
-          String(item.orderId) === String(orderId)
-          && item.description.startsWith('Brak zadań przypisanych do zlecenia.')
-        )),
-      ]);
-      setDescription('');
+      setTasks((current) => [task, ...current.filter((item) => item.id !== task.id)]);
+            setDescription('');
       setDueDate('');
       setIsFormOpen(false);
       setNotice('Zadanie zapisano na serwerze. Automatyczne zadanie kontrolne, jeśli istniało, zostało usunięte.');
@@ -166,7 +145,7 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
   return (
     <>
       {!isOpen && (
-        <button type="button" onClick={() => setIsOpen(true)} className="fixed right-0 top-1/2 z-50 flex -translate-y-1/2 items-center gap-2 rounded-l-xl border border-r-0 border-slate-300 bg-slate-900 px-3 py-4 text-white transition-colors hover:bg-slate-800" aria-label="Otwórz panel zadań" title="Zadania i przypomnienia">
+        <button type="button" onClick={() => setIsOpen(true)} className="fixed right-0 top-1/2 z-50 flex -translate-y-1/2 items-center gap-2 rounded-l-xl border border-r-0 border-slate-300 bg-slate-900 px-3 py-4 text-white transition-colors hover:bg-slate-800" aria-label="Otwórz panel zadań" title="Zadania">
           <PanelRightOpen className="h-5 w-5" />
           <span className="text-xs font-bold [writing-mode:vertical-rl] rotate-180">Zadania</span>
         </button>
@@ -174,7 +153,7 @@ export const OrderTasksPanel: React.FC<Props> = ({ orderId, orderNumber, project
       <aside className={"fixed right-0 top-16 z-40 flex h-[calc(100dvh-4rem)] w-[360px] max-w-[calc(100vw-16px)] flex-col overflow-hidden border-l border-slate-200 bg-white transition-transform duration-300 ease-in-out " + (isOpen ? "translate-x-0" : "translate-x-full")}>
             <div className="flex items-start justify-between gap-2 border-b border-slate-200 bg-slate-900 px-3 py-4 text-white">
               <div className="min-w-0">
-                <div className="flex items-center gap-2 text-sm font-bold"><BellRing className="h-4 w-4 text-blue-300" /> Zadania i przypomnienia</div>
+                <div className="flex items-center gap-2 text-sm font-bold">Zadania</div>
                 <p className="mt-1 truncate text-[11px] text-slate-300">{orderNumber} · {projectName || client}</p>
                 <p className="mt-1 text-[11px] text-slate-400">{activeCount} aktywne {activeCount === 1 ? 'zadanie' : 'zadania'}</p>
               </div>
