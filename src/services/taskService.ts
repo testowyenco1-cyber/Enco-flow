@@ -91,7 +91,7 @@ export async function updateTaskStatus(taskId: string, status: EncoTaskStatus): 
 }
 
 export async function deleteTask(taskId: string): Promise<void> {
-  await requestJson<{ success: boolean }>('/api/tasks/' + encodeURIComponent(taskId) + '/auto-reminder', {
+  await requestJson<{ success: boolean }>('/api/tasks/' + encodeURIComponent(taskId), {
     method: 'DELETE',
   });
 }
