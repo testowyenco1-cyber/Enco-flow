@@ -38,20 +38,20 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
         <div className="max-h-[calc(100dvh-190px)] overflow-auto">
           <table className="w-full min-w-max border-separate border-spacing-0 text-[11px]">
             <colgroup>
-              <col style={{ width: 210 }} />
-              {columns.map((column) => <col key={column.type} style={{ width: 38 }} />)}
+              <col style={{ width: 185 }} />
+              {columns.map((column) => <col key={column.type} style={{ width: 30 }} />)}
               <col style={{ width: 76 }} />
             </colgroup>
             <thead className="sticky top-0 z-20 bg-slate-100">
               <tr>
-                <th scope="col" className="sticky left-0 z-30 min-w-[210px] border-b border-r border-slate-200 bg-slate-100 px-3 py-2 text-left font-bold text-slate-700">
+                <th scope="col" className="sticky left-0 z-30 min-w-[185px] border-b border-r border-slate-200 bg-slate-100 px-2 py-1.5 text-left font-bold text-slate-700">
                   <span className="block">Nazwa stacji / ZL</span>
                   <span className="mt-1 block text-[10px] font-normal text-slate-400">Stacja / numer zlecenia</span>
                 </th>
                 {columns.map((column) => (
-                  <th key={column.type} scope="col" title={column.description} className="h-[118px] w-[38px] min-w-[38px] border-b border-r border-slate-200 bg-white p-0 align-bottom">
-                    <div className="relative h-[118px] w-[38px] overflow-visible">
-                      <span className="absolute bottom-[9px] left-[12px] block origin-bottom-left -rotate-45 whitespace-nowrap text-[10px] font-semibold text-slate-600">
+                  <th key={column.type} scope="col" title={column.description} className="h-[96px] w-[30px] min-w-[30px] border-b border-r border-slate-200 bg-white p-0 align-bottom">
+                    <div className="relative h-[96px] w-[30px] overflow-visible">
+                      <span className="absolute bottom-[7px] left-[9px] block origin-bottom-left -rotate-45 whitespace-nowrap text-[10px] font-semibold text-slate-600">
                         {column.name}
                       </span>
                     </div>
@@ -80,9 +80,9 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
                       const status = item?.status;
                       const meta = status ? STATUS_META[status] : undefined;
                       return (
-                        <td key={column.type} title={item ? column.name + ': ' + (meta?.label || status) : column.name + ': brak pozycji'} className="w-[62px] border-b border-r border-slate-100 px-1 py-2 text-center">
+                        <td key={column.type} title={item ? column.name + ': ' + (meta?.label || status) : column.name + ': brak pozycji'} className="w-[30px] border-b border-r border-slate-100 px-0 py-1 text-center">
                           {item ? (
-                            <span className={'mx-auto inline-flex h-5 min-w-5 items-center justify-center rounded px-1 text-[10px] font-bold ' + (status === 'NOT_ORDERED' ? 'bg-slate-100 text-slate-400' : status === 'ORDERED' ? 'bg-blue-100 text-blue-700' : status === 'IN_PROGRESS' ? 'bg-amber-100 text-amber-800' : status === 'READY' ? 'bg-emerald-100 text-emerald-700' : status === 'PROBLEM' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-400')}>
+                            <span className={'mx-auto inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-sm px-0.5 text-[10px] font-black shadow-sm ' + (status === 'NOT_ORDERED' ? 'bg-slate-200 text-slate-500' : status === 'ORDERED' ? 'bg-blue-600 text-white ring-1 ring-blue-700' : status === 'IN_PROGRESS' ? 'bg-amber-400 text-slate-950 ring-1 ring-amber-600' : status === 'READY' ? 'bg-emerald-600 text-white ring-1 ring-emerald-700' : status === 'PROBLEM' ? 'bg-rose-600 text-white ring-1 ring-rose-700' : 'bg-slate-200 text-slate-500')}>
                               {status === 'NOT_APPLICABLE' ? '—' : status === 'NOT_ORDERED' ? '·' : status === 'ORDERED' ? 'Z' : status === 'IN_PROGRESS' ? 'R' : status === 'READY' ? '✓' : status === 'PROBLEM' ? '!' : '·'}
                             </span>
                           ) : <span className="text-slate-200">·</span>}
