@@ -158,12 +158,22 @@ export const ActionDashboardView: React.FC<Props> = ({ orders, onSelectOrder, cu
           <section className="mx-4 mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
             <h2 className="text-sm font-bold">Przypomnienia dla Działu Handlowego</h2>
             <p className="mt-1 text-xs">W tych zleceniach wszystkie zadania są wykonane lub nie ma żadnych zadań. Sprawdź zlecenie i wykonaj dalsze czynności handlowe.</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {ordersNeedingSalesFollowUp.map((order) => (
-                <button key={String(order.id)} type="button" onClick={() => onSelectOrder(String(order.id))} className="rounded-lg border border-amber-300 bg-white px-3 py-2 text-left text-xs font-semibold text-amber-900 hover:bg-amber-100">
-                  {String(order.orderNumber || order.number || order.zlNumber || 'Zlecenie')} {order.projectName || order.client ? `· ${order.projectName || order.client}` : ''}
-                </button>
-              ))}
+            <div className="mt-3 overflow-hidden rounded-lg border border-amber-200 bg-white">
+              <ul className="divide-y divide-slate-100">
+                {ordersNeedingSalesFollowUp.map((order) => (
+                  <li key={String(order.id)}>
+                    <div className="flex items-center justify-between gap-3 px-3 py-3 transition-colors hover:bg-amber-50/50">
+                      <div className="min-w-0">
+                        <div className="truncate text-xs font-semibold text-slate-800">{String(order.orderNumber || order.number || order.zlNumber || 'Zlecenie')}</div>
+                        <div className="mt-0.5 truncate text-[11px] text-slate-500">{order.projectName || order.client || 'Brak nazwy projektu'}</div>
+                      </div>
+                      <button type="button" onClick={() => onSelectOrder(String(order.id))} className="shrink-0 rounded-md px-2.5 py-1.5 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500/30">
+                        Otwórz zlecenie <span aria-hidden="true">→</span>
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
           </section>
         )}
