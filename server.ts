@@ -921,13 +921,20 @@ async function startServer() {
       const orderId = typeof req.body?.orderId === 'string' ? req.body.orderId : '';
       const hasIncompleteMainItems = req.body?.hasIncompleteMainItems === true;
       if (!orderId) return res.status(400).json({ success: false, error: 'Brak identyfikatora zlecenia.' });
-      if (!hasIncompleteMainItems) return res.json({ success: true, task: null });
 
       const orders = fs.existsSync(ORDERS_FILE) ? JSON.parse(fs.readFileSync(ORDERS_FILE, 'utf-8')) : INITIAL_ORDERS;
       const order = Array.isArray(orders) ? orders.find((item: any) => item.id === orderId) : null;
       if (!order) return res.status(404).json({ success: false, error: 'Nie znaleziono zlecenia.' });
 
       const tasks = readTasks();
+      if (!hasIncompleteMainItems) {
+        const remaining = tasks.filter((task) =>
+          !(task.orderId === orderId && typeof task.description === 'string' &&
+            task.description.startsWith('Brak zadań przypisanych do zlecenia.'))
+        );
+        if (remaining.length !== tasks.length) saveTasks(remaining);
+        return res.json({ success: true, task: null });
+      }
       // Any existing task means this order does not need the no-tasks reminder.
       if (tasks.some((task) => task.orderId === orderId)) return res.json({ success: true, task: null });
 
