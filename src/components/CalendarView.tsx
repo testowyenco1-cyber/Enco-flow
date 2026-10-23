@@ -211,7 +211,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
     try {
       await onSaveOrderChanges(updatedOrder);
-      closeModal();
+      setIsModalOpen(false);
+      setSelectedOrderId('');
+      setOrderQuery('');
+      setPlannedDate('');
+      setActualDate('');
+      setSuggestionsOpen(false);
+      setSaveError('');
     } catch {
       setSaveError('Nie udało się zapisać dat. Zmiany mogą być zapisane lokalnie — sprawdź komunikat aplikacji i spróbuj ponownie.');
     } finally {
