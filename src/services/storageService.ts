@@ -251,13 +251,26 @@ export function sanitizeOrders(parsed: any[]): Order[] {
     const existingYear = String(ord.orderNumber || '').match(/\/(\d{4})$/)?.[1];
     const migratedOrderNumber = normalizeOrderNumber(ord.orderNumber || '', Number(existingYear || createdYear));
 
+    const departureItem = completeItems.find((item: any) => item.type === 'DATA_WYJAZDU');
+    // The order header is the canonical planned date; legacy item dates are used as a fallback.
+    const plannedDepartureDate = String(ord.departureDate || departureItem?.plannedDate || '');
+    // Preserve an explicit empty actual date so clearing it in the calendar stays cleared.
+    const actualDepartureDate = typeof ord.actualDepartureDate === 'string'
+      ? ord.actualDepartureDate
+      : String(departureItem?.completedDate || '');
+    const syncedItems = completeItems.map((item: any) => item.type === 'DATA_WYJAZDU'
+      ? { ...item, plannedDate: plannedDepartureDate, completedDate: actualDepartureDate }
+      : item);
+
     return {
       ...ord,
       orderNumber: migratedOrderNumber,
+      departureDate: plannedDepartureDate,
+      actualDepartureDate,
       // For legacy records, preserve the currently stored date as the best available baseline.
-      originalDepartureDate: ord.originalDepartureDate || ord.departureDate || '',
-      items: completeItems,
-      status: calculateOrderStatus(completeItems),
+      originalDepartureDate: ord.originalDepartureDate || plannedDepartureDate || '',
+      items: syncedItems,
+      status: calculateOrderStatus(syncedItems),
       attachments: Array.isArray(ord.attachments) ? ord.attachments : [],
     };
   });
@@ -531,7 +544,11 @@ export function createNewOrder(params: {
 }): Order {
   const id = `ord_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const now = new Date().toISOString();
-  const items = createDefaultItemsForOrder(id, params.stationSize.trim());
+  const items = createDefaultItemsForOrder(id, params.stationSize.trim()).map((item) =>
+    item.type === 'DATA_WYJAZDU'
+      ? { ...item, plannedDate: params.departureDate, completedDate: '' }
+      : item
+  );
   const status = calculateOrderStatus(items);
 
   const newOrder: Order = {
@@ -546,6 +563,7 @@ export function createNewOrder(params: {
     projectName: params.projectName.trim(),
     stationSize: params.stationSize.trim(),
     departureDate: params.departureDate,
+    actualDepartureDate: '',
     originalDepartureDate: params.departureDate,
     generalNotes: params.generalNotes || '',
     additionalInfo: params.additionalInfo || '',
