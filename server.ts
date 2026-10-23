@@ -603,6 +603,16 @@ async function startServer() {
     }
     for (const item of incomingItems) {
       const previous = previousById.get(String(item.id));
+      if (previous && String(item.type || '') === 'DATA_WYJAZDU' && profile.canEditDepartureDate) {
+        // Logistics permission allows editing the two departure dates directly,
+        // without granting access to the rest of the DATA_WYJAZDU item details.
+        const keys = new Set([...Object.keys(previous), ...Object.keys(item)]);
+        const changedOutsideDates = [...keys].some((key) =>
+          !['plannedDate', 'completedDate', 'updatedAt'].includes(key) &&
+          changed(previous[key], item[key])
+        );
+        if (!changedOutsideDates) continue;
+      }
       if (!previous || changed(previous, item)) {
         if (!canEditItemType(profile, String(item.type || '')) ||
             (previous && !canEditItemType(profile, String(previous.type || '')))) {
