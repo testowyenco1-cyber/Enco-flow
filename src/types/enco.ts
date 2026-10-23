@@ -360,7 +360,6 @@ export interface Order {
   projectName: string;
   stationSize: string;
   departureDate: string; // Planowana data wyjazdu (YYYY-MM-DD)
-  actualDepartureDate?: string; // Rzeczywista data wyjazdu (YYYY-MM-DD)
   originalDepartureDate?: string; // Pierwotny termin z oferty, zachowywany przy zmianach planu (YYYY-MM-DD)
   generalNotes: string;
   additionalInfo?: string;
