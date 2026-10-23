@@ -448,22 +448,17 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
     const now = new Date().toISOString();
     const departureItem = updatedOrder.items.find((item) => item.type === 'DATA_WYJAZDU');
     const plannedDate = updatedOrder.departureDate ?? departureItem?.plannedDate ?? '';
-    const actualDate = updatedOrder.actualDepartureDate !== undefined
-      ? updatedOrder.actualDepartureDate
-      : departureItem?.completedDate || '';
     const syncedItems = updatedOrder.items.map((item) => item.type === 'DATA_WYJAZDU'
       ? {
           ...item,
           plannedDate,
-          completedDate: actualDate,
-          updatedAt: item.plannedDate !== plannedDate || item.completedDate !== actualDate ? now : item.updatedAt,
+          updatedAt: item.plannedDate !== plannedDate ? now : item.updatedAt,
         }
       : item);
     const computedStatus = calculateOrderStatus(syncedItems);
     const orderWithStatus: Order = {
       ...updatedOrder,
       departureDate: plannedDate,
-      actualDepartureDate: actualDate,
       items: syncedItems,
       status: computedStatus,
       updatedAt: now,
