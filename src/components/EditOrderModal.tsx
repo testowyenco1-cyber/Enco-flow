@@ -193,7 +193,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-semibold text-slate-700">
-                  Data wyjazdu
+                  Planowana data wyjazdu
                 </label>
                 {!canEditDeparture && <span className="text-[10px] text-slate-400 font-mono">tylko odczyt</span>}
               </div>
