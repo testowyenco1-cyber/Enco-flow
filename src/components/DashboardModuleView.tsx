@@ -70,7 +70,7 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
                 {columns.map((column, index) => (
                   <th key={column.type} scope="col" title={column.description} className="relative h-[144px] w-[34px] min-w-[34px] bg-slate-50 p-0 align-bottom">
                     <div className="relative flex h-[144px] w-[34px] items-end justify-center overflow-visible pb-3">
-                      <span className="absolute bottom-3 left-1/2 block whitespace-nowrap text-[10px] font-medium tracking-wide text-slate-600" style={{ zIndex: columns.length - index, writingMode: "horizontal-tb", transform: "rotate(-45deg)", transformOrigin: "left center" }}>
+                      <span className="absolute bottom-3 left-1/2 block whitespace-nowrap text-[10px] font-medium tracking-wide text-slate-600" style={{ zIndex: columns.length - index, writingMode: "horizontal-tb", transform: "translateX(-30px) rotate(-45deg)", transformOrigin: "left center" }}>
                         {column.type === "RPW" ? "RPW" : column.type === "TRANSFORMATOR_POTRZEB_WLASNYCH" ? "TPW" : column.name}
                       </span>
                     </div>
