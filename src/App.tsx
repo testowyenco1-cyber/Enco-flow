@@ -445,11 +445,28 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
   };
 
   const handleUpdateOrderStatus = (orderId: string, updatedOrder: Order) => {
-    const computedStatus = calculateOrderStatus(updatedOrder.items);
+    const now = new Date().toISOString();
+    const departureItem = updatedOrder.items.find((item) => item.type === 'DATA_WYJAZDU');
+    const plannedDate = updatedOrder.departureDate ?? departureItem?.plannedDate ?? '';
+    const actualDate = updatedOrder.actualDepartureDate !== undefined
+      ? updatedOrder.actualDepartureDate
+      : departureItem?.completedDate || '';
+    const syncedItems = updatedOrder.items.map((item) => item.type === 'DATA_WYJAZDU'
+      ? {
+          ...item,
+          plannedDate,
+          completedDate: actualDate,
+          updatedAt: item.plannedDate !== plannedDate || item.completedDate !== actualDate ? now : item.updatedAt,
+        }
+      : item);
+    const computedStatus = calculateOrderStatus(syncedItems);
     const orderWithStatus: Order = {
       ...updatedOrder,
+      departureDate: plannedDate,
+      actualDepartureDate: actualDate,
+      items: syncedItems,
       status: computedStatus,
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
     };
 
     const newOrders = orders.map((o) => (o.id === orderId ? orderWithStatus : o));
@@ -662,7 +679,12 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
             />
           </ActionDashboardErrorBoundary>
         ) : activeModule === 'calendar' ? (
-          <CalendarView orders={activeOrders} onSelectOrder={handleSelectOrder} />
+          <CalendarView
+            orders={activeOrders}
+            onSelectOrder={handleSelectOrder}
+            onSaveOrderChanges={handleSaveOrderChanges}
+            canEditDates={currentProfile.canEditDepartureDate}
+          />
         ) : activeModule === 'sn' ? (
           <SNOrdersView orders={orders} currentProfile={currentProfile} onNavigateToOrder={handleSelectOrder} />
         ) : activeModule === 'doors' ? (
