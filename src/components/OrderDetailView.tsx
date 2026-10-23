@@ -443,7 +443,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
               <div className="flex flex-wrap items-center gap-1.5">
                 <DepartureBadge
                   dateStr={order.departureDate}
-                  isCompleted={order.status === 'READY'}
+                  isCompleted={Boolean(actualDepartureDate)}
                   label="Planowany wyjazd"
                 />
                 {actualDepartureDate && (
