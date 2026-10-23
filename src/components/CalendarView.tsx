@@ -5,7 +5,7 @@ import { ITEM_DEFINITIONS, Order, OrderItem, formatDatePL } from '../types/enco'
 interface CalendarViewProps {
   orders: Order[];
   onSelectOrder: (orderId: string) => void;
-  onSaveOrderChanges: (order: Order) => void | Promise<void>;
+  onSaveOrderChanges: (order: Order) => boolean | void | Promise<boolean | void>;
   canEditDates?: boolean;
 }
 
@@ -207,7 +207,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     };
 
     try {
-      await onSaveOrderChanges(updatedOrder);
+      const saved = await onSaveOrderChanges(updatedOrder);
+      if (saved === false) {
+        setSaveError('Nie udało się zapisać dat na serwerze. Zmiany pozostają lokalnie — możesz ponowić próbę.');
+        return;
+      }
       setIsModalOpen(false);
       setSelectedOrderId('');
       setOrderQuery('');
