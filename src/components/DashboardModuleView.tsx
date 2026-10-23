@@ -68,9 +68,9 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
                 </th>
                 <th scope="col" title="Data wyjazdu pobierana ze zlecenia. Kliknij, aby sortować." className="sticky left-[230px] z-30 min-w-[112px] bg-slate-50 px-2 py-2 text-center font-semibold text-slate-700"><button type="button" onClick={() => setDepartureSort((current) => current === null ? "asc" : current === "asc" ? "desc" : null)} className="inline-flex items-center justify-center gap-1 rounded-md px-2 py-1 hover:bg-slate-200" aria-label="Sortuj po dacie wyjazdu">Wyjazd {departureSort === "asc" ? "↑" : departureSort === "desc" ? "↓" : <ArrowUpDown className="h-3 w-3" />}</button></th>
                 {columns.map((column, index) => (
-                  <th key={column.type} scope="col" title={column.description} className="relative h-[144px] w-[34px] min-w-[34px] bg-slate-50 p-0 align-bottom">
+                  <th key={column.type} scope="col" title={column.description} className="relative left-[-30px] h-[144px] w-[34px] min-w-[34px] bg-slate-50 p-0 align-bottom">
                     <div className="relative flex h-[144px] w-[34px] items-end justify-center overflow-visible pb-3">
-                      <span className="absolute bottom-3 left-1/2 block whitespace-nowrap text-[10px] font-medium tracking-wide text-slate-600" style={{ zIndex: columns.length - index, writingMode: "horizontal-tb", transform: "translateX(-30px) rotate(-45deg)", transformOrigin: "left center" }}>
+                      <span className="absolute bottom-3 left-1/2 block whitespace-nowrap text-[10px] font-medium tracking-wide text-slate-600" style={{ zIndex: columns.length - index, writingMode: "horizontal-tb", transform: "rotate(-45deg)", transformOrigin: "left center" }}>
                         {column.type === "RPW" ? "RPW" : column.type === "TRANSFORMATOR_POTRZEB_WLASNYCH" ? "TPW" : column.name}
                       </span>
                     </div>
@@ -100,7 +100,7 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
                       const status = item?.status;
                       const meta = status ? STATUS_META[status] : undefined;
                       return (
-                        <td key={column.type} title={item ? column.name + ': ' + (meta?.label || status) : column.name + ': brak pozycji'} className="w-[34px] px-0 py-1 text-center">
+                        <td key={column.type} title={item ? column.name + ': ' + (meta?.label || status) : column.name + ': brak pozycji'} className="relative left-[-30px] w-[34px] px-0 py-1 text-center">
                           {item ? (
                             <button type="button" onClick={(event) => { event.stopPropagation(); if (status === 'NOT_APPLICABLE') return; try { sessionStorage.setItem('enco_dashboard_target_item_type', column.type); } catch {} onSelectOrder(order.id); }} aria-label={`Otwórz element ${column.name} w zleceniu ${order.orderNumber}`} title={item ? `Otwórz ${column.name} w zleceniu` : column.name} className="mx-auto flex h-[28px] min-w-[28px] items-center justify-center rounded-lg transition-colors hover:bg-blue-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                               <span className={'inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-md px-0.5 text-[10px] font-bold ' + (status === 'NOT_ORDERED' ? 'bg-slate-200 text-slate-500' : status === 'ORDERED' ? 'bg-blue-600 text-white' : status === 'IN_PROGRESS' ? 'bg-amber-400 text-slate-950' : status === 'READY' ? 'bg-emerald-600 text-white' : status === 'PROBLEM' ? 'bg-rose-600 text-white' : 'bg-slate-200 text-slate-500')}>
