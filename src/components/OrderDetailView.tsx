@@ -447,6 +447,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 <DepartureBadge
                   dateStr={order.departureDate}
                   isCompleted={order.status === 'READY'}
+                  label="Planowany wyjazd"
                 />
                 {actualDepartureDate && (
                   <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-800" title="Rzeczywista data wyjazdu">
