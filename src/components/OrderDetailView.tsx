@@ -11,6 +11,7 @@ import {
   ArrowLeft,
   Building2,
   Calendar,
+  CalendarCheck,
   Edit2,
   FileText,
   AlertTriangle,
@@ -144,7 +145,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
         return {
           ...it,
           status: newStatus,
-          completedDate: newStatus === 'READY' && !it.completedDate ? new Date().toISOString().split('T')[0] : it.completedDate,
+          completedDate: newStatus === 'READY' && !it.completedDate && it.type !== 'DATA_WYJAZDU' ? new Date().toISOString().split('T')[0] : it.completedDate,
           updatedAt: new Date().toISOString(),
         };
       }
@@ -200,6 +201,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
       ...order,
       items: updatedItems,
       departureDate: order.items.some((item) => item.id === itemId && item.type === 'DATA_WYJAZDU') ? plannedDate : order.departureDate,
+      actualDepartureDate: order.items.some((item) => item.id === itemId && item.type === 'DATA_WYJAZDU') ? completedDate : order.actualDepartureDate,
       updatedAt: new Date().toISOString(),
     });
   };
@@ -334,6 +336,9 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
   const clientOwner = getOrderFieldDepartment('client');
   const projectOwner = getOrderFieldDepartment('projectName');
   const departureOwner = getOrderFieldDepartment('departureDate');
+  const actualDepartureDate = order.actualDepartureDate !== undefined
+    ? order.actualDepartureDate
+    : order.items.find((item) => item.type === 'DATA_WYJAZDU')?.completedDate || '';
 
   return (
     <div className="flex flex-col items-stretch gap-4 lg:flex-row lg:items-start">
@@ -443,6 +448,13 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                   dateStr={order.departureDate}
                   isCompleted={order.status === 'READY'}
                 />
+                {actualDepartureDate && (
+                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-800" title="Rzeczywista data wyjazdu">
+                    <CalendarCheck className="h-3.5 w-3.5" />
+                    <span>Rzeczywisty:</span>
+                    <span className="font-mono tabular-nums">{actualDepartureDate.split('-').reverse().join('.')}</span>
+                  </span>
+                )}
                 {departureOwner && (
                   <span className={`rounded border px-1.5 py-0.5 text-[9px] font-bold ${departureOwner.className}`}>
                     {departureOwner.label}
