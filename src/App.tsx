@@ -319,7 +319,7 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
     markChangesPending();
   };
 
-  const handleSaveOrderChanges = async (orderToSave: Order) => {
+  const handleSaveOrderChanges = async (orderToSave: Order): Promise<boolean> => {
     const latestOrders = orders.map((current) => current.id === orderToSave.id ? orderToSave : current);
     saveOrders(latestOrders);
     setOrders(latestOrders);
