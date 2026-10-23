@@ -338,6 +338,7 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
     } else {
       showToast('Nie udało się zapisać zlecenia na serwerze. Zmiany pozostają lokalnie — spróbuj ponownie.', 'warning');
     }
+    return saved;
   };
 
   const handleSaveAllChanges = async () => {
