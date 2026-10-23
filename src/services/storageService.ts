@@ -252,21 +252,21 @@ export function sanitizeOrders(parsed: any[]): Order[] {
     const migratedOrderNumber = normalizeOrderNumber(ord.orderNumber || '', Number(existingYear || createdYear));
 
     const departureItem = completeItems.find((item: any) => item.type === 'DATA_WYJAZDU');
-    // The order header is the canonical planned date; legacy item dates are used as a fallback.
+    // The order header and the main departure item share one planned date.
     const plannedDepartureDate = String(ord.departureDate || departureItem?.plannedDate || '');
-    // Preserve an explicit empty actual date so clearing it in the calendar stays cleared.
-    const actualDepartureDate = typeof ord.actualDepartureDate === 'string'
-      ? ord.actualDepartureDate
-      : String(departureItem?.completedDate || '');
+    // The main DATA_WYJAZDU item's completedDate is the single source of truth for actual departure.
+    // Migrate any transient legacy top-level value if a preview version already wrote it.
+    const legacyActualDate = String(ord.actualDepartureDate || departureItem?.completedDate || '');
     const syncedItems = completeItems.map((item: any) => item.type === 'DATA_WYJAZDU'
-      ? { ...item, plannedDate: plannedDepartureDate, completedDate: actualDepartureDate }
+      ? { ...item, plannedDate: plannedDepartureDate, completedDate: item.completedDate || legacyActualDate }
       : item);
+    const normalizedOrder = { ...ord };
+    delete normalizedOrder.actualDepartureDate;
 
     return {
-      ...ord,
+      ...normalizedOrder,
       orderNumber: migratedOrderNumber,
       departureDate: plannedDepartureDate,
-      actualDepartureDate,
       // For legacy records, preserve the currently stored date as the best available baseline.
       originalDepartureDate: ord.originalDepartureDate || plannedDepartureDate || '',
       items: syncedItems,
@@ -563,7 +563,6 @@ export function createNewOrder(params: {
     projectName: params.projectName.trim(),
     stationSize: params.stationSize.trim(),
     departureDate: params.departureDate,
-    actualDepartureDate: '',
     originalDepartureDate: params.departureDate,
     generalNotes: params.generalNotes || '',
     additionalInfo: params.additionalInfo || '',
