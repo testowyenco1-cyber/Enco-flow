@@ -201,7 +201,6 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
       ...order,
       items: updatedItems,
       departureDate: order.items.some((item) => item.id === itemId && item.type === 'DATA_WYJAZDU') ? plannedDate : order.departureDate,
-      actualDepartureDate: order.items.some((item) => item.id === itemId && item.type === 'DATA_WYJAZDU') ? completedDate : order.actualDepartureDate,
       updatedAt: new Date().toISOString(),
     });
   };
@@ -336,9 +335,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
   const clientOwner = getOrderFieldDepartment('client');
   const projectOwner = getOrderFieldDepartment('projectName');
   const departureOwner = getOrderFieldDepartment('departureDate');
-  const actualDepartureDate = order.actualDepartureDate !== undefined
-    ? order.actualDepartureDate
-    : order.items.find((item) => item.type === 'DATA_WYJAZDU')?.completedDate || '';
+  const actualDepartureDate = order.items.find((item) => item.type === 'DATA_WYJAZDU')?.completedDate || '';
 
   return (
     <div className="flex flex-col items-stretch gap-4 lg:flex-row lg:items-start">
