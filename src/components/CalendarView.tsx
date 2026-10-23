@@ -228,78 +228,113 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
   return (
     <section className="space-y-5 pb-6">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-blue-700"><CalendarDays className="h-6 w-6" /><span className="text-xs font-bold uppercase tracking-wider">Planowanie logistyki</span></div>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Kalendarz wyjazdów</h1>
-          <p className="mt-1 max-w-2xl text-sm text-slate-500">Zlecenia są przypisane do rzeczywistego terminu, jeśli został wpisany, w przeciwnym razie do terminu planowanego.</p>
-        </div>
-        {canEditDates && (
-          <button type="button" onClick={openAddModal} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
-            <Plus className="h-4 w-4" /> Dodaj datę wyjazdu
-          </button>
-        )}
+      <div>
+        <div className="flex items-center gap-2 text-blue-700"><CalendarDays className="h-6 w-6" /><span className="text-xs font-bold uppercase tracking-wider">Planowanie logistyki</span></div>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Kalendarz wyjazdów</h1>
+        <p className="mt-1 max-w-2xl text-sm text-slate-500">Zlecenia są przypisane do rzeczywistego terminu, jeśli został wpisany, w przeciwnym razie do terminu planowanego.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:max-w-3xl">
-        <div className="rounded-xl bg-white px-4 py-3 shadow-sm"><p className="text-xs text-slate-500">Wyjazdy w miesiącu</p><p className="mt-1 text-2xl font-bold text-slate-900">{monthOrders.length}</p></div>
-        <div className="rounded-xl bg-white px-4 py-3 shadow-sm"><p className="text-xs text-slate-500">Przepełnione dni</p><p className="mt-1 text-2xl font-bold text-rose-600">{calendarDays.filter(({ key, inMonth }) => inMonth && filteredOrders.filter((order) => calendarDateOf(order) === key).length > dailyLimit).length}</p></div>
-        <label className="rounded-xl bg-white px-4 py-3 shadow-sm"><span className="block text-xs text-slate-500">Limit stacji / dzień</span><input aria-label="Limit stacji na dzień" type="number" min={1} max={99} value={dailyLimit} onChange={(event) => changeLimit(Number(event.target.value))} className="mt-1 w-full max-w-24 rounded-md bg-slate-50 px-2 py-1 text-lg font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500" /></label>
-      </div>
-
-      <div className="rounded-2xl bg-white p-3 shadow-sm sm:p-4">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-          <div className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Szukaj: ZL, klient, nazwa stacji..." className="w-full rounded-lg bg-slate-50 py-2.5 pl-9 pr-3 text-sm outline-none ring-blue-500 focus:bg-white focus:ring-2" /></div>
-          <div className="flex flex-wrap items-center gap-2"><SlidersHorizontal className="h-4 w-4 text-slate-400" />
-            <select value={stationType} onChange={(event) => setStationType(event.target.value)} aria-label="Filtr typu stacji" className="rounded-lg bg-slate-50 px-3 py-2.5 text-sm"><option value="all">Wszystkie typy</option><option value="BEK">BEK</option><option value="NZ">NZ</option><option value="other">Pozostałe</option></select>
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filtr statusu" className="rounded-lg bg-slate-50 px-3 py-2.5 text-sm"><option value="all">Wszystkie statusy</option><option value="active">W realizacji</option><option value="ready">Gotowe</option><option value="problem">Z problemem</option></select>
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1.75fr)_minmax(300px,0.82fr)] 2xl:grid-cols-[minmax(0,1.9fr)_minmax(320px,0.8fr)]">
+        <div className="min-w-0 overflow-hidden rounded-2xl bg-white shadow-sm">
+          <div className="flex flex-col justify-between gap-3 px-3 py-3 sm:flex-row sm:items-center sm:px-4">
+            <div>
+              <h2 className="text-base font-bold capitalize text-slate-900 sm:text-lg">{monthLabel(visibleMonth)}</h2>
+              <p className="text-[11px] text-slate-500">Kliknij ramkę ZL, aby edytować daty.</p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button type="button" onClick={() => setVisibleMonth(startOfMonth(new Date()))} className="rounded-lg bg-slate-100 px-2.5 py-2 text-[11px] font-semibold hover:bg-slate-200 sm:text-xs">Dziś</button>
+              <button type="button" aria-label="Poprzedni miesiąc" onClick={() => shiftMonth(-1)} className="rounded-lg bg-slate-100 p-2 hover:bg-slate-200"><ChevronLeft className="h-4 w-4" /></button>
+              <button type="button" aria-label="Następny miesiąc" onClick={() => shiftMonth(1)} className="rounded-lg bg-slate-100 p-2 hover:bg-slate-200"><ChevronRight className="h-4 w-4" /></button>
+            </div>
+          </div>
+          <div className="grid grid-cols-7 bg-slate-50/80">{['Pon', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob', 'Niedz'].map((day) => <div key={day} className="px-0.5 py-2 text-center text-[9px] font-bold uppercase tracking-wide text-slate-500 sm:px-1 sm:text-[10px]">{day}</div>)}</div>
+          <div className="grid grid-cols-7">
+            {calendarDays.map(({ date, key, inMonth }) => {
+              const dayOrders = filteredOrders
+                .filter((order) => calendarDateOf(order) === key)
+                .sort((a, b) => a.orderNumber.localeCompare(b.orderNumber, 'pl'));
+              const overloaded = dayOrders.length > dailyLimit;
+              return (
+                <div key={key} className={'min-h-[96px] min-w-0 p-1 sm:min-h-[108px] sm:p-1.5 2xl:min-h-[118px] ' + (inMonth ? 'bg-white' : 'bg-slate-50/60') + (overloaded ? ' bg-rose-50/70' : '')}>
+                  <div className="mb-1 flex items-center justify-between gap-0.5">
+                    <span className={'flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold sm:h-6 sm:w-6 sm:text-xs ' + (key === today ? 'bg-blue-600 text-white' : inMonth ? 'text-slate-700' : 'text-slate-300')}>{date.getDate()}</span>
+                    {dayOrders.length > 0 && <span className={'rounded px-1 py-0.5 text-[9px] font-bold ' + (overloaded ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-600')}>{dayOrders.length}</span>}
+                  </div>
+                  {overloaded && <div className="mb-1 flex items-center gap-1 text-[9px] font-bold text-rose-700"><AlertTriangle className="h-3 w-3 shrink-0" /><span className="hidden 2xl:inline">Limit</span><span className="2xl:hidden">!</span></div>}
+                  <div className="space-y-1">
+                    {dayOrders.map((order) => {
+                      const actual = actualDateOf(order);
+                      const planned = plannedDateOf(order);
+                      return (
+                        <button key={order.id} type="button" onClick={() => openEditModal(order)} title={departureTitle(order)} className={'block w-full min-w-0 rounded-md px-1 py-1 text-left text-[9px] leading-tight transition hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-500 sm:rounded-lg sm:px-1.5 sm:py-1.5 sm:text-[10px] ' + departureBorderClass(order, today)}>
+                          <span className="block truncate font-bold">{order.orderNumber}</span>
+                          <span className="hidden truncate xl:block">{order.projectName || order.stationSize || order.client}</span>
+                          <span className="mt-0.5 block truncate text-[8px] font-semibold sm:text-[9px]">{actual ? 'Rzeczywista' : 'Planowana'}: {formatDatePL(actual || planned)}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
-      </div>
 
-      <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
-        <div className="flex flex-col justify-between gap-3 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
-          <div><h2 className="text-lg font-bold capitalize text-slate-900">{monthLabel(visibleMonth)}</h2><p className="text-xs text-slate-500">Kliknij ramkę ZL, aby edytować jego daty.</p></div>
-          <div className="flex items-center gap-2"><button type="button" onClick={() => setVisibleMonth(startOfMonth(new Date()))} className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold hover:bg-slate-200">Dziś</button><button type="button" aria-label="Poprzedni miesiąc" onClick={() => shiftMonth(-1)} className="rounded-lg bg-slate-100 p-2 hover:bg-slate-200"><ChevronLeft className="h-4 w-4" /></button><button type="button" aria-label="Następny miesiąc" onClick={() => shiftMonth(1)} className="rounded-lg bg-slate-100 p-2 hover:bg-slate-200"><ChevronRight className="h-4 w-4" /></button></div>
-        </div>
-        <div className="grid grid-cols-7 bg-slate-50/80">{['Pon', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob', 'Niedz'].map((day) => <div key={day} className="px-1 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-slate-500 sm:px-2 sm:text-[11px]">{day}</div>)}</div>
-        <div className="grid grid-cols-7">
-          {calendarDays.map(({ date, key, inMonth }) => {
-            const dayOrders = filteredOrders
-              .filter((order) => calendarDateOf(order) === key)
-              .sort((a, b) => a.orderNumber.localeCompare(b.orderNumber, 'pl'));
-            const overloaded = dayOrders.length > dailyLimit;
-            return (
-              <div key={key} className={'min-h-28 min-w-0 p-1 sm:min-h-36 sm:p-2 ' + (inMonth ? 'bg-white' : 'bg-slate-50/60') + (overloaded ? ' bg-rose-50/70' : '')}>
-                <div className="mb-1 flex items-center justify-between gap-1"><span className={'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ' + (key === today ? 'bg-blue-600 text-white' : inMonth ? 'text-slate-700' : 'text-slate-300')}>{date.getDate()}</span>{dayOrders.length > 0 && <span className={'rounded px-1.5 py-0.5 text-[10px] font-bold ' + (overloaded ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-600')}>{dayOrders.length}</span>}</div>
-                {overloaded && <div className="mb-1 flex items-center gap-1 text-[10px] font-bold text-rose-700"><AlertTriangle className="h-3 w-3 shrink-0" /><span>Limit przekroczony</span></div>}
-                <div className="space-y-1.5">
-                  {dayOrders.map((order) => {
-                    const actual = actualDateOf(order);
-                    const planned = plannedDateOf(order);
-                    return (
-                      <button key={order.id} type="button" onClick={() => openEditModal(order)} title={departureTitle(order)} className={'block w-full min-w-0 rounded-lg px-1.5 py-1.5 text-left text-[10px] leading-tight transition hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-500 sm:px-2 sm:text-xs ' + departureBorderClass(order, today)}>
-                        <span className="block truncate font-bold">{order.orderNumber}</span>
-                        <span className="hidden truncate sm:block">{order.projectName || order.stationSize || order.client}</span>
-                        <span className="mt-0.5 flex items-center gap-1 truncate text-[9px] font-semibold sm:text-[10px]">{actual ? <CalendarCheck className="h-3 w-3 shrink-0" /> : <CalendarClock className="h-3 w-3 shrink-0" />}{actual ? 'Rzeczywista' : 'Planowana'}: {formatDatePL(actual || planned)}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 text-xs text-slate-600">
-          <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded border-2 border-amber-400 bg-amber-50" />Planowana data</span>
-          <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded border-2 border-emerald-500 bg-emerald-50" />Rzeczywista data</span>
-          <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded border-2 border-rose-500 bg-rose-50" />Brak daty rzeczywistej, do wyjazdu ≤ 10 dni lub termin minął</span>
-          <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-rose-200" />Dzienny limit przekroczony</span>
-        </div>
-      </div>
+        <aside className="min-w-0 space-y-3">
+          {canEditDates && (
+            <button type="button" onClick={openAddModal} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+              <Plus className="h-4 w-4" /> Dodaj datę wyjazdu
+            </button>
+          )}
 
-      {undatedCount > 0 && <div className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">{undatedCount} zleceń po zastosowaniu filtrów nie ma żadnej daty wyjazdu i nie pojawia się w kalendarzu.</div>}
-      {filteredOrders.length === 0 && <div className="rounded-xl bg-white p-8 text-center text-sm text-slate-500">Brak zleceń pasujących do wybranych filtrów.</div>}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-xl bg-white px-3 py-3 shadow-sm">
+              <p className="text-[11px] text-slate-500">Wyjazdy w miesiącu</p>
+              <p className="mt-1 text-2xl font-bold text-slate-900">{monthOrders.length}</p>
+            </div>
+            <div className="rounded-xl bg-white px-3 py-3 shadow-sm">
+              <p className="text-[11px] text-slate-500">Przepełnione dni</p>
+              <p className="mt-1 text-2xl font-bold text-rose-600">{calendarDays.filter(({ key, inMonth }) => inMonth && filteredOrders.filter((order) => calendarDateOf(order) === key).length > dailyLimit).length}</p>
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-white p-3 shadow-sm">
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-700">Limit stacji / dzień</span>
+              <input aria-label="Limit stacji na dzień" type="number" min={1} max={99} value={dailyLimit} onChange={(event) => changeLimit(Number(event.target.value))} className="w-full rounded-lg bg-slate-50 px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </label>
+          </div>
+
+          <div className="space-y-3 rounded-xl bg-white p-3 shadow-sm">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Szukaj ZL, klienta, stacji..." className="w-full rounded-lg bg-slate-50 py-2.5 pl-9 pr-3 text-sm outline-none ring-blue-500 focus:bg-white focus:ring-2" />
+            </div>
+            <div className="flex items-center gap-2"><SlidersHorizontal className="h-4 w-4 shrink-0 text-slate-400" /><span className="text-xs font-semibold text-slate-700">Filtry</span></div>
+            <label className="block">
+              <span className="mb-1 block text-[11px] text-slate-500">Typ stacji</span>
+              <select value={stationType} onChange={(event) => setStationType(event.target.value)} aria-label="Filtr typu stacji" className="w-full rounded-lg bg-slate-50 px-3 py-2 text-sm"><option value="all">Wszystkie typy</option><option value="BEK">BEK</option><option value="NZ">NZ</option><option value="other">Pozostałe</option></select>
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-[11px] text-slate-500">Status zlecenia</span>
+              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filtr statusu" className="w-full rounded-lg bg-slate-50 px-3 py-2 text-sm"><option value="all">Wszystkie statusy</option><option value="active">W realizacji</option><option value="ready">Gotowe</option><option value="problem">Z problemem</option></select>
+            </label>
+          </div>
+
+          <div className="rounded-xl bg-white p-3 shadow-sm">
+            <h3 className="mb-2 text-xs font-bold text-slate-800">Oznaczenia kalendarza</h3>
+            <div className="space-y-2 text-[11px] text-slate-600">
+              <span className="flex items-start gap-2"><span className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-2 border-amber-400 bg-amber-50" /><span>Planowana data</span></span>
+              <span className="flex items-start gap-2"><span className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-2 border-emerald-500 bg-emerald-50" /><span>Rzeczywista data</span></span>
+              <span className="flex items-start gap-2"><span className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-2 border-rose-500 bg-rose-50" /><span>Brak daty rzeczywistej, do wyjazdu ≤ 10 dni lub termin minął</span></span>
+              <span className="flex items-start gap-2"><span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-sm bg-rose-200" /><span>Dzienny limit przekroczony</span></span>
+            </div>
+          </div>
+
+          {undatedCount > 0 && <div className="rounded-xl bg-amber-50 px-3 py-3 text-xs leading-relaxed text-amber-900">{undatedCount} zleceń po zastosowaniu filtrów nie ma żadnej daty wyjazdu i nie pojawia się w kalendarzu.</div>}
+          {filteredOrders.length === 0 && <div className="rounded-xl bg-white p-4 text-center text-xs text-slate-500 shadow-sm">Brak zleceń pasujących do wybranych filtrów.</div>}
+        </aside>
+      </div>
 
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-slate-950/40 p-4 backdrop-blur-[2px]" onMouseDown={(event) => { if (event.target === event.currentTarget) closeModal(); }}>
