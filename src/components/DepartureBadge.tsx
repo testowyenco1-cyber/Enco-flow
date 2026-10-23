@@ -6,12 +6,14 @@ interface DepartureBadgeProps {
   dateStr: string;
   isCompleted?: boolean;
   compact?: boolean;
+  label?: string;
 }
 
 export const DepartureBadge: React.FC<DepartureBadgeProps> = ({
   dateStr,
   isCompleted = false,
   compact = false,
+  label = 'Wyjazd',
 }) => {
   const urgency = getDepartureDateUrgency(dateStr, isCompleted);
 
@@ -65,7 +67,7 @@ export const DepartureBadge: React.FC<DepartureBadgeProps> = ({
     <div className={`inline-flex items-center gap-2.5 px-3 py-1.5 rounded-lg border text-xs ${containerBg}`}>
       <Calendar className="w-4 h-4 text-slate-500 shrink-0" />
       <div className="flex items-center gap-2">
-        <span className="font-semibold text-slate-800">Wyjazd:</span>
+        <span className="font-semibold text-slate-800">{label}:</span>
         <span className="font-mono tabular-nums font-bold text-slate-900">{formattedDate}</span>
       </div>
       <span className="text-slate-300">|</span>
