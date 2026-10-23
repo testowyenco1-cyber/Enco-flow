@@ -68,7 +68,7 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
                 </th>
                 <th scope="col" title="Data wyjazdu pobierana ze zlecenia. Kliknij, aby sortować." className="sticky left-[240px] z-30 min-w-[112px] bg-slate-50 px-2 py-2 text-center font-semibold text-slate-700"><button type="button" onClick={() => setDepartureSort((current) => current === null ? "asc" : current === "asc" ? "desc" : null)} className="inline-flex items-center justify-center gap-1 rounded-md px-2 py-1 hover:bg-slate-200" aria-label="Sortuj po dacie wyjazdu">Wyjazd {departureSort === "asc" ? "↑" : departureSort === "desc" ? "↓" : <ArrowUpDown className="h-3 w-3" />}</button></th>
                 {columns.map((column) => (
-                  <th key={column.type} scope="col" title={column.description} className="relative h-[144px] w-[34px] min-w-[34px] bg-slate-50 p-0 align-bottom">
+                  <th key={column.type} scope="col" title={column.description} className="relative z-40 h-[144px] w-[34px] min-w-[34px] bg-slate-50 p-0 align-bottom">
                     <div className="relative flex h-[144px] w-[34px] items-end justify-center overflow-visible pb-3">
                       <span className="absolute bottom-3 left-1/2 z-10 block whitespace-nowrap text-[10px] font-medium tracking-wide text-slate-600" style={{ writingMode: "horizontal-tb", transform: "rotate(-45deg)", transformOrigin: "left center" }}>
                         {column.type === "RPW" ? "RPW" : column.type === "TRANSFORMATOR_POTRZEB_WLASNYCH" ? "TPW" : column.name}
