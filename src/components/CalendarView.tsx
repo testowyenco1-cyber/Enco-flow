@@ -24,9 +24,7 @@ const plannedDateOf = (order: Order) =>
   order.departureDate || order.items?.find((item) => item.type === 'DATA_WYJAZDU')?.plannedDate || '';
 
 const actualDateOf = (order: Order) =>
-  order.actualDepartureDate !== undefined
-    ? order.actualDepartureDate
-    : order.items?.find((item) => item.type === 'DATA_WYJAZDU')?.completedDate || '';
+  order.items?.find((item) => item.type === 'DATA_WYJAZDU')?.completedDate || '';
 
 const calendarDateOf = (order: Order) => actualDateOf(order) || plannedDateOf(order);
 
@@ -202,7 +200,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     const updatedOrder: Order = {
       ...order,
       departureDate: plannedDate,
-      actualDepartureDate: actualDate,
       items: existingDepartureItem
         ? order.items.map((item) => item.id === existingDepartureItem.id ? updatedDepartureItem : item)
         : [...order.items, updatedDepartureItem],
