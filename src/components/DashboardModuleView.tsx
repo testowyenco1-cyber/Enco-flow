@@ -66,7 +66,7 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
                   <span className="block">Nazwa stacji / ZL</span>
                   <span className="mt-1 block text-[10px] font-normal text-slate-400">Stacja / numer zlecenia</span>
                 </th>
-                <th scope="col" title="Data wyjazdu pobierana ze zlecenia. Kliknij, aby sortować." className="sticky left-[190px] z-30 relative left-[-30px] min-w-[112px] bg-slate-50 px-2 py-2 text-center font-semibold text-slate-700"><button type="button" onClick={() => setDepartureSort((current) => current === null ? "asc" : current === "asc" ? "desc" : null)} className="inline-flex items-center justify-center gap-1 rounded-md px-2 py-1 hover:bg-slate-200" aria-label="Sortuj po dacie wyjazdu">Wyj. {departureSort === "asc" ? "↑" : departureSort === "desc" ? "↓" : <ArrowUpDown className="h-3 w-3" />}</button></th>
+                <th scope="col" title="Data wyjazdu pobierana ze zlecenia. Kliknij, aby sortować." className="sticky left-[190px] z-30 min-w-[112px] bg-slate-50 px-2 py-2 text-center font-semibold text-slate-700"><button type="button" onClick={() => setDepartureSort((current) => current === null ? "asc" : current === "asc" ? "desc" : null)} className="inline-flex items-center justify-center gap-1 rounded-md px-2 py-1 hover:bg-slate-200" aria-label="Sortuj po dacie wyjazdu">Wyjazd {departureSort === "asc" ? "↑" : departureSort === "desc" ? "↓" : <ArrowUpDown className="h-3 w-3" />}</button></th>
                 {columns.map((column, index) => (
                   <th key={column.type} scope="col" title={column.description} className="relative left-[-30px] h-[144px] w-[34px] min-w-[34px] bg-slate-50 p-0 align-bottom">
                     <div className="relative flex h-[144px] w-[34px] items-end justify-center overflow-visible pb-3">
@@ -94,7 +94,7 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
                         <span className="block whitespace-normal break-words text-[10px] leading-snug text-slate-500">{order.orderNumber} · {order.client}</span>
                       </button>
                     </td>
-                    <td className="sticky left-[190px] z-10 relative left-[-30px] bg-inherit px-2 py-2 text-center text-[11px] font-semibold tabular-nums text-slate-700 group-hover:bg-blue-50" title={order.departureDate ? `Planowany wyjazd: ${formatDepartureDate(order.departureDate)}` : "Nie wpisano daty wyjazdu w zleceniu"}>{order.departureDate ? formatDepartureDate(order.departureDate) : <span className="font-normal text-slate-400">Brak daty</span>}</td>
+                    <td className="sticky left-[190px] z-10 bg-inherit px-2 py-2 text-center text-[11px] font-semibold tabular-nums text-slate-700 group-hover:bg-blue-50" title={order.departureDate ? `Planowany wyjazd: ${formatDepartureDate(order.departureDate)}` : "Nie wpisano daty wyjazdu w zleceniu"}>{order.departureDate ? formatDepartureDate(order.departureDate) : <span className="font-normal text-slate-400">Brak daty</span>}</td>
                     {columns.map((column) => {
                       const item = itemsByType.get(column.type);
                       const status = item?.status;
