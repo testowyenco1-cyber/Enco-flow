@@ -418,7 +418,7 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
   const overdueInfo = checkReadinessOverdue(dataGotowosci, itemStatus);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       {/* 3 Core Fields in logical order: 1. Typ, 2. Rozmiar, 3. Data gotowości */}
       <div className="bg-slate-50/90 p-3 rounded-xl border border-slate-200 space-y-3">
         {/* Form Title & Process Context */}
