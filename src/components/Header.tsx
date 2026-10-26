@@ -1,4 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import type { Order } from '../types/enco';
+import type { EncoTask } from '../types/tasks';
+import { fetchTasks } from '../services/taskService';
 import { Plus, RefreshCw, Zap, Layers, AlertTriangle, Lock, CircuitBoard, Menu, X, ChevronDown, Archive, ShieldCheck, Download, Save, LoaderCircle, CheckCircle2, CalendarDays, UsersRound, ListTodo, Database, LayoutDashboard } from 'lucide-react';
 import type { UserRoleProfile } from '../types/userRole';
 import type { AuthUser } from '../types/auth';
@@ -20,6 +23,7 @@ interface HeaderProps {
   activeTab?: string;
   onSelectTab?: (tab: string) => void;
   problemCount?: number;
+  actionOrders?: Order[];
   activeModule?: 'orders' | 'doors' | 'sn' | 'calendar' | 'actions' | 'dashboard';
   onSelectModule?: (module: 'orders' | 'doors' | 'sn' | 'calendar' | 'actions') => void;
   doorOrdersCount?: number;
@@ -49,11 +53,42 @@ const orderFilters = [
 export const Header: React.FC<HeaderProps> = ({
   sidebarOpen, onToggleSidebar,
   onNewOrder, onNewDoorOrder, onRefresh, onSaveChanges, hasPendingChanges, isSavingChanges, onOpenArchive, onOpenDatabases, archiveActive, archiveCount,
-  activeTab = 'all', onSelectTab, problemCount = 0,
+  activeTab = 'all', onSelectTab, problemCount = 0, actionOrders = [],
   activeModule = 'orders', onSelectModule,
   doorOrdersCount = 0, doorOverdueCount = 0,
   currentProfile, authUser, onLogout, onOpenUserAdmin,
 }) => {
+  const [actionTasks, setActionTasks] = useState<EncoTask[] | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    const refresh = () => {
+      void fetchTasks().then((tasks) => {
+        if (mounted) setActionTasks(tasks);
+      }).catch(() => {
+        if (mounted) setActionTasks(null);
+      });
+    };
+    refresh();
+    const interval = window.setInterval(refresh, 30000);
+    window.addEventListener('focus', refresh);
+    window.addEventListener('enco-tasks-changed', refresh);
+    return () => {
+      mounted = false;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('enco-tasks-changed', refresh);
+    };
+  }, []);
+  const activeTaskAlert = actionTasks?.some((task) =>
+    task.status !== 'done' &&
+    (currentProfile.id === 'admin' || task.assigneeDepartment === currentProfile.id)
+  ) ?? false;
+  const salesFollowUpAlert = actionTasks !== null &&
+    (currentProfile.id === 'dzial_handlowy' || currentProfile.id === 'admin') &&
+    actionOrders.some((order) =>
+      !actionTasks.some((task) => String(task.orderId) === String(order.id) && task.status !== 'done')
+    );
+  const showActionAlert = activeTaskAlert || salesFollowUpAlert;
   const selectedModule = modules.find((module) => module.id === activeModule) ?? modules[0];
   const SelectedIcon = archiveActive ? Archive : selectedModule.Icon;
 
@@ -154,6 +189,9 @@ export const Header: React.FC<HeaderProps> = ({
                     <span className="min-w-0 flex-1 break-words leading-snug">{label}</span>
                     {id === 'doors' && doorOrdersCount > 0 && (
                       <span className={`rounded px-1.5 py-0.5 text-xs ${doorOverdueCount > 0 ? 'bg-rose-700 text-white' : 'bg-slate-700 text-slate-200'}`}>{doorOrdersCount}</span>
+                    )}
+                    {id === 'actions' && showActionAlert && (
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-rose-500" title="Zadania lub zlecenia wymagają uwagi" aria-label="Zadania lub zlecenia wymagają uwagi" />
                     )}
                     {id === 'orders' && problemCount > 0 && <span className="h-2 w-2 rounded-full bg-rose-400" />}
                   </button>
