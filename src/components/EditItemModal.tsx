@@ -394,20 +394,20 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-slate-900/55 p-2 sm:p-3 backdrop-blur-xs">
+      <div role="dialog" aria-modal="true" aria-labelledby="edit-item-modal-title" className="relative flex h-[min(96vh,1000px)] w-[min(96vw,1680px)] max-w-none flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
+        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-slate-50 px-5 py-3">
           <div>
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs font-bold text-slate-500 bg-slate-200 px-2 py-0.5 rounded">
                 {item.shortName}
               </span>
-              <h2 className="text-lg font-bold text-slate-900">
+              <h2 id="edit-item-modal-title" className="text-base font-bold leading-tight text-slate-900 sm:text-lg">
                 {isReadOnly ? `Podgląd: ${item.name}` : `Edycja: ${item.name}`}
               </h2>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="mt-0.5 text-[11px] text-slate-500">
               {isReadOnly
                 ? `Tryb tylko do odczytu dla konta: ${profile.name}`
                 : 'Parametry techniczne, terminy i uwagi do elementu'}
@@ -416,7 +416,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
           <button
             type="button"
             onClick={onCancel || onClose}
-            className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 cursor-pointer"
+            aria-label="Zamknij okno edycji" className="shrink-0 rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -424,7 +424,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
 
         {/* Read-Only Notice Banner */}
         {isReadOnly && (
-          <div className="mx-6 mt-4 p-3 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-xl flex items-center justify-between gap-2 shadow-2xs">
+          <div className="mx-4 mt-3 flex shrink-0 items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
             <div className="flex items-center gap-2">
               <Lock className="w-4 h-4 text-amber-700 shrink-0" />
               <span>
@@ -438,10 +438,10 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
         )}
 
         {/* Form Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-3 sm:p-4">
           {/* Status section */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+            <label className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-slate-600">
               Status elementu
             </label>
             <StatusSwitcher
@@ -467,10 +467,10 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
             </div>
           )}
 
-          <div className={isReadOnly ? 'pointer-events-none opacity-85 select-none' : ''}>
+          <div className={`min-h-0 flex-1 ${isReadOnly ? 'pointer-events-none select-none opacity-85' : ''}`}>
 
           {item.type === 'OBUDOWA' ? (
-            <div className="space-y-4 pt-1">
+            <div className="h-full min-h-0 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
               <ObudowaForm
                 initialData={details}
                 relatedItems={orderItems}
@@ -489,9 +489,9 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
               />
             </div>
           ) : (
-            <>
+            <div className="grid h-full min-h-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(255px,0.72fr)_minmax(0,1.8fr)]">
               {/* Dates */}
-              <div className={`grid grid-cols-1 gap-4 ${item?.type === 'DATA_WYJAZDU' ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
+              <div className="grid content-start grid-cols-1 gap-3 rounded-xl border border-blue-100 bg-blue-50/40 p-3">
                 {item?.type !== 'DATA_WYJAZDU' && <div>
                   <label className="block text-xs font-bold text-blue-900 mb-1">
                     Data wystawienia zlecenia
@@ -537,8 +537,8 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
               </div>
 
               {/* Element-specific fields */}
-              <div className="border-t border-slate-200 pt-4">
-                <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">
+              <div className="grid min-h-0 grid-cols-1 content-start gap-3 overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 2xl:grid-cols-2">
+                <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-700 2xl:col-span-2">
                   Specyfikacja i parametry techniczne
                 </h3>
 
@@ -1582,16 +1582,16 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
               </div>
             )}
           </div>
-        </>
-      )}
+            </div>
+        )}
 
           {/* Notes */}
-          <div className="border-t border-slate-200 pt-4">
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+          <div className="shrink-0 border-t border-slate-200 pt-2">
+            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-600">
               Uwagi do elementu
             </label>
             <textarea
-              rows={3}
+              rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Wpisz uwagi, status zamówienia, ewentualne problemy..."
@@ -1601,7 +1601,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
         </div>
 
           {/* Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+          <div className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-200 pt-3">
             <button
               type="button"
               onClick={onCancel || onClose}
