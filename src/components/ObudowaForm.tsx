@@ -420,9 +420,9 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
   return (
     <div className="space-y-4">
       {/* 3 Core Fields in logical order: 1. Typ, 2. Rozmiar, 3. Data gotowości */}
-      <div className="bg-slate-50/90 p-4 rounded-xl border border-slate-200 space-y-4">
+      <div className="bg-slate-50/90 p-3 rounded-xl border border-slate-200 space-y-3">
         {/* Form Title & Process Context */}
-        <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+        <div className="flex items-center justify-between pb-1.5 border-b border-slate-200">
           <div className="flex items-center gap-2">
             <Box className="w-4 h-4 text-blue-600" />
             <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
@@ -457,7 +457,7 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
           </select>
 
           {/* Auxiliary Helper Name Display */}
-          <div className="mt-1.5 flex items-start gap-2 p-2 bg-blue-50/70 rounded-lg border border-blue-200/60 text-[11px] text-blue-900">
+          <div className="mt-1 flex items-start gap-2 p-1.5 bg-blue-50/70 rounded-lg border border-blue-200/60 text-[10px] text-blue-900">
             <Info className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
             <div className="leading-tight">
               <strong>{typeInfo.fullLabel}:</strong> {typeInfo.auxiliaryName}.{' '}
@@ -582,7 +582,7 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
           )}
 
           {/* Wymiary obudowy – edytowalne bezpośrednio, niezależnie od wariantu */}
-          <div className="mt-2 rounded-lg border border-slate-200 bg-white p-3 space-y-3">
+          <div className="mt-1.5 rounded-lg border border-slate-200 bg-white p-2.5 space-y-2">
             <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
               <Ruler className="w-3.5 h-3.5 text-blue-600" />
               <span>Wymiary obudowy [m]</span>
@@ -623,7 +623,7 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
           </div>
 
           {/* Dimensions preview in details (without occupying main screen) */}
-          <div className="mt-2 p-2.5 bg-white rounded-lg border border-slate-200/90 shadow-2xs">
+          <div className="mt-1 p-2 bg-white rounded-lg border border-slate-200/90 shadow-2xs">
             <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1.5">
               <span className="font-semibold text-slate-700 flex items-center gap-1">
                 <Box className="w-3 h-3 text-slate-400" />
@@ -711,7 +711,7 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
             </div>
           )}
         </div>
-        <div className="pt-3 border-t border-slate-200 space-y-3">
+        <div className="pt-2 border-t border-slate-200 space-y-2">
           <div className="flex items-center gap-2"><Calendar className="w-4 h-4 text-blue-600" /><h4 className="text-xs font-bold uppercase tracking-wide text-slate-800">Terminy obudowy i dokumentacji</h4></div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -733,7 +733,7 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-2"><Layers className="w-4 h-4 text-blue-600" /><h4 className="text-xs font-bold uppercase tracking-wide text-slate-800">Wyposażenie i kompletacja obudowy</h4></div>
-          <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
+          <div className="rounded-lg border border-slate-200 bg-white p-2 space-y-1.5">
             <div><span className="block text-xs font-semibold text-slate-700">Kolory</span><p className="text-xs text-slate-600 break-words">{colorsSummary || 'Brak uzupełnionych danych w punkcie KOLORY.'}</p></div>
             <div className="border-t border-slate-100 pt-2"><span className="block text-xs font-semibold text-slate-700">Opisy</span><p className="text-xs text-slate-600 break-words">{descriptionsSummary || 'Brak uzupełnionych danych w punkcie OPISY.'}</p></div>
             <p className="text-[10px] text-slate-500">Dane pobierane automatycznie z punktów KOLORY i OPISY tego zlecenia.</p>
@@ -776,7 +776,7 @@ export const ObudowaForm: React.FC<ObudowaFormProps> = ({
               <input type="text" value={String(initialData?.wkladkiSN || '')} disabled={isReadOnly} onChange={(e) => onAuxiliaryChange?.('wkladkiSN', e.target.value)} placeholder="np. typ / liczba / uwagi" className="w-full min-w-0 text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white disabled:bg-slate-100" />
             </div>
           </div>
-          <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3">
+          <div className="space-y-1.5 rounded-lg border border-slate-200 bg-white p-2">
             {([
               ['pokrywyNNSaWPyskowicach', 'Pokrywy NN są w Pyskowicach'],
               ['pokrywySNSaWPyskowicach', 'Pokrywy SN są w Pyskowicach'],
