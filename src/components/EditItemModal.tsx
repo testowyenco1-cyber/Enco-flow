@@ -395,9 +395,9 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-slate-900/55 p-2 sm:p-3 backdrop-blur-xs">
-      <div role="dialog" aria-modal="true" aria-labelledby="edit-item-modal-title" className="relative flex h-[min(96vh,1000px)] w-[min(96vw,1680px)] max-w-none flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+      <div role="dialog" aria-modal="true" aria-labelledby="edit-item-modal-title" className="relative flex h-[min(97vh,1100px)] w-[min(98vw,1840px)] max-w-none flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-slate-50 px-5 py-3">
+        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-slate-50 px-4 py-2">
           <div>
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs font-bold text-slate-500 bg-slate-200 px-2 py-0.5 rounded">
@@ -438,9 +438,9 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
         )}
 
         {/* Form Form */}
-        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-3 sm:p-4">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 sm:p-3">
           {/* Status section */}
-          <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5">
             <label className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-slate-600">
               Status elementu
             </label>
@@ -454,7 +454,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
           </div>
 
           {departmentOwners.length > 0 && (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5">
               <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">Podział procesu — działy</div>
               <div className="flex flex-wrap gap-1.5">
                 {departmentOwners.map((owner) => (
@@ -489,9 +489,9 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
               />
             </div>
           ) : (
-            <div className="grid h-full min-h-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(255px,0.72fr)_minmax(0,1.8fr)]">
+            <div className="grid h-full min-h-0 grid-cols-1 gap-2 xl:grid-cols-[minmax(230px,0.62fr)_minmax(0,2fr)]">
               {/* Dates */}
-              <div className="grid content-start grid-cols-1 gap-3 rounded-xl border border-blue-100 bg-blue-50/40 p-3">
+              <div className="grid content-start grid-cols-1 gap-2 rounded-lg border border-blue-100 bg-blue-50/40 p-2">
                 {item?.type !== 'DATA_WYJAZDU' && <div>
                   <label className="block text-xs font-bold text-blue-900 mb-1">
                     Data wystawienia zlecenia
@@ -537,13 +537,13 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
               </div>
 
               {/* Element-specific fields */}
-              <div className="grid min-h-0 grid-cols-1 content-start gap-3 overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 2xl:grid-cols-2">
+              <div className="grid min-h-0 grid-cols-1 content-start gap-2 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 2xl:grid-cols-2">
                 <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-700 2xl:col-span-2">
                   Specyfikacja i parametry techniczne
                 </h3>
 
             {item.type === 'ROZDZIELNICA_SN' && (
-              <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <div className="space-y-2 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-200">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-xs text-slate-800 uppercase tracking-wider">
@@ -569,7 +569,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                 )}
 
                 {/* 1. Producent & 2. Model (w dwóch prostych krokach) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {snCatalogMessage && <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-800">{snCatalogMessage}</div>}
                   {snCatalogError && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-700">{snCatalogError}</div>}
                   {/* Krok 1: Producent */}
@@ -655,7 +655,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                 </div>
 
                 {/* 3. Ilość pól (pole liczbowe) & 4. Konfiguracja pól */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-3 border-t border-slate-200">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-slate-200">
                   {/* 3. Ilość pól */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
@@ -759,7 +759,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                 </div>
 
                 {/* Dane logistyczne rozdzielnicy SN */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-200">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-200">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">Numer seryjny</label>
                     <input
@@ -827,7 +827,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
             )}
 
             {item.type === 'ROZDZIELNICA_NN' && (
-              <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <div className="space-y-2 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
                 {/* 1. Typ rozdzielnicy */}
                 <div>
                   <label className="block text-xs font-bold text-slate-800 mb-2">
@@ -837,7 +837,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                     <button
                       type="button"
                       onClick={() => handleDetailChange('typRozdzielnicy', 'RTS-z')}
-                      className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
+                      className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${
                         (details.typRozdzielnicy || 'RTS-z').includes('RTS-z')
                           ? 'border-blue-600 bg-blue-50/80 ring-2 ring-blue-500 shadow-xs'
                           : 'border-slate-300 bg-white hover:border-slate-400'
@@ -856,7 +856,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                     <button
                       type="button"
                       onClick={() => handleDetailChange('typRozdzielnicy', 'RTS-w')}
-                      className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
+                      className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${
                         (details.typRozdzielnicy || '').includes('RTS-w')
                           ? 'border-blue-600 bg-blue-50/80 ring-2 ring-blue-500 shadow-xs'
                           : 'border-slate-300 bg-white hover:border-slate-400'
