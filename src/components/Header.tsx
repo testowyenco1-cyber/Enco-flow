@@ -79,16 +79,22 @@ export const Header: React.FC<HeaderProps> = ({
       window.removeEventListener('enco-tasks-changed', refresh);
     };
   }, []);
-  const activeTaskAlert = actionTasks?.some((task) =>
+  // Licznik obejmuje wyłącznie aktywne zadania działu; przypomnienia
+  // handlowe zmieniają kolor oznaczenia, lecz nie zawyżają liczby zadań.
+  const departmentTasks = (actionTasks ?? []).filter((task) =>
     task.status !== 'done' &&
     (currentProfile.id === 'admin' || task.assigneeDepartment === currentProfile.id)
-  ) ?? false;
+  );
+  const actionTaskCount = departmentTasks.length;
+  const today = new Date();
+  const todayLocal = [today.getFullYear(), String(today.getMonth() + 1).padStart(2, '0'), String(today.getDate()).padStart(2, '0')].join('-');
+  const hasOverdueTasks = departmentTasks.some((task) => Boolean(task.dueDate) && task.dueDate.slice(0, 10) < todayLocal);
   const salesFollowUpAlert = actionTasks !== null &&
     (currentProfile.id === 'dzial_handlowy' || currentProfile.id === 'admin') &&
     actionOrders.some((order) =>
       !actionTasks.some((task) => String(task.orderId) === String(order.id) && task.status !== 'done')
     );
-  const showActionAlert = activeTaskAlert || salesFollowUpAlert;
+  const showActionAlert = hasOverdueTasks || salesFollowUpAlert;
   const selectedModule = modules.find((module) => module.id === activeModule) ?? modules[0];
   const SelectedIcon = archiveActive ? Archive : selectedModule.Icon;
 
@@ -190,8 +196,12 @@ export const Header: React.FC<HeaderProps> = ({
                     {id === 'doors' && doorOrdersCount > 0 && (
                       <span className={`rounded px-1.5 py-0.5 text-xs ${doorOverdueCount > 0 ? 'bg-rose-700 text-white' : 'bg-slate-700 text-slate-200'}`}>{doorOrdersCount}</span>
                     )}
-                    {id === 'actions' && showActionAlert && (
-                      <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-rose-500" title="Zadania lub zlecenia wymagają uwagi" aria-label="Zadania lub zlecenia wymagają uwagi" />
+                    {id === 'actions' && (
+                      <span
+                        className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold tabular-nums text-white ${showActionAlert ? 'bg-rose-700' : 'bg-slate-700'}`}
+                        title={showActionAlert ? 'Wymaga uwagi: zadania po terminie lub przypomnienie dla Działu Handlowego' : 'Aktywne zadania przypisane do działu'}
+                        aria-label={`Aktywne zadania: ${actionTaskCount}${showActionAlert ? ', wymagają uwagi' : ''}`}
+                      >{actionTasks === null ? '–' : actionTaskCount}</span>
                     )}
                     {id === 'orders' && problemCount > 0 && <span className="h-2 w-2 rounded-full bg-rose-400" />}
                   </button>
