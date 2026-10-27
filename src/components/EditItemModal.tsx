@@ -1586,33 +1586,33 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
         )}
 
           {/* Notes */}
-          <div className="shrink-0 border-t border-slate-200 pt-2">
-            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-600">
+          <div className="relative z-10 shrink-0 border-t-2 border-blue-200 bg-white px-1 pt-2 pb-1 shadow-[0_-4px_10px_rgba(15,23,42,0.06)]">
+            <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-800">
               Uwagi do elementu
             </label>
             <textarea
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Wpisz uwagi, status zamówienia, ewentualne problemy..."
-              className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+              placeholder="Wpisz uwagi, status zamówienia lub ewentualne problemy..."
+              className="block min-h-[64px] max-h-[110px] w-full resize-y text-sm px-3 py-2 border border-slate-300 rounded-lg bg-amber-50/40 focus:ring-2 focus:ring-blue-500 focus:outline-hidden placeholder:text-slate-400"
             />
           </div>
         </div>
 
           {/* Buttons */}
-          <div className="flex shrink-0 items-center justify-end gap-3 border-t border-slate-200 pt-3">
+          <div className="relative z-20 flex shrink-0 items-center justify-between gap-3 border-t border-slate-200 bg-white pt-2 pb-1">
             <button
               type="button"
               onClick={onCancel || onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer"
+              className="min-w-24 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:text-slate-900 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 cursor-pointer"
             >
               {isReadOnly ? 'Zamknij' : 'Anuluj'}
             </button>
             {!isReadOnly && (
               <button
                 type="submit"
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs cursor-pointer"
               >
                 <Check className="w-4 h-4" />
                 Zapisz zmiany
