@@ -18,10 +18,11 @@ type FormField = {
   required?: boolean;
 };
 type FormSection = { id: string; title: string; description?: string; fields: FormField[] };
-type FormTemplate = { sections: FormSection[] };
+type FormTemplate = { version?: number; sections: FormSection[] };
 type FormValues = Record<string, string | boolean>;
 
 const DEFAULT_TEMPLATE: FormTemplate = {
+  version: 2,
   sections: [
     { id: 'order', title: 'Dane zlecenia', description: 'Podstawowe informacje identyfikujące zamówienie.', fields: [
       { id: 'zd', label: 'Numer ZD', type: 'text', placeholder: 'Np. 69' },
@@ -67,8 +68,14 @@ const DEFAULT_TEMPLATE: FormTemplate = {
       { id: 'earthing', label: 'Rodzaj instalacji uziemiającej', type: 'select', options: ['Linka', 'Bednarka', 'Linka i bednarka', 'Inne', 'Do ustalenia'] },
     ]},
     { id: 'equipment', title: 'Wyposażenie stacji', fields: [
-      { id: 'sn', label: 'Rozdzielnica SN', type: 'textarea', placeholder: 'Producent, typ, konfiguracja, uwagi' },
-      { id: 'nn', label: 'Rozdzielnica NN', type: 'textarea', placeholder: 'Typ, konfiguracja, uwagi' },
+      { id: 'sn-producer', label: 'Rozdzielnica SN — producent', type: 'text' },
+      { id: 'sn-model', label: 'Rozdzielnica SN — model', type: 'text' },
+      { id: 'sn-type', label: 'Rozdzielnica SN — typ', type: 'text' },
+      { id: 'sn-config', label: 'Rozdzielnica SN — konfiguracja pól', type: 'text', placeholder: 'Np. L-L-L-T' },
+      { id: 'sn-fields-count', label: 'Rozdzielnica SN — liczba pól', type: 'number' },
+      { id: 'nn-type', label: 'Rozdzielnica NN — typ', type: 'text' },
+      { id: 'nn-fields-count', label: 'Rozdzielnica NN — liczba pól', type: 'number' },
+      { id: 'nn-ready-date', label: 'Rozdzielnica NN — planowana gotowość transportu', type: 'date' },
       { id: 'telemechanics', label: 'Telemechanika', type: 'textarea', placeholder: 'Typ sterownika, szafa, konfiguracja' },
       { id: 'transformer', label: 'Transformator', type: 'textarea', placeholder: 'Typ, moc, parametry' },
       { id: 'extra-equipment', label: 'Pozostałe wyposażenie', type: 'textarea', placeholder: 'Wskaźniki, oświetlenie, wentylacja i inne' },
@@ -98,6 +105,23 @@ const DEFAULT_TEMPLATE: FormTemplate = {
     ]},
   ],
 };
+
+function migrateTemplate(input: FormTemplate): FormTemplate {
+  if ((input.version || 0) >= 2) return input;
+  const replacementIds = new Set(['sn', 'nn']);
+  const sections = input.sections.map(section => ({
+    ...section,
+    fields: section.fields.filter(field => !replacementIds.has(field.id)),
+  }));
+  const equipment = sections.find(section => section.id === 'equipment');
+  const defaultEquipment = DEFAULT_TEMPLATE.sections.find(section => section.id === 'equipment');
+  if (equipment && defaultEquipment) {
+    const addedIds = new Set(['sn-producer','sn-model','sn-type','sn-config','sn-fields-count','nn-type','nn-fields-count','nn-ready-date']);
+    const existingIds = new Set(equipment.fields.map(field => field.id));
+    equipment.fields.push(...defaultEquipment.fields.filter(field => addedIds.has(field.id) && !existingIds.has(field.id)));
+  }
+  return { ...input, version: 2, sections };
+}
 
 const STORAGE_TEMPLATE_KEY = 'enco-form-template-v2';
 const storageDraftKey = (orderNumber: string) => 'enco-form-draft-v2:' + (orderNumber || 'bez-numeru');
@@ -144,8 +168,14 @@ const DEFAULT_BINDINGS: Record<string, FormBinding> = {
   'penetration-100':{scope:'item',itemType:'OBUDOWA',key:'przepusty.fi100'},
   'penetration-other':{scope:'item',itemType:'OBUDOWA',key:'przepusty.pozostale'},
   earthing:{scope:'item',itemType:'OBUDOWA',key:'rodzajUziemienia'},
-  sn:{scope:'item',itemType:'ROZDZIELNICA_SN',key:'daneFormularzaObudowy'},
-  nn:{scope:'item',itemType:'ROZDZIELNICA_NN',key:'daneFormularzaObudowy'},
+  'sn-producer':{scope:'item',itemType:'ROZDZIELNICA_SN',key:'producent'},
+  'sn-model':{scope:'item',itemType:'ROZDZIELNICA_SN',key:'model'},
+  'sn-type':{scope:'item',itemType:'ROZDZIELNICA_SN',key:'typRozdzielnicy'},
+  'sn-config':{scope:'item',itemType:'ROZDZIELNICA_SN',key:'konfiguracjaPol'},
+  'sn-fields-count':{scope:'item',itemType:'ROZDZIELNICA_SN',key:'liczbaPol'},
+  'nn-type':{scope:'item',itemType:'ROZDZIELNICA_NN',key:'typRozdzielnicy'},
+  'nn-fields-count':{scope:'item',itemType:'ROZDZIELNICA_NN',key:'iloscPol'},
+  'nn-ready-date':{scope:'item',itemType:'ROZDZIELNICA_NN',key:'planowanaGotowoscTransportu'},
   telemechanics:{scope:'item',itemType:'SZAFKA_TELEMECHANIKI',key:'daneFormularzaObudowy'},
   transformer:{scope:'item',itemType:'OBUDOWA',key:'wyposazenie.transformator'},
   'extra-equipment':{scope:'item',itemType:'OBUDOWA',key:'pozostaleWyposazenie'},
@@ -188,7 +218,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
   const orderNumber = order.orderNumber;
   const projectName = order.projectName || '';
   const client = order.client || '';
-  const [template, setTemplate] = useState<FormTemplate>(() => safeRead(STORAGE_TEMPLATE_KEY, DEFAULT_TEMPLATE));
+  const [template, setTemplate] = useState<FormTemplate>(() => migrateTemplate(safeRead(STORAGE_TEMPLATE_KEY, DEFAULT_TEMPLATE)));
   const [templateReady, setTemplateReady] = useState(false);
   const [templateSyncMessage, setTemplateSyncMessage] = useState('');
   const [values, setValues] = useState<FormValues>(() => safeRead(storageDraftKey(orderNumber), {}));
@@ -226,7 +256,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
         const result = await response.json();
         if (!response.ok || !result.success) throw new Error(result.error || 'Nie udało się pobrać szablonu.');
         if (active && result.template && Array.isArray(result.template.sections)) {
-          setTemplate(result.template as FormTemplate);
+          setTemplate(migrateTemplate(result.template as FormTemplate));
         }
       })
       .catch(() => {
