@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Settings2, FileText, Layers3,
-  Save, RotateCcw, Check, GripVertical, Eye, Pencil, X, CircleHelp,
+  Save, RotateCcw, Check, GripVertical, Eye, CircleHelp,
 } from 'lucide-react';
 
 type FieldType = 'text' | 'number' | 'date' | 'select' | 'textarea' | 'checkbox';
@@ -118,6 +118,8 @@ interface FormsModuleViewProps {
 
 export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ orderNumber, projectName = '', client = '' }) => {
   const [template, setTemplate] = useState<FormTemplate>(() => safeRead(STORAGE_TEMPLATE_KEY, DEFAULT_TEMPLATE));
+  const [templateReady, setTemplateReady] = useState(false);
+  const [templateSyncMessage, setTemplateSyncMessage] = useState('');
   const [values, setValues] = useState<FormValues>(() => safeRead(storageDraftKey(orderNumber), {}));
   const [activeSection, setActiveSection] = useState('order');
   const [mode, setMode] = useState<'fill' | 'manage' | 'preview'>('fill');
@@ -132,8 +134,41 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ orderNumber, p
   }, [orderNumber]);
 
   useEffect(() => {
+    let active = true;
+    fetch('/api/form-template', { headers: { Accept: 'application/json' }, cache: 'no-store' })
+      .then(async response => {
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.error || 'Nie udało się pobrać szablonu.');
+        if (active && result.template && Array.isArray(result.template.sections)) {
+          setTemplate(result.template as FormTemplate);
+        }
+      })
+      .catch(() => {
+        if (active) setTemplateSyncMessage('Nie udało się pobrać wspólnego szablonu — używany jest zapis lokalny.');
+      })
+      .finally(() => { if (active) setTemplateReady(true); });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
     try { window.localStorage.setItem(STORAGE_TEMPLATE_KEY, JSON.stringify(template)); } catch { /* storage can be disabled */ }
-  }, [template]);
+    if (!templateReady) return;
+    const timeout = window.setTimeout(async () => {
+      try {
+        const response = await fetch('/api/form-template', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ template }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.error || 'Nie udało się zapisać szablonu.');
+        setTemplateSyncMessage('Wspólny szablon zapisany');
+      } catch (error) {
+        setTemplateSyncMessage(error instanceof Error ? error.message : 'Nie udało się zsynchronizować szablonu.');
+      }
+    }, 700);
+    return () => window.clearTimeout(timeout);
+  }, [template, templateReady]);
 
   useEffect(() => {
     try { window.localStorage.setItem(storageDraftKey(orderNumber), JSON.stringify(values)); } catch { /* storage can be disabled */ }
@@ -236,6 +271,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ orderNumber, p
             <button type="button" onClick={() => setMode('preview')} className={'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ' + (mode === 'preview' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800')}><Eye className="h-4 w-4" /> Podgląd</button>
           </div>
           <div className="flex items-center gap-3 text-xs text-slate-500">
+            {templateSyncMessage && <span className="max-w-72 text-right">{templateSyncMessage}</span>}
             <span className="rounded-full bg-blue-50 px-3 py-1.5 font-semibold text-blue-700">{filledCount} / {allFields.length} pól uzupełnionych</span>
             {requiredMissing.length > 0 && <span className="font-semibold text-amber-700">{requiredMissing.length} wymaganych pól do uzupełnienia</span>}
             {savedMessage && <span className="inline-flex items-center gap-1 font-semibold text-emerald-700"><Check className="h-3.5 w-3.5" />{savedMessage}</span>}
@@ -320,7 +356,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ orderNumber, p
               </div>
             </section>
           )}
-          <div className="mt-4 flex flex-wrap items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-xs leading-5 text-slate-500"><div className="rounded-lg bg-amber-50 p-2 text-amber-700"><CircleHelp className="h-4 w-4" /></div><p className="flex-1">Szkic i konfiguracja pól są przechowywane w tej przeglądarce. Formularz nie zapisuje jeszcze zmian bezpośrednio do zlecenia ani nie wysyła ich innym użytkownikom. Ten etap jest oddzielony od przyszłego procesu: uwagi i poprawki → sprawdzenie różnic → akceptacja aktualizacji.</p></div>
+          <div className="mt-4 flex flex-wrap items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-xs leading-5 text-slate-500"><div className="rounded-lg bg-amber-50 p-2 text-amber-700"><CircleHelp className="h-4 w-4" /></div><p className="flex-1">Konfiguracja pól jest zapisywana na serwerze i współdzielona z innymi użytkownikami. Wypełniony szkic jest obecnie przechowywany w tej przeglądarce. Formularz nie aktualizuje bezpośrednio danych zlecenia. Ten etap jest oddzielony od przyszłego procesu: uwagi i poprawki → sprawdzenie różnic → akceptacja aktualizacji.</p></div>
         </main>
       </div>
     </div>
