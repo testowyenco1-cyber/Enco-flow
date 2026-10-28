@@ -29,7 +29,6 @@ import {
 import { UserRoleProfile, USER_PROFILES, canEditItemType, getItemPermissionHint } from '../types/userRole';
 import { getOrderFieldDepartment } from '../utils/departmentOwnership';
 import { OrderTasksPanel } from './OrderTasksPanel';
-import { FormsModuleView } from './FormsModuleView';
 
 interface OrderDetailViewProps {
   order: Order;
@@ -64,7 +63,6 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
 }) => {
   const profile = currentProfile || USER_PROFILES.admin;
   const [itemsFilter, setItemsFilter] = useState<'all' | 'my_scope'>('all');
-  const [orderTab, setOrderTab] = useState<'details' | 'forms'>('details');
   const [showHiddenItems, setShowHiddenItems] = useState(false);
   const hiddenMainPositionTypes = ["OBUDOWA","ROZDZIELNICA_SN","ROZDZIELNICA_NN","TABLICA_POMIAROWA","RPW","MOST","SZAFKA_TELEMECHANIKI","TRANSFORMATOR_POTRZEB_WLASNYCH","WSKAZNIKI_ZWARC","RYS_AKCEPTACJA","KOLORY","OPISY","DRZWI","ZAP_SERWISPOL","ZAM_SERWISPOL","ZLECENIE_MONTAZU","ZLECENIE MONTAŻU","ZLECENIE_MONTAŻU","POWYKONAWCZA","DATA_WYJAZDU","DODATKOWE"];
   const isHiddenMainPosition = (item: OrderItem) => item.status === 'NOT_APPLICABLE' && hiddenMainPositionTypes.includes(item.type);
@@ -474,18 +472,8 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
           </div>
         </div>
 
-        {/* Zakładki panelu zlecenia */}
-        <div className="flex items-center gap-2 border-b border-slate-200 bg-white px-6 pt-4">
-          <button type="button" onClick={() => setOrderTab('details')} className={`rounded-t-lg border px-4 py-2 text-sm font-semibold transition-colors ${orderTab === 'details' ? 'border-slate-300 border-b-white bg-white text-slate-900' : 'border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
-            Szczegóły zlecenia
-          </button>
-          <button type="button" onClick={() => setOrderTab('forms')} className={`inline-flex items-center gap-2 rounded-t-lg border px-4 py-2 text-sm font-semibold transition-colors ${orderTab === 'forms' ? 'border-blue-200 border-b-white bg-blue-50 text-blue-800' : 'border-transparent text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
-            <FileText className="h-4 w-4" /> Formularze
-          </button>
-        </div>
-        {orderTab === 'forms' && <FormsModuleView order={order} onUpdateOrderStatus={onUpdateOrderStatus} currentProfile={profile} />}
         {/* General notes & Project-level attachments */}
-        <div className={`p-6 bg-slate-50/50 grid grid-cols-1 lg:grid-cols-3 gap-6 border-b border-slate-200 ${orderTab === 'forms' ? 'hidden' : ''}`}>
+        <div className="p-6 bg-slate-50/50 grid grid-cols-1 lg:grid-cols-3 gap-6 border-b border-slate-200">
           {/* General Notes */}
           <div className="lg:col-span-2 space-y-2">
             <div className="flex items-center justify-between">
@@ -560,7 +548,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
         </div>
 
         {/* POZIOM 2 — KAFLE WSZYSTKICH ELEMENTÓW (SZYBKI PRZEGLĄD I ZMIANA STATUSÓW) */}
-        <div className={`p-6 ${orderTab === 'forms' ? 'hidden' : ''}`}>
+        <div className="p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div>
               <div className="flex items-center gap-2">
