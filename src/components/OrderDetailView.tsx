@@ -29,6 +29,7 @@ import {
 import { UserRoleProfile, USER_PROFILES, canEditItemType, getItemPermissionHint } from '../types/userRole';
 import { getOrderFieldDepartment } from '../utils/departmentOwnership';
 import { OrderTasksPanel } from './OrderTasksPanel';
+import { FormDictionarySelect } from './FormDictionarySelect';
 
 interface OrderDetailViewProps {
   order: Order;
@@ -622,7 +623,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                   <div className="mt-2 overflow-x-auto">
                     <table className="w-full min-w-[680px] border-collapse text-left text-xs">
                       <thead><tr className="bg-slate-100">{['Element', 'Ilość', 'Wymiar / typ', 'Strona / pomieszczenie', 'Uwagi'].map(h => <th key={h} className="border border-slate-300 px-2 py-2 font-bold text-slate-700">{h}</th>)}</tr></thead>
-                      <tbody>{doorRows.map((name, rowIndex) => <tr key={`${name}-${rowIndex}`}><td className="border border-slate-300 p-1"><input aria-label="Nazwa elementu" value={name} onChange={event => setDoorRows(rows => rows.map((row, index) => index === rowIndex ? event.target.value : row))} className="w-full min-w-36 border-0 bg-transparent px-1 py-1 font-medium text-slate-700 outline-none focus:bg-blue-50" /></td>{[0,1,2,3].map(i => <td key={i} className="border border-slate-300 p-1"><input aria-label={`${name} — ${['Ilość','Wymiar / typ','Strona / pomieszczenie','Uwagi'][i]}`} className="w-full min-w-16 border-0 bg-transparent px-1 py-1 outline-none focus:bg-blue-50" /></td>)}</tr>)}</tbody>
+                      <tbody>{doorRows.map((name, rowIndex) => <tr key={`${name}-${rowIndex}`}><td className="border border-slate-300 p-1"><FormDictionarySelect category="element-obudowy" value={name} onChange={value => setDoorRows(rows => rows.map((row, index) => index === rowIndex ? value : row))} placeholder="Wybierz / wpisz element" /></td>{[0,1,2,3].map(i => <td key={i} className="border border-slate-300 p-1"><input aria-label={`${name} — ${['Ilość','Wymiar / typ','Strona / pomieszczenie','Uwagi'][i]}`} className="w-full min-w-16 border-0 bg-transparent px-1 py-1 outline-none focus:bg-blue-50" /></td>)}</tr>)}</tbody>
                     </table>
                   </div>
                 </section>
@@ -633,7 +634,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                   <div className="mt-2 overflow-x-auto">
                     <table className="w-full min-w-[680px] border-collapse text-left text-xs">
                       <thead><tr className="bg-slate-100">{['Typ elementu', 'Ilość', 'Lokalizacja', 'Wkład / pokrywa', 'Uwagi'].map(h => <th key={h} className="border border-slate-300 px-2 py-2 font-bold text-slate-700">{h}</th>)}</tr></thead>
-                      <tbody>{cableRows.map((name, rowIndex) => <tr key={`${name}-${rowIndex}`}><td className="border border-slate-300 p-1"><input aria-label="Typ elementu" value={name} onChange={event => setCableRows(rows => rows.map((row, index) => index === rowIndex ? event.target.value : row))} className="w-full min-w-36 border-0 bg-transparent px-1 py-1 font-medium text-slate-700 outline-none focus:bg-blue-50" /></td>{[0,1,2,3].map(i => <td key={i} className="border border-slate-300 p-1"><input aria-label={`${name} — ${['Ilość','Lokalizacja','Wkład / pokrywa','Uwagi'][i]}`} className="w-full min-w-16 border-0 bg-transparent px-1 py-1 outline-none focus:bg-blue-50" /></td>)}</tr>)}</tbody>
+                      <tbody>{cableRows.map((name, rowIndex) => <tr key={`${name}-${rowIndex}`}><td className="border border-slate-300 p-1"><FormDictionarySelect category="typ-przepustu" value={name} onChange={value => setCableRows(rows => rows.map((row, index) => index === rowIndex ? value : row))} placeholder="Wybierz typ przepustu" /></td>{[0,1,2,3].map(i => <td key={i} className="border border-slate-300 p-1"><input aria-label={`${name} — ${['Ilość','Lokalizacja','Wkład / pokrywa','Uwagi'][i]}`} className="w-full min-w-16 border-0 bg-transparent px-1 py-1 outline-none focus:bg-blue-50" /></td>)}</tr>)}</tbody>
                     </table>
                   </div>
                   <label className="mt-3 block text-xs font-semibold text-slate-600">Uziemienie wewnętrzne i połączenia kontrolne<input placeholder="FeZn / FeCu / linka / przewód / złącza kontrolne" className="mt-1 w-full border border-slate-300 px-3 py-2 text-sm font-normal outline-none focus:border-blue-600" /></label>
@@ -645,7 +646,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                   <div className="mt-2 overflow-x-auto">
                     <table className="w-full min-w-[680px] border-collapse text-left text-xs">
                       <thead><tr className="bg-slate-100">{['Element', 'Producent / typ', 'Parametry / konfiguracja', 'Uwagi'].map(h => <th key={h} className="border border-slate-300 px-2 py-2 font-bold text-slate-700">{h}</th>)}</tr></thead>
-                      <tbody>{equipmentRows.map((name, rowIndex) => <tr key={`${name}-${rowIndex}`}><td className="border border-slate-300 p-1"><input aria-label="Element wyposażenia" value={name} onChange={event => setEquipmentRows(rows => rows.map((row, index) => index === rowIndex ? event.target.value : row))} className="w-full min-w-36 border-0 bg-transparent px-1 py-1 font-medium text-slate-700 outline-none focus:bg-blue-50" /></td>{[0,1,2].map(i => <td key={i} className="border border-slate-300 p-1"><input aria-label={`${name} — ${['Producent / typ','Parametry / konfiguracja','Uwagi'][i]}`} className="w-full min-w-20 border-0 bg-transparent px-1 py-1 outline-none focus:bg-blue-50" /></td>)}</tr>)}</tbody>
+                      <tbody>{equipmentRows.map((name, rowIndex) => <tr key={`${name}-${rowIndex}`}><td className="border border-slate-300 p-1"><FormDictionarySelect category="wyposażenie" value={name} onChange={value => setEquipmentRows(rows => rows.map((row, index) => index === rowIndex ? value : row))} placeholder="Wybierz wyposażenie" /></td>{[0,1,2].map(i => <td key={i} className="border border-slate-300 p-1"><input aria-label={`${name} — ${['Producent / typ','Parametry / konfiguracja','Uwagi'][i]}`} className="w-full min-w-20 border-0 bg-transparent px-1 py-1 outline-none focus:bg-blue-50" /></td>)}</tr>)}</tbody>
                     </table>
                   </div>
                 </section>
