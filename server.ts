@@ -97,6 +97,7 @@ async function startServer() {
   const SN_CATALOG_FILE = path.join(DATA_DIR, 'sn_catalog.json');
   const DOOR_CATALOG_FILE = path.join(DATA_DIR, 'door_catalog.json');
   const TASKS_FILE = path.join(DATA_DIR, 'tasks.json');
+  const ORDER_FORM_DICTIONARIES_FILE = path.join(DATA_DIR, 'order_form_dictionaries.json');
   if (!fs.existsSync(TASKS_FILE)) fs.writeFileSync(TASKS_FILE, '[]', 'utf-8');
 
   // Seed initial data if files do not exist
@@ -1342,6 +1343,62 @@ async function startServer() {
     } catch (err) {
       console.error('Error saving SN catalogue:', err);
       return res.status(500).json({ success: false, error: 'Błąd zapisu katalogu producentów i modeli SN' });
+    }
+  });
+
+
+  // Shared editable dictionaries for order document forms. Each save updates only
+  // the selected category against the latest server file.
+  const ORDER_FORM_DICTIONARY_DEFAULTS: Record<string, string[]> = {
+    typObudowy: ['NZ', 'BEK'],
+    rozmiary: ['NZ 130/240', 'NZ 210/290', 'BEK 250/350', 'BEK 250/400', 'BEK 300/450'],
+    konstrukcja: ['Żelbetowa z betonu C35/45', 'Żelbetowa z betonu C30/37', 'Lekka aluminiowa'],
+    scianyIlosc: ['0', '1', '2', '3', '4'],
+    scianyKlasa: ['REI 60', 'REI 90', 'REI 120', 'REI 180'],
+    dachTyp: ['Kopertowy', 'Dwuspadowy', 'Wannowy', 'Płaski', 'Brak'],
+    dachKlasa: ['REI 60', 'REI 90', 'REI 120', 'REI 180', 'Brak'],
+    kolory: ['RAL 1013 (kremowy)', 'RAL 8014 (brązowy)', 'RAL 7035 (szary)', 'RAL 7016 (antracyt)', 'RAL 9006 (srebrny)', 'RAL 6005 (zielony)'],
+    tynk: ['Brak', 'Tynk akrylowy', 'Tynk mineralny', 'Do uzgodnienia'],
+    przepusty: ['BWS 100', 'BWS 150', 'HSI 90', 'HSI 150', 'HEA', 'Ø100'],
+    otwory: ['Otwór Ø100', 'Otwór kablowy', 'Otwór wentylacyjny', 'Otwór drzwiowy', 'Inny'],
+    slusarka: ['Drzwi jednoskrzydłowe pełne', 'Drzwi dwuskrzydłowe z kratą wentylacyjną', 'Drzwi EI 120', 'Drzwi EI 60', 'Krata wentylacyjna', 'Otwór fi 100 z zaślepieniem', 'Inna ślusarka'],
+    wyposazenie: ['Wewnętrzna instalacja uziemiająca', 'Instalacja oświetleniowa', 'Powłoka antygraffiti', 'Dodatkowy przedział kablowy', 'Fundament podwyższony', 'Instalacja ogrzewania i klimatyzacji'],
+  };
+
+  app.get('/api/order-form-dictionaries', (_req, res) => {
+    try {
+      let dictionaries = ORDER_FORM_DICTIONARY_DEFAULTS;
+      if (fs.existsSync(ORDER_FORM_DICTIONARIES_FILE)) {
+        const parsed = JSON.parse(fs.readFileSync(ORDER_FORM_DICTIONARIES_FILE, 'utf-8'));
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) dictionaries = { ...ORDER_FORM_DICTIONARY_DEFAULTS, ...parsed };
+      }
+      return res.json({ success: true, dictionaries, timestamp: Date.now() });
+    } catch (err) {
+      console.error('Error reading order form dictionaries:', err);
+      return res.status(500).json({ success: false, error: 'Błąd odczytu słowników formularzy' });
+    }
+  });
+
+  app.post('/api/order-form-dictionaries', requireItemPermission('OBUDOWA'), (req, res) => {
+    try {
+      const categoryKey = typeof req.body?.categoryKey === 'string' ? req.body.categoryKey : '';
+      const values = req.body?.values;
+      if (!Object.prototype.hasOwnProperty.call(ORDER_FORM_DICTIONARY_DEFAULTS, categoryKey) || !Array.isArray(values) || values.some((value: any) => typeof value !== 'string')) {
+        return res.status(400).json({ success: false, error: 'Nieprawidłowe dane słownika formularza' });
+      }
+      let current: Record<string, string[]> = { ...ORDER_FORM_DICTIONARY_DEFAULTS };
+      if (fs.existsSync(ORDER_FORM_DICTIONARIES_FILE)) {
+        const parsed = JSON.parse(fs.readFileSync(ORDER_FORM_DICTIONARIES_FILE, 'utf-8'));
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) current = { ...current, ...parsed };
+      }
+      const cleaned = values.map((value: string) => value.trim()).filter(Boolean);
+      if (new Set(cleaned).size !== cleaned.length) return res.status(400).json({ success: false, error: 'Wartości w słowniku nie mogą się powtarzać.' });
+      current[categoryKey] = cleaned;
+      writeJsonAtomically(ORDER_FORM_DICTIONARIES_FILE, current);
+      return res.json({ success: true, values: current[categoryKey], timestamp: Date.now() });
+    } catch (err) {
+      console.error('Error saving order form dictionaries:', err);
+      return res.status(500).json({ success: false, error: 'Błąd zapisu słownika formularza' });
     }
   });
 

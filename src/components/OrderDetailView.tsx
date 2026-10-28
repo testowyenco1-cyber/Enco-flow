@@ -5,7 +5,7 @@ import { StatusSwitcher } from './StatusSwitcher';
 import { DepartureBadge } from './DepartureBadge';
 import { ItemDetailsCard } from './ItemDetailsCard';
 import { AttachmentList } from './AttachmentList';
-import { OfferDocumentModal } from './OfferDocumentModal';
+import { OrderDocumentFormModal } from './OrderDocumentFormModal';
 import { OrderFilesModal } from './OrderFilesModal';
 import {
   ArrowLeft,
@@ -435,10 +435,10 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 type="button"
                 onClick={() => setIsOfferModalOpen(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-2xs border border-blue-500 transition-colors cursor-pointer"
-                title="Generuj dokument oferty i kartę techniczną stacji"
+                title="Wypełnij formularz dokumentu, sprawdź podgląd i zatwierdź zmiany osobno"
               >
                 <FileText className="w-3.5 h-3.5" />
-                <span>Dokument oferty</span>
+                <span>Formularze dokumentów</span>
               </button>
               <div className="flex flex-wrap items-center gap-1.5">
                 <DepartureBadge
@@ -914,10 +914,13 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
       />
 
       {/* Offer Document Generator & Technical Sheet Modal */}
-      <OfferDocumentModal
+      <OrderDocumentFormModal
         order={order}
         isOpen={isOfferModalOpen}
         onClose={() => setIsOfferModalOpen(false)}
+        onUpdateOrderStatus={onUpdateOrderStatus}
+        onSaveOrderChanges={onSaveOrderChanges}
+        currentProfile={profile}
         canDownload={profile.canDownload}
       />
 
