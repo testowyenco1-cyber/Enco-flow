@@ -342,6 +342,11 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
   }), [linkedChanges, profile]);
   const applyLinkedChanges = () => {
     setApplyError('');
+    const incompleteDoorRows = allFields.filter(field => field.repeatable === 'door' && parseDoorRows(values[field.id]).some(row => !DOOR_VARIANTS.includes(row.variant)));
+    if (incompleteDoorRows.length) {
+      setApplyError('Uzupełnij wariant każdej dodanej pozycji drzwi przed zatwierdzeniem zmian.');
+      return;
+    }
     if (missingLinkedItems.length) {
       setApplyError('Zastosuję dostępne powiązania. Pominięte pola wymagają brakujących pozycji: ' + [...new Set(missingLinkedItems.map(field => getFieldBinding(field)?.itemType || ''))].join(', ') + '.');
     }
@@ -378,6 +383,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
   };
 
   const requiredMissing = allFields.filter(field => field.required && !String(values[field.id] ?? '').trim());
+  const incompleteDoorRows = allFields.some(field => field.repeatable === 'door' && parseDoorRows(values[field.id]).some(row => !DOOR_VARIANTS.includes(row.variant)));
   const filledCount = allFields.filter(field => String(values[field.id] ?? field.defaultValue ?? '').trim()).length;
 
   useEffect(() => {
@@ -596,6 +602,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
           {reviewOpen && <section className="mb-4 rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-lg font-black text-slate-900">Sprawdzenie zmian przed aktualizacją</h3><p className="mt-1 text-sm text-slate-600">Poniższe wartości zostaną zapisane w odpowiednich polach zlecenia. Nic nie zmieni się, dopóki nie zatwierdzisz tej listy.</p></div><button type="button" onClick={() => setReviewOpen(false)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold">Wróć do formularza</button></div>
             {linkedChanges.length === 0 ? <p className="mt-4 text-sm text-slate-500">Brak zmian do zastosowania.</p> : <div className="mt-4 space-y-2">{linkedChanges.map(field => { const binding = getFieldBinding(field); const item = binding?.scope === 'item' ? order.items.find(candidate => candidate.type === binding.itemType) : undefined; const before = binding?.scope === 'order' ? (order as any)[binding.key] : item ? readPath(item.details || {}, binding?.key || '') : undefined; return <div key={field.id} className="grid grid-cols-1 gap-2 rounded-xl border border-slate-100 p-3 sm:grid-cols-[minmax(0,1fr)_1fr_1fr]"><div><div className="text-sm font-bold text-slate-800">{field.label}</div><div className="mt-1 text-[10px] text-slate-500">{binding?.scope === 'order' ? 'Zlecenie' : binding?.itemType} · {binding?.key}</div></div><div><div className="text-[10px] font-bold uppercase text-slate-400">Obecnie</div><div className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-600">{formatFieldValue(field, before) || '—'}</div></div><div><div className="text-[10px] font-bold uppercase text-emerald-700">Po zatwierdzeniu</div><div className="mt-1 whitespace-pre-wrap break-words text-sm font-semibold text-slate-900">{formatFieldValue(field, values[field.id] ?? field.defaultValue ?? '') || '—'}</div></div></div>})}</div>}
+            {incompleteDoorRows && <div className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Każdy dodany wiersz drzwi musi mieć wybrany wariant. Możesz też usunąć nieukończony wiersz.</div>}
             {applyError && <div className="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-800">{applyError}</div>}
             {missingLinkedItems.length > 0 && <div className="mt-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-900">Nie znaleziono pozycji: {[...new Set(missingLinkedItems.map(field => getFieldBinding(field)?.itemType || ''))].join(', ')}. Te pola nie zostaną zapisane, dopóki odpowiednie pozycje nie istnieją w zleceniu.</div>}
             {permissionDeniedChanges.length > 0 && <div className="mt-3 rounded-lg bg-rose-50 p-3 text-xs text-rose-800">Nie masz uprawnień do aktualizacji pól w pozycjach: {[...new Set(permissionDeniedChanges.map(field => getFieldBinding(field)?.itemType || ''))].join(', ')}. Te pola zostaną pominięte.</div>}
