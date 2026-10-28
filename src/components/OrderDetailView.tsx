@@ -918,7 +918,6 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
         order={order}
         isOpen={isOfferModalOpen}
         onClose={() => setIsOfferModalOpen(false)}
-        onUpdateOrderStatus={onUpdateOrderStatus}
         onSaveOrderChanges={onSaveOrderChanges}
         currentProfile={profile}
         canDownload={profile.canDownload}
