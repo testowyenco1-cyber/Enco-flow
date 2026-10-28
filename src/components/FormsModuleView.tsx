@@ -529,6 +529,28 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
 
   return (
     <div className="min-h-[70vh] bg-slate-50">
+      <style>{`
+        @media print {
+          @page { margin: 12mm; }
+          body * { visibility: hidden !important; }
+          .print-document, .print-document * { visibility: visible !important; }
+          .print-document {
+            position: absolute !important;
+            inset: 0 auto auto 0 !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            color: #111827 !important;
+            background: #fff !important;
+          }
+          .print-document h4 { break-after: avoid; color: #111827 !important; }
+          .print-document > div { break-inside: avoid; }
+          .print-document .text-slate-400,
+          .print-document .text-slate-500,
+          .print-document .text-slate-800 { color: #111827 !important; }
+          .print-document .border-slate-200 { border-color: #d1d5db !important; }
+        }
+      `}</style>
       <header className="border-b border-slate-200 bg-white px-4 py-5 sm:px-7 print:hidden">
         <div className="mx-auto flex max-w-[1500px] flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-3">
@@ -628,7 +650,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
               </div>
 
               {mode === 'preview' ? (
-                <div className="space-y-5 p-5 sm:p-7">
+                <div className="print-document space-y-5 p-5 sm:p-7">
                   {template.sections.map(section => <div key={section.id}><h4 className="border-b border-slate-200 pb-2 text-sm font-black text-slate-800">{section.title}</h4><div className="mt-2 grid grid-cols-1 gap-x-6 gap-y-3 md:grid-cols-2">{section.fields.map(field => <div key={field.id} className="border-b border-dashed border-slate-200 pb-2"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{field.label}</div><div className="mt-1 whitespace-pre-wrap text-sm text-slate-800">{formatFieldValue(field, values[field.id] ?? field.defaultValue ?? '') || '—'}</div></div>)}</div></div>)}
                   <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">To jest podgląd szkicu. Nie aktualizuje jeszcze danych w zleceniu. Aktualizacja nastąpi dopiero w docelowym etapie sprawdzenia i akceptacji zmian.</div>
                 </div>
