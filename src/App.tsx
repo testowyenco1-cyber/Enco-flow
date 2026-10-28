@@ -678,7 +678,12 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
       }`}>
         {activeModule === 'forms' ? (
           selectedOrder ? (
-            <FormsModuleView order={selectedOrder} onUpdateOrderStatus={handleUpdateOrderStatus} currentProfile={currentProfile} />
+            <div>
+              <div className="mb-3 print:hidden">
+                <button type="button" onClick={() => navigate('/formularze')} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">← Wróć do listy formularzy</button>
+              </div>
+              <FormsModuleView order={selectedOrder} onUpdateOrderStatus={handleUpdateOrderStatus} currentProfile={currentProfile} />
+            </div>
           ) : (
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="mb-5">
