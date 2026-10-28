@@ -281,11 +281,15 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
   const applyLinkedChanges = () => {
     setApplyError('');
     if (missingLinkedItems.length) {
-      setApplyError('Brakuje pozycji w zleceniu dla części powiązań: ' + [...new Set(missingLinkedItems.map(field => getFieldBinding(field)?.itemType || ''))].join(', ') + '. Najpierw dodaj te pozycje do zlecenia.');
+      setApplyError('Zastosuję dostępne powiązania. Pominięte pola wymagają brakujących pozycji: ' + [...new Set(missingLinkedItems.map(field => getFieldBinding(field)?.itemType || ''))].join(', ') + '.');
+    }
+    const applicableChanges = linkedChanges.filter(field => !missingLinkedItems.includes(field));
+    if (applicableChanges.length === 0) {
+      setApplyError('Nie ma pól, które można teraz zapisać. Dodaj brakujące pozycje zlecenia lub popraw powiązania.');
       return;
     }
     let updated: Order = { ...order, items: order.items.map(item => ({ ...item, details: { ...(item.details || {}) } })), updatedAt: new Date().toISOString() };
-    linkedChanges.forEach(field => {
+    applicableChanges.forEach(field => {
       const binding = getFieldBinding(field);
       if (!binding) return;
       const raw = values[field.id] ?? field.defaultValue ?? '';
@@ -301,8 +305,8 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
     });
     onUpdateOrderStatus(order.id, updated);
     try { window.localStorage.removeItem(storageDraftKey(orderNumber)); } catch {}
-    setReviewOpen(false);
-    setSavedMessage('Zatwierdzone zmiany przekazano do zlecenia');
+    setReviewOpen(missingLinkedItems.length > 0);
+    setSavedMessage(missingLinkedItems.length ? 'Zapisano dostępne pola; część wymaga brakujących pozycji.' : 'Zatwierdzone zmiany przekazano do zlecenia');
     window.setTimeout(() => setSavedMessage(''), 3000);
   };
 
