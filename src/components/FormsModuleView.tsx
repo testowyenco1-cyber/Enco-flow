@@ -191,7 +191,7 @@ const DEFAULT_BINDINGS: Record<string, FormBinding> = {
   'warsaw-sensors':{scope:'item',itemType:'OBUDOWA',key:'dostawy.warszawa.sensoryPradowe'},
   'warsaw-sn-coupling':{scope:'item',itemType:'OBUDOWA',key:'dostawy.warszawa.sprzegloSN'},
   'warsaw-nn-coupling':{scope:'item',itemType:'OBUDOWA',key:'dostawy.warszawa.sprzegloNN'},
-  installer:{scope:'order',key:'additionalInfo'}, descriptions:{scope:'item',itemType:'OBUDOWA',key:'potwierdzenia.opisy'},
+  installer:{scope:'item',itemType:'OBUDOWA',key:'firmaMontazowa'}, descriptions:{scope:'item',itemType:'OBUDOWA',key:'potwierdzenia.opisy'},
   'photo-docs':{scope:'item',itemType:'OBUDOWA',key:'potwierdzenia.dokumentacjaZdjecia'},
   notes:{scope:'order',key:'generalNotes'}
 };
@@ -344,7 +344,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
   const filledCount = allFields.filter(field => String(values[field.id] ?? field.defaultValue ?? '').trim()).length;
 
   useEffect(() => {
-    if (orderNumber && !values.zl) setValues(current => ({ ...current, zl: orderNumber }));
+    if (orderNumber && values.zl !== orderNumber) setValues(current => ({ ...current, zl: orderNumber }));
     if (projectName && !values.project) setValues(current => ({ ...current, project: projectName }));
     if (client && !values.client) setValues(current => ({ ...current, client }));
   }, [orderNumber, projectName, client]);
@@ -404,7 +404,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
     if (field.type === 'checkbox') return <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"><input type="checkbox" checked={Boolean(value)} onChange={event => updateValue(field.id, event.target.checked)} className="h-4 w-4 accent-blue-600" />{field.placeholder || 'Tak'}</label>;
     if (field.type === 'textarea') return <textarea rows={compact ? 2 : 3} value={String(value)} onChange={event => updateValue(field.id, event.target.value)} placeholder={field.placeholder || 'Wpisz dane…'} className={common + ' resize-y'} />;
     if (field.type === 'select') return <select value={String(value)} onChange={event => updateValue(field.id, event.target.value)} className={common}><option value="">Wybierz…</option>{(field.options || []).map(option => <option key={option} value={option}>{option}</option>)}</select>;
-    return <input type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'} value={String(value)} onChange={event => updateValue(field.id, event.target.value)} placeholder={field.placeholder || 'Wpisz wartość…'} className={common} />;
+    return <input type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'} value={String(value)} onChange={event => updateValue(field.id, event.target.value)} placeholder={field.placeholder || 'Wpisz wartość…'} disabled={field.id === 'zl'} className={common + (field.id === 'zl' ? ' cursor-not-allowed bg-slate-100 text-slate-500' : '')} />;
   };
 
   return (
