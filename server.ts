@@ -164,22 +164,82 @@ async function startServer() {
     }
   }
 
-  // Shared custom enclosure sizes are configuration data, not browser-local data.
-  if (!fs.existsSync(FORM_DICTIONARY_FILE)) {
-    const initialFormDictionary = {
-      'typ-obudowy': ['BEK 250/400', 'BEK 250/420', 'BEK 250/470', 'BEK 250/550', 'NZ 110/173', 'NZ 210/290'],
-      'dach': ['Betonowy dwuspadowy', 'Betonowy czterospadowy', 'Inny'],
-      'typ-drzwi': ['Drzwi do pomieszczenia SN/NN', 'Drzwi do komory transformatora', 'Drzwi prawe', 'Drzwi lewe'],
-      'element-obudowy': ['Kratki / wentylatory', 'Siatka transformatora', 'Bariera ochronna', 'Właz piwnicy kablowej', 'Kieszeń na schemat', 'Wyłączniki drzwiowe', 'Otwór anteny GSM Ø20'],
-      'typ-przepustu': ['BWS 100', 'BWS 150', 'HEA — przepust uziemiający', 'Przepust Ø100 z zaślepką / przegrodą'],
-      'wkład-uszczelniający': ['HSD 100-SSG', 'HRD 150-SG-3'],
-      'wyposażenie': ['Rozdzielnica SN', 'Rozdzielnica NN', 'Szafa telemechaniki', 'Transformator', 'Wskaźniki zwarcia / SZK', 'Kompensator mocy biernej', 'Oświetlenie / wentylacja', 'Uziemienie / pozostałe wyposażenie'],
-      'typ-dachu': ['Betonowy dwuspadowy', 'Betonowy czterospadowy', 'Inny'],
-      'kolor-ral': ['RAL 7044', 'RAL 7024'],
-      'lokalizacja': ['Front stacji', 'Tył stacji', 'Bok stacji', 'Pomiędzy budynkami', 'Wnętrze stacji'],
-      'dostawca': ['Warszawa', 'Pyskowice', 'Inwestor', 'Firma zewnętrzna'],
-    };
-    fs.writeFileSync(FORM_DICTIONARY_FILE, JSON.stringify(initialFormDictionary, null, 2), 'utf-8');
+  // Shared form dictionaries. On startup, merge new categories into the existing file
+  // so deployments keep user-added values while receiving dictionaries for new fields.
+  const INITIAL_FORM_DICTIONARY: Record<string, string[]> = {
+    // Dane zlecenia
+    'numer-zd': [], 'data-zd': [], 'numer-zl': [], 'termin-dostawy': [],
+    'projekt-obiekt': [], 'klient': [], 'typ-obudowy': ['BEK 250/400', 'BEK 250/420', 'BEK 250/470', 'BEK 250/550', 'NZ 110/173', 'NZ 210/290'],
+    'termin-montazu': [], 'firma-montazowa': [], 'osoba-dzial-odpowiedzialny': [],
+    'dokumentacja-rysunek': [], 'uwagi-do-terminu': [],
+    // Części budynku i konstrukcja
+    'oznaczenie-czesci': ['B1', 'B2', 'B3', 'B4', 'B5', 'B6'],
+    'wariant-obudowy-czesci': ['BEK 250/420/B1', 'BEK 250/550/B2'],
+    'konstrukcja-fundament-dach': [], 'drzwi-wentylacja-otwory-opis': [],
+    'przepusty-uziemienie-opis': [], 'wyposazenie-czesci-opis': [],
+    'czesc-poczatkowa': [], 'czesc-docelowa': [],
+    'rodzaj-polaczenia': ['Przepusty kablowe', 'Sprzęgło', 'Połączenie uziemiające', 'Uszczelnienie', 'Inne'],
+    'uwagi-polaczenie': [],
+    // Zakres wykonania obudowy
+    'konstrukcja-wariant': ['BEK', 'NZ', 'Inny'],
+    'fundament-metaloplastyka': ['Standardowy', 'Według rysunku', 'Do uzgodnienia'],
+    'typ-dachu': ['Betonowy dwuspadowy', 'Betonowy czterospadowy', 'Inny'],
+    'sciany-odpornosc-ogniowa': ['REI 60', 'REI 120', 'REI 240', 'Do uzgodnienia'],
+    'wykonczenie-elewacji': ['Tynk akrylowy strukturalny', 'Tynk + antygraffiti', 'Antygraffiti', 'Inne'],
+    'kolor-ral': ['RAL 7044', 'RAL 7024'],
+    'rozwiazania-dodatkowe': [],
+    // Drzwi, wentylacja, otwory
+    'element-obudowy': ['Drzwi do pomieszczenia SN/NN', 'Drzwi do komory transformatora', 'Drzwi prawe', 'Drzwi lewe', 'Kratki / wentylatory', 'Siatka transformatora', 'Bariera ochronna', 'Właz piwnicy kablowej', 'Kieszeń na schemat', 'Wyłączniki drzwiowe', 'Otwór anteny GSM Ø20'],
+    'ilosc': ['1', '2', '3', '4', '5', '6', '8', '10'],
+    'wymiar-typ': [], 'strona-pomieszczenie': ['SN', 'NN', 'Transformator', 'Front stacji', 'Tył stacji', 'Lewy bok', 'Prawy bok', 'Wnętrze stacji'],
+    'uwagi-elementu': [],
+    // Przepusty i uziemienie
+    'typ-przepustu': ['BWS 100', 'BWS 150', 'HEA — przepust uziemiający', 'Przepust Ø100 z zaślepką / przegrodą'],
+    'lokalizacja': ['Front stacji', 'Tył stacji', 'Bok stacji', 'Pomiędzy budynkami', 'Wnętrze stacji'],
+    'wkład-uszczelniający': ['HSD 100-SSG', 'HRD 150-SG-3', 'Zaślepka', 'Pokrywa', 'Do ustalenia'],
+    'uziemienie-wewnetrzne': ['FeZn', 'FeCu', 'Linka', 'Przewód', 'Złącza kontrolne', 'Do ustalenia'],
+    // Wyposażenie stacji
+    'wyposażenie': ['Rozdzielnica SN', 'Rozdzielnica NN', 'Szafa telemechaniki', 'Transformator', 'Wskaźniki zwarcia / SZK', 'Kompensator mocy biernej', 'Oświetlenie / wentylacja', 'Uziemienie / pozostałe wyposażenie'],
+    'producent-typ': ['Schneider Electric', 'EATON', 'Siemens', 'Xiria', 'AirSeT', 'RTS-w', 'RTS-z'],
+    'parametry-konfiguracja': [], 'uwagi-wyposazenia': [],
+    // Dostawy
+    'pozycja-dostawy': ['Rozdzielnica SN', 'Rozdzielnica NN', 'Transformator', 'Szafa telemechaniki', 'Drzwi', 'Przepusty', 'Wyposażenie dodatkowe', 'Dokumentacja', 'Inne'],
+    'ilosc-dostawy': ['1', '2', '3', '4', '5', '6', '10'],
+    'uwagi-dostawy': [],
+    'zrodlo-dostawy': ['Warszawa', 'Pyskowice', 'Inwestor', 'Firma zewnętrzna'],
+    // Potwierdzenia, montaż i notatki
+    'opisy-dane-potwierdzenia': ['OPISY — potwierdzimy', 'Do potwierdzenia', 'Potwierdzone', 'Nie dotyczy'],
+    'dokumentacja-zdjeciowa': ['Wnętrze stacji', 'Zewnątrz stacji', 'Piwnica kablowa', 'Drzwi i otwory', 'Przepusty', 'Do wykonania', 'Wykonano'],
+    'uwagi-braki-wyjasnienia': [],
+    // Zachowanie kompatybilności ze starszymi nazwami kategorii
+    'dach': ['Betonowy dwuspadowy', 'Betonowy czterospadowy', 'Inny'],
+    'typ-drzwi': ['Drzwi do pomieszczenia SN/NN', 'Drzwi do komory transformatora', 'Drzwi prawe', 'Drzwi lewe'],
+    'dostawca': ['Warszawa', 'Pyskowice', 'Inwestor', 'Firma zewnętrzna'],
+  };
+  let storedFormDictionary: Record<string, string[]> = {};
+  try {
+    if (fs.existsSync(FORM_DICTIONARY_FILE)) {
+      storedFormDictionary = JSON.parse(fs.readFileSync(FORM_DICTIONARY_FILE, 'utf-8'));
+    }
+  } catch (error) {
+    console.error('Could not read shared form dictionary; rebuilding missing defaults:', error);
+  }
+  let formDictionaryChanged = false;
+  for (const [category, values] of Object.entries(INITIAL_FORM_DICTIONARY)) {
+    if (!Array.isArray(storedFormDictionary[category])) {
+      storedFormDictionary[category] = values;
+      formDictionaryChanged = true;
+    } else {
+      const existing = storedFormDictionary[category];
+      const missing = values.filter(value => !existing.some(item => String(item).toLowerCase() === value.toLowerCase()));
+      if (missing.length) {
+        storedFormDictionary[category] = [...existing, ...missing];
+        formDictionaryChanged = true;
+      }
+    }
+  }
+  if (formDictionaryChanged || !fs.existsSync(FORM_DICTIONARY_FILE)) {
+    fs.writeFileSync(FORM_DICTIONARY_FILE, JSON.stringify(storedFormDictionary, null, 2), 'utf-8');
   }
 
   if (!fs.existsSync(OBUDOWA_VARIANTS_FILE)) {
