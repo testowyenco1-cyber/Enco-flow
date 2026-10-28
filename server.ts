@@ -94,6 +94,7 @@ async function startServer() {
   const DOORS_FILE = path.join(DATA_DIR, 'door_orders.json');
   const OBUDOWA_VARIANTS_FILE = path.join(DATA_DIR, 'obudowa_variants.json');
   const FORM_DICTIONARY_FILE = path.join(DATA_DIR, 'form_dictionary.json');
+  const FORM_TEMPLATE_FILE = path.join(DATA_DIR, 'form_template.json');
   const SN_SWITCHGEAR_FILE = path.join(DATA_DIR, 'sn_switchgear.json');
   const SN_CATALOG_FILE = path.join(DATA_DIR, 'sn_catalog.json');
   const DOOR_CATALOG_FILE = path.join(DATA_DIR, 'door_catalog.json');
@@ -1464,6 +1465,47 @@ async function startServer() {
   });
 
   // Shared custom enclosure-size catalogue. Changes reach other screens only on their next manual refresh.
+  // Shared editable form template. The template is independent from order data and drafts.
+  app.get('/api/form-template', (_req, res) => {
+    try {
+      if (!fs.existsSync(FORM_TEMPLATE_FILE)) {
+        return res.json({ success: true, template: null });
+      }
+      const template = JSON.parse(fs.readFileSync(FORM_TEMPLATE_FILE, 'utf-8'));
+      return res.json({ success: true, template });
+    } catch (error) {
+      console.error('Error reading shared form template:', error);
+      return res.status(500).json({ success: false, error: 'Nie można odczytać wspólnego szablonu formularza.' });
+    }
+  });
+
+  app.post('/api/form-template', requireItemPermission('OBUDOWA'), (req, res) => {
+    try {
+      const template = req.body?.template;
+      if (!template || !Array.isArray(template.sections) || template.sections.length > 100) {
+        return res.status(400).json({ success: false, error: 'Nieprawidłowy szablon formularza.' });
+      }
+      let fieldCount = 0;
+      for (const section of template.sections) {
+        if (!section || typeof section.id !== 'string' || typeof section.title !== 'string' || !Array.isArray(section.fields)) {
+          return res.status(400).json({ success: false, error: 'Nieprawidłowa sekcja formularza.' });
+        }
+        fieldCount += section.fields.length;
+        if (fieldCount > 1000 || section.fields.some((field: any) =>
+          !field || typeof field.id !== 'string' || typeof field.label !== 'string' ||
+          !['text', 'number', 'date', 'select', 'textarea', 'checkbox'].includes(field.type)
+        )) {
+          return res.status(400).json({ success: false, error: 'Nieprawidłowe pola formularza.' });
+        }
+      }
+      writeJsonAtomically(FORM_TEMPLATE_FILE, template);
+      return res.json({ success: true, savedAt: Date.now() });
+    } catch (error) {
+      console.error('Error saving shared form template:', error);
+      return res.status(500).json({ success: false, error: 'Nie udało się zapisać wspólnego szablonu formularza.' });
+    }
+  });
+
   app.get('/api/form-dictionary', (_req, res) => {
     try {
       const dictionary = JSON.parse(fs.readFileSync(FORM_DICTIONARY_FILE, 'utf-8'));
