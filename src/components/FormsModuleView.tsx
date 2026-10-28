@@ -3,7 +3,7 @@ import { Order } from '../types/enco';
 import { UserRoleProfile, USER_PROFILES, canEditItemType } from '../types/userRole';
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Settings2, FileText, Layers3,
-  Save, RotateCcw, Check, GripVertical, Eye, CircleHelp,
+  Save, RotateCcw, Check, GripVertical, Eye, CircleHelp, Printer,
 } from 'lucide-react';
 
 type FieldType = 'text' | 'number' | 'date' | 'select' | 'textarea' | 'checkbox';
@@ -513,7 +513,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
 
   return (
     <div className="min-h-[70vh] bg-slate-50">
-      <header className="border-b border-slate-200 bg-white px-4 py-5 sm:px-7">
+      <header className="border-b border-slate-200 bg-white px-4 py-5 sm:px-7 print:hidden">
         <div className="mx-auto flex max-w-[1500px] flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-3">
             <div className="rounded-2xl bg-blue-600 p-3 text-white shadow-sm"><FileText className="h-6 w-6" /></div>
@@ -530,6 +530,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
               {projectName && <div className="max-w-56 truncate text-xs text-slate-500">{projectName}</div>}
             </div>
             <button type="button" onClick={saveDraft} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700"><Save className="h-4 w-4" /> Zapisz szkic</button>
+            <button type="button" onClick={() => { setMode('preview'); window.setTimeout(() => window.print(), 150); }} className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50"><Printer className="h-4 w-4" /> Drukuj zlecenie</button>
           </div>
         </div>
         <div className="mx-auto mt-5 flex max-w-[1500px] flex-wrap items-center justify-between gap-3">
@@ -549,8 +550,8 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-[1500px] grid-cols-1 gap-5 p-4 sm:p-6 xl:grid-cols-[260px_minmax(0,1fr)]">
-        <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-3 shadow-sm xl:sticky xl:top-4">
+      <div className="mx-auto grid max-w-[1500px] grid-cols-1 gap-5 p-4 sm:p-6 xl:grid-cols-[260px_minmax(0,1fr)] print:block print:p-0">
+        <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-3 shadow-sm xl:sticky xl:top-4 print:hidden">
           <div className="flex items-center justify-between px-2 pb-2 pt-1">
             <div className="text-xs font-black uppercase tracking-wider text-slate-500">Sekcje formularza</div>
             <Layers3 className="h-4 w-4 text-slate-400" />
@@ -604,7 +605,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
           )}
 
           {!currentSection ? <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-500">Brak sekcji. Przywróć domyślny układ.</div> : (
-            <section className={(mode === 'dictionaries' ? 'hidden ' : '') + "overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"}>
+            <section className={(mode === 'dictionaries' ? 'hidden ' : '') + "overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm print:border-0 print:shadow-none"}>
               <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-5 py-5 sm:px-7">
                 <div><div className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-700">Sekcja {template.sections.findIndex(section => section.id === currentSection.id) + 1}</div><h3 className="mt-1 text-xl font-black text-slate-900">{currentSection.title}</h3>{currentSection.description && <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">{currentSection.description}</p>}</div>
                 <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">{currentSection.fields.length} pól</span>
