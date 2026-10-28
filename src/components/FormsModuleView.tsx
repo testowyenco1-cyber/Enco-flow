@@ -652,7 +652,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
               {mode === 'preview' ? (
                 <div className="print-document space-y-4 p-5 sm:p-7 text-slate-900">
                   <div className="text-center">
-                    <h1 className="text-lg font-black uppercase tracking-wide">WYKONANIE STACJI TRANSFORMATOROWEJ {String(values['shell-type'] || '—')} {String(values.project || '')}</h1>
+                    <h1 className="text-lg font-black uppercase">WYKONANIE STACJI TRANSFORMATOROWEJ {String(values['shell-type'] || '—')} {String(values.project || '')}</h1>
                     <p className="mt-2 font-bold">ZD NR {String(values.zd || '—')}{values['zd-date'] ? ' z dnia ' + String(values['zd-date']) : ''}</p>
                     <p className="mt-1 text-base font-black">ZL {String(values.zl || '—')}</p>
                   </div>
@@ -665,23 +665,13 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
                     <h3 className="font-bold uppercase">TYP OBUDOWY</h3>
                     <p className="mt-1">Wykonanie obudowy {String(values['shell-type'] || '—')} wraz z fundamentem i przepustami kablowymi SN, nN i uziemiającymi, wraz z montażem ślusarki i rozdzielnicy SN i nN.</p>
                     <ul className="my-2 list-disc space-y-1 pl-6">
-                      {#each parseDoorRows(values.doors).filter(row => row.variant.trim()) as door, idx}
-                        <li>{door.quantity} × {door.variant} — {door.opening}</li>
-                      {/each}
-                      {#each [
-                        ['fire-walls','Ściany o odporności ogniowej'],
-                        ['hatches','Włazy'],
-                        ['grilles','Kraty wentylacyjne'],
-                        ['transformer-mesh','Siatka wygrodzeniowa transformatora'],
-                        ['barrier','Barierka ochronna'],
-                        ['signal-hole','Otwory pod lampki sygnalizacyjne'],
-                        ['antenna-hole','Otwór pod antenę'],
-                        ['foundation','Fundament / metaloplastyka'],
-                      ] as item}
-                        {#if String(values[item[0]] || '').trim()}
-                          <li>{item[0] === 'fire-walls' ? String(values[item[0]]) + ' × ' : ''}{item[1]}: {String(values[item[0]])}</li>
-                        {/if}
-                      {/each}
+                      {parseDoorRows(values.doors).filter(row => row.variant.trim()).map((door, idx) => <li key={'door-' + idx}>{door.quantity} × {door.variant} — {door.opening}</li>)}
+                      {String(values['fire-walls'] || '').trim() && <li>{String(values['fire-walls'])} × ściana {String(values['fire-rating'] || 'odporności ogniowej')}</li>}
+                      {(['hatches','grilles','transformer-mesh','barrier','signal-hole','antenna-hole','foundation'] as const).map(id => {
+                        const field = allFields.find(candidate => candidate.id === id);
+                        const value = values[id];
+                        return String(value || '').trim() ? <li key={id}>{field?.label || id}: {String(value)}</li> : null;
+                      })}
                     </ul>
                     <p><strong>Dach:</strong> {String(values.roof || 'Nie uzupełniono')}</p>
                     <p><strong>Rozmiar / wymiary:</strong> {[values['shell-size'], values['shell-dimensions']].filter(Boolean).join(' · ') || 'Nie uzupełniono'}</p>
@@ -695,72 +685,42 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
                   </section>
                   <section>
                     <h3 className="font-bold">Przepusty kablowe i uziemienie:</h3>
-                    {#each [
-                      ['penetration-bws','Przepusty BWS'],
-                      ['penetration-hsi','Przepusty HSI'],
-                      ['penetration-hea','Przepusty HEA'],
-                      ['penetration-100','Przepusty Ø100 mm'],
-                      ['penetration-other','Pozostałe przepusty'],
-                      ['earthing','Instalacja uziemiająca'],
-                    ] as item}
-                      {#if String(values[item[0]] || '').trim()}
-                        <p><strong>{item[1]}:</strong> {String(values[item[0]])}</p>
-                      {/if}
-                    {/each}
+                    {(['penetration-bws','penetration-hsi','penetration-hea','penetration-100','penetration-other','earthing'] as const).map(id => {
+                      const field = allFields.find(candidate => candidate.id === id);
+                      const value = values[id];
+                      return String(value || '').trim() ? <p key={id}><strong>{field?.label || id}:</strong> {String(value)}</p> : null;
+                    })}
                   </section>
                   <section>
                     <h3 className="font-bold">W stacji będą zamontowane następujące urządzenia:</h3>
                     <ul className="list-disc space-y-1 pl-6">
-                      {#each [
-                        ['sn-producer','Rozdzielnica SN — producent'],
-                        ['sn-model','Rozdzielnica SN — model'],
-                        ['sn-type','Rozdzielnica SN — typ'],
-                        ['sn-config','Rozdzielnica SN — konfiguracja pól'],
-                        ['sn-fields-count','Rozdzielnica SN — liczba pól'],
-                        ['nn-type','Rozdzielnica nN — typ'],
-                        ['nn-fields-count','Rozdzielnica nN — liczba pól'],
-                        ['telemechanics','Szafka telemechaniki'],
-                        ['transformer','Transformator'],
-                        ['extra-equipment','Pozostałe wyposażenie'],
-                      ] as item}
-                        {#if String(values[item[0]] || '').trim()}
-                          <li><strong>{item[1]}:</strong> {String(values[item[0]])}</li>
-                        {/if}
-                      {/each}
+                      {(['sn-producer','sn-model','sn-type','sn-config','sn-fields-count','nn-type','nn-fields-count','telemechanics','transformer','extra-equipment'] as const).map(id => {
+                        const field = allFields.find(candidate => candidate.id === id);
+                        const value = values[id];
+                        return String(value || '').trim() ? <li key={id}><strong>{field?.label || id}:</strong> {String(value)}</li> : null;
+                      })}
                     </ul>
                   </section>
                   <section className="grid grid-cols-2 gap-5 border-t border-slate-400 pt-3">
-                    <div>
-                      <h3 className="mb-2 font-black">Dostarcza Warszawa</h3>
-                      {#each template.sections.find(section => section.id === 'deliveries-warsaw')?.fields || [] as field}
-                        {#if String(values[field.id] ?? field.defaultValue ?? '').trim()}
-                          <p className="mb-1"><strong>{field.label}:</strong> {formatFieldValue(field, values[field.id] ?? field.defaultValue ?? '')}</p>
-                        {/if}
-                      {/each}
-                    </div>
-                    <div>
-                      <h3 className="mb-2 font-black">Dostarczają Pyskowice</h3>
-                      {#each template.sections.find(section => section.id === 'deliveries-pyskowice')?.fields || [] as field}
-                        {#if String(values[field.id] ?? field.defaultValue ?? '').trim()}
-                          <p className="mb-1"><strong>{field.label}:</strong> {formatFieldValue(field, values[field.id] ?? field.defaultValue ?? '')}</p>
-                        {/if}
-                      {/each}
-                    </div>
+                    {(['deliveries-warsaw','deliveries-pyskowice'] as const).map(sectionId => {
+                      const section = template.sections.find(candidate => candidate.id === sectionId);
+                      return <div key={sectionId}>
+                        <h3 className="mb-2 font-black">{sectionId === 'deliveries-warsaw' ? 'Dostarcza Warszawa' : 'Dostarczają Pyskowice'}</h3>
+                        {(section?.fields || []).map(field => {
+                          const value = values[field.id] ?? field.defaultValue ?? '';
+                          return String(value).trim() ? <p key={field.id} className="mb-1"><strong>{field.label}:</strong> {formatFieldValue(field, value)}</p> : null;
+                        })}
+                      </div>;
+                    })}
                   </section>
                   <section className="border-t border-slate-400 pt-3">
-                    {#each [
-                      ['descriptions','OPIS'],
-                      ['notes','UWAGI'],
-                      ['photo-docs','Dokumentacja zdjęciowa'],
-                      ['installer','DOTYCZY WYKONANIA MONTAŻU STACJI — firma zewnętrzna'],
-                      ['mounting-date','Termin montażu'],
-                    ] as item}
-                      {#if String(values[item[0]] || '').trim()}
-                        <p className="mb-2"><strong>{item[1]}:</strong> {String(values[item[0]])}</p>
-                      {/if}
-                    {/each}
+                    {(['descriptions','notes','photo-docs','installer','mounting-date'] as const).map(id => {
+                      const field = allFields.find(candidate => candidate.id === id);
+                      const value = values[id];
+                      return String(value || '').trim() ? <p key={id} className="mb-2"><strong>{id === 'descriptions' ? 'OPIS' : id === 'notes' ? 'UWAGI' : field?.label || id}:</strong> {String(value)}</p> : null;
+                    })}
                     <p className="mt-4"><strong>Termin realizacji:</strong> {String(values.delivery || values['install-date'] || 'Nie uzupełniono')}</p>
-                    <p className="mt-6 text-right">{String(values['zd-date'] || '')}</p>
+                    {values['zd-date'] && <p className="mt-6 text-right">{String(values['zd-date'])}</p>}
                   </section>
                 </div>
               ) : (
