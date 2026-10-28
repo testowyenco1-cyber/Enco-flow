@@ -93,6 +93,7 @@ async function startServer() {
   const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
   const DOORS_FILE = path.join(DATA_DIR, 'door_orders.json');
   const OBUDOWA_VARIANTS_FILE = path.join(DATA_DIR, 'obudowa_variants.json');
+  const FORM_DICTIONARY_FILE = path.join(DATA_DIR, 'form_dictionary.json');
   const SN_SWITCHGEAR_FILE = path.join(DATA_DIR, 'sn_switchgear.json');
   const SN_CATALOG_FILE = path.join(DATA_DIR, 'sn_catalog.json');
   const DOOR_CATALOG_FILE = path.join(DATA_DIR, 'door_catalog.json');
@@ -164,6 +165,23 @@ async function startServer() {
   }
 
   // Shared custom enclosure sizes are configuration data, not browser-local data.
+  if (!fs.existsSync(FORM_DICTIONARY_FILE)) {
+    const initialFormDictionary = {
+      'typ-obudowy': ['BEK 250/400', 'BEK 250/420', 'BEK 250/470', 'BEK 250/550', 'NZ 110/173', 'NZ 210/290'],
+      'dach': ['Betonowy dwuspadowy', 'Betonowy czterospadowy', 'Inny'],
+      'typ-drzwi': ['Drzwi do pomieszczenia SN/NN', 'Drzwi do komory transformatora', 'Drzwi prawe', 'Drzwi lewe'],
+      'element-obudowy': ['Kratki / wentylatory', 'Siatka transformatora', 'Bariera ochronna', 'Właz piwnicy kablowej', 'Kieszeń na schemat', 'Wyłączniki drzwiowe', 'Otwór anteny GSM Ø20'],
+      'typ-przepustu': ['BWS 100', 'BWS 150', 'HEA — przepust uziemiający', 'Przepust Ø100 z zaślepką / przegrodą'],
+      'wkład-uszczelniający': ['HSD 100-SSG', 'HRD 150-SG-3'],
+      'wyposażenie': ['Rozdzielnica SN', 'Rozdzielnica NN', 'Szafa telemechaniki', 'Transformator', 'Wskaźniki zwarcia / SZK', 'Kompensator mocy biernej', 'Oświetlenie / wentylacja', 'Uziemienie / pozostałe wyposażenie'],
+      'typ-dachu': ['Betonowy dwuspadowy', 'Betonowy czterospadowy', 'Inny'],
+      'kolor-ral': ['RAL 7044', 'RAL 7024'],
+      'lokalizacja': ['Front stacji', 'Tył stacji', 'Bok stacji', 'Pomiędzy budynkami', 'Wnętrze stacji'],
+      'dostawca': ['Warszawa', 'Pyskowice', 'Inwestor', 'Firma zewnętrzna'],
+    };
+    fs.writeFileSync(FORM_DICTIONARY_FILE, JSON.stringify(initialFormDictionary, null, 2), 'utf-8');
+  }
+
   if (!fs.existsSync(OBUDOWA_VARIANTS_FILE)) {
     try {
       fs.writeFileSync(OBUDOWA_VARIANTS_FILE, JSON.stringify([], null, 2), 'utf-8');
@@ -1346,6 +1364,36 @@ async function startServer() {
   });
 
   // Shared custom enclosure-size catalogue. Changes reach other screens only on their next manual refresh.
+  app.get('/api/form-dictionary', (_req, res) => {
+    try {
+      const dictionary = JSON.parse(fs.readFileSync(FORM_DICTIONARY_FILE, 'utf-8'));
+      return res.json({ success: true, dictionary });
+    } catch (err) {
+      console.error('Error reading form dictionary:', err);
+      return res.status(500).json({ success: false, error: 'Nie można odczytać słownika formularzy.' });
+    }
+  });
+
+  app.post('/api/form-dictionary', requireItemPermission('OBUDOWA'), (req, res) => {
+    try {
+      const category = typeof req.body?.category === 'string' ? req.body.category.trim() : '';
+      const value = typeof req.body?.value === 'string' ? req.body.value.trim() : '';
+      if (!/^[a-z0-9-]{2,60}$/.test(category) || !value || value.length > 160) {
+        return res.status(400).json({ success: false, error: 'Podaj prawidłową kategorię i wartość (maksymalnie 160 znaków).' });
+      }
+      const dictionary = JSON.parse(fs.readFileSync(FORM_DICTIONARY_FILE, 'utf-8'));
+      const values: string[] = Array.isArray(dictionary[category]) ? dictionary[category] : [];
+      const existing = values.find((item: string) => item.toLocaleLowerCase('pl') === value.toLocaleLowerCase('pl'));
+      if (!existing) values.push(value);
+      dictionary[category] = values;
+      writeJsonAtomically(FORM_DICTIONARY_FILE, dictionary);
+      return res.json({ success: true, dictionary, added: !existing, value: existing || value });
+    } catch (err) {
+      console.error('Error updating form dictionary:', err);
+      return res.status(500).json({ success: false, error: 'Nie można zapisać wartości w słowniku formularzy.' });
+    }
+  });
+
   app.get('/api/obudowa-variants', (_req, res) => {
     try {
       const raw = fs.readFileSync(OBUDOWA_VARIANTS_FILE, 'utf-8');
