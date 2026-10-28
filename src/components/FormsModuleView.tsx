@@ -12,6 +12,7 @@ type DoorRow = { variant: string; opening: string; quantity: number };
 type FormField = {
   id: string;
   repeatable?: 'door';
+  catalogOptions?: string[];
   binding?: FormBinding | null;
   label: string;
   type: FieldType;
@@ -122,7 +123,7 @@ function migrateTemplate(input: FormTemplate): FormTemplate {
     const existingIds = new Set(equipment.fields.map(field => field.id));
     equipment.fields.push(...defaultEquipment.fields.filter(field => addedIds.has(field.id) && !existingIds.has(field.id)));
   }
-  const normalizedSections = sections.map(section => ({ ...section, fields: section.fields.map(field => field.id === 'doors' ? { ...field, repeatable: 'door' as const, type: 'textarea' as const } : field) }));
+  const normalizedSections = sections.map(section => ({ ...section, fields: section.fields.map(field => field.id === 'doors' ? { ...field, repeatable: 'door' as const, type: 'textarea' as const, catalogOptions: field.catalogOptions?.length ? field.catalogOptions : DOOR_VARIANTS } : field) }));
   return { ...input, version: 3, sections: normalizedSections };
 }
 
@@ -132,6 +133,7 @@ const DOOR_VARIANTS = [
   'Drzwi 1170 × 2100 z kratami wentylacyjnymi do transformatora',
 ];
 const DOOR_OPENINGS = ['Jednoskrzydłowe lewe', 'Jednoskrzydłowe prawe', 'Dwuskrzydłowe'];
+const getDoorVariants = (field: FormField) => field.catalogOptions?.length ? field.catalogOptions : DOOR_VARIANTS;
 const parseDoorRows = (value: unknown): DoorRow[] => {
   if (Array.isArray(value)) return value.filter((row: any) => row && typeof row.variant === 'string').map((row: any) => ({ variant: row.variant, opening: String(row.opening || DOOR_OPENINGS[0]), quantity: Math.max(1, Number(row.quantity) || 1) }));
   if (typeof value !== 'string' || !value.trim()) return [];
@@ -342,7 +344,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
   }), [linkedChanges, profile]);
   const applyLinkedChanges = () => {
     setApplyError('');
-    const incompleteDoorRows = allFields.filter(field => field.repeatable === 'door' && parseDoorRows(values[field.id]).some(row => !DOOR_VARIANTS.includes(row.variant)));
+    const incompleteDoorRows = allFields.filter(field => field.repeatable === 'door' && parseDoorRows(values[field.id]).some(row => !getDoorVariants(field).includes(row.variant)));
     if (incompleteDoorRows.length) {
       setApplyError('Uzupełnij wariant każdej dodanej pozycji drzwi przed zatwierdzeniem zmian.');
       return;
@@ -383,7 +385,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
   };
 
   const requiredMissing = allFields.filter(field => field.required && !String(values[field.id] ?? '').trim());
-  const incompleteDoorRows = allFields.some(field => field.repeatable === 'door' && parseDoorRows(values[field.id]).some(row => !DOOR_VARIANTS.includes(row.variant)));
+  const incompleteDoorRows = allFields.some(field => field.repeatable === 'door' && parseDoorRows(values[field.id]).some(row => !getDoorVariants(field).includes(row.variant)));
   const filledCount = allFields.filter(field => String(values[field.id] ?? field.defaultValue ?? '').trim()).length;
 
   useEffect(() => {
@@ -451,7 +453,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
         {rows.map((row, index) => <div key={`${field.id}-${index}`} className="rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
           <div className="mb-3 flex items-center justify-between gap-2"><div className="text-xs font-black uppercase tracking-wide text-slate-500">Drzwi {index + 1}</div><button type="button" onClick={() => updateRows(rows.filter((_, rowIndex) => rowIndex !== index))} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-2.5 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-50"><Trash2 className="h-3.5 w-3.5" /> Usuń</button></div>
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_110px]">
-            <label className="block text-xs font-bold text-slate-600">Wariant drzwi<select value={DOOR_VARIANTS.includes(row.variant) ? row.variant : ''} onChange={event => updateRows(rows.map((item, rowIndex) => rowIndex === index ? { ...item, variant: event.target.value } : item))} className={common + ' mt-1'}><option value="">Wybierz wariant…</option>{DOOR_VARIANTS.map(variant => <option key={variant} value={variant}>{variant}</option>)}</select>{!DOOR_VARIANTS.includes(row.variant) && <span className="mt-1 block text-[10px] font-normal text-amber-700">Zapisana wartość historyczna: {row.variant}</span>}</label>
+            <label className="block text-xs font-bold text-slate-600">Wariant drzwi<select value={getDoorVariants(field).includes(row.variant) ? row.variant : ''} onChange={event => updateRows(rows.map((item, rowIndex) => rowIndex === index ? { ...item, variant: event.target.value } : item))} className={common + ' mt-1'}><option value="">Wybierz wariant…</option>{getDoorVariants(field).map(variant => <option key={variant} value={variant}>{variant}</option>)}</select>{!DOOR_VARIANTS.includes(row.variant) && <span className="mt-1 block text-[10px] font-normal text-amber-700">Zapisana wartość historyczna: {row.variant}</span>}</label>
             <label className="block text-xs font-bold text-slate-600">Sposób otwierania<select value={row.opening} onChange={event => updateRows(rows.map((item, rowIndex) => rowIndex === index ? { ...item, opening: event.target.value } : item))} className={common + ' mt-1'}>{DOOR_OPENINGS.map(opening => <option key={opening} value={opening}>{opening}</option>)}</select></label>
             <label className="block text-xs font-bold text-slate-600">Ilość<input type="number" min={1} step={1} value={row.quantity} onChange={event => updateRows(rows.map((item, rowIndex) => rowIndex === index ? { ...item, quantity: Math.max(1, Number(event.target.value) || 1) } : item))} className={common + ' mt-1'} /></label>
           </div>
@@ -581,7 +583,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
                                 {getFieldBinding(field)?.scope === 'order' && <p className="text-[10px] text-slate-500">Dostępne pola główne: {ORDER_BINDABLE_KEYS.join(', ')}</p>}
                               </div>}
                             </div>}
-                            {mode === 'manage' && <div className="mt-2 grid grid-cols-1 gap-2"><select value={field.type} onChange={event => updateField(field.id, { type: event.target.value as FieldType, ...(event.target.value === 'select' && !field.options?.length ? { options: ['Tak', 'Nie', 'Do ustalenia'] } : {}) })} className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs"><option value="text">Tekst</option><option value="textarea">Dłuższy opis</option><option value="number">Liczba</option><option value="date">Data</option><option value="select">Lista wyboru</option><option value="checkbox">Pole wyboru</option></select><input value={field.defaultValue || ''} onChange={event => updateField(field.id, { defaultValue: event.target.value })} placeholder="Wartość domyślna (opcjonalnie)" className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs" /><input value={field.placeholder || ''} onChange={event => updateField(field.id, { placeholder: event.target.value })} placeholder="Podpowiedź w polu (opcjonalnie)" className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs" />{field.type === 'select' && <input value={(field.options || []).join(', ')} onChange={event => updateField(field.id, { options: event.target.value.split(',').map(option => option.trim()).filter(Boolean) })} placeholder="Opcje rozdziel przecinkami" className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs" />}<label className="flex items-center gap-2 text-xs text-slate-600"><input type="checkbox" checked={Boolean(field.required)} onChange={event => updateField(field.id, { required: event.target.checked })} className="accent-blue-600" /> Pole wymagane</label></div>}
+                            {mode === 'manage' && <div className="mt-2 grid grid-cols-1 gap-2"><select value={field.type} onChange={event => updateField(field.id, { type: event.target.value as FieldType, ...(event.target.value === 'select' && !field.options?.length ? { options: ['Tak', 'Nie', 'Do ustalenia'] } : {}) })} className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs"><option value="text">Tekst</option><option value="textarea">Dłuższy opis</option><option value="number">Liczba</option><option value="date">Data</option><option value="select">Lista wyboru</option><option value="checkbox">Pole wyboru</option></select><input value={field.defaultValue || ''} onChange={event => updateField(field.id, { defaultValue: event.target.value })} placeholder="Wartość domyślna (opcjonalnie)" className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs" /><input value={field.placeholder || ''} onChange={event => updateField(field.id, { placeholder: event.target.value })} placeholder="Podpowiedź w polu (opcjonalnie)" className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs" />{field.type === 'select' && <input value={(field.options || []).join(', ')} onChange={event => updateField(field.id, { options: event.target.value.split(',').map(option => option.trim()).filter(Boolean) })} placeholder="Opcje rozdziel przecinkami" className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs" />}{field.repeatable === 'door' && <label className="block text-[10px] font-semibold text-slate-600">Katalog wariantów drzwi (oddzielaj znakiem |)<input value={getDoorVariants(field).join(' | ')} onChange={event => updateField(field.id, { catalogOptions: event.target.value.split('|').map(option => option.trim()).filter(Boolean) })} className="mt-1 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs" /></label>}<label className="flex items-center gap-2 text-xs text-slate-600"><input type="checkbox" checked={Boolean(field.required)} onChange={event => updateField(field.id, { required: event.target.checked })} className="accent-blue-600" /> Pole wymagane</label></div>}
                           </div>
                         </div>
                       </div>
