@@ -216,7 +216,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
       if (linked !== undefined && linked !== null) linkedValues[field.id] = typeof linked === 'object' ? JSON.stringify(linked, null, 2) : linked;
     }));
     setValues({ ...linkedValues, ...draft });
-  }, [orderNumber]);
+  }, [orderNumber, template, order]);
 
   useEffect(() => {
     let active = true;
@@ -259,6 +259,8 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
     try { window.localStorage.setItem(storageDraftKey(orderNumber), JSON.stringify(values)); } catch { /* storage can be disabled */ }
   }, [values, orderNumber]);
 
+  const currentSection = template.sections.find(section => section.id === activeSection) || template.sections[0];
+  const allFields = useMemo(() => template.sections.flatMap(section => section.fields), [template]);
   const linkedChanges = useMemo(() => allFields.filter(field => {
     const binding = getFieldBinding(field);
     if (!binding) return false;
@@ -302,8 +304,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
     setSavedMessage('Zatwierdzone zmiany przekazano do zlecenia');
     window.setTimeout(() => setSavedMessage(''), 3000);
   };
-  const currentSection = template.sections.find(section => section.id === activeSection) || template.sections[0];
-  const allFields = useMemo(() => template.sections.flatMap(section => section.fields), [template]);
+
   const requiredMissing = allFields.filter(field => field.required && !String(values[field.id] ?? '').trim());
   const filledCount = allFields.filter(field => String(values[field.id] ?? field.defaultValue ?? '').trim()).length;
 
