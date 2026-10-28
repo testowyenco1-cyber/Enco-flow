@@ -131,7 +131,12 @@ function migrateTemplate(input: FormTemplate): FormTemplate {
   const normalizedSections = sections.map(section => ({ ...section, fields: section.fields.map(field => {
     if (field.id === 'doors') return { ...field, repeatable: 'door' as const, type: 'textarea' as const, catalogOptions: [...new Set([...(field.catalogOptions || []), ...DOOR_VARIANTS])] };
     const options = dictionaryOptions[field.id];
-    return options ? { ...field, options: [...new Set([...(field.options || []), ...options])] } : field;
+    if (!options) return field;
+    if (field.id === 'shell-type') {
+      const legacyOptions = (field.options || []).filter(option => !['BEK', 'NZ'].includes(option));
+      return { ...field, options: [...new Set([...legacyOptions, ...options])] };
+    }
+    return { ...field, options: [...new Set([...(field.options || []), ...options])] };
   }) }));
   return { ...input, version: 3, sections: normalizedSections };
 }
