@@ -8,8 +8,10 @@ import {
 
 type FieldType = 'text' | 'number' | 'date' | 'select' | 'textarea' | 'checkbox';
 type FormBinding = { scope: 'order' | 'item'; key: string; itemType?: string };
+type DoorRow = { variant: string; opening: string; quantity: number };
 type FormField = {
   id: string;
+  repeatable?: 'door';
   binding?: FormBinding | null;
   label: string;
   type: FieldType;
@@ -45,7 +47,7 @@ const DEFAULT_TEMPLATE: FormTemplate = {
       { id: 'foundation', label: 'Fundament / metaloplastyka', type: 'text', placeholder: 'Według projektu / rysunku' },
     ]},
     { id: 'joinery', title: 'Ślusarka, wentylacja i otwory', description: 'Każdy element dodawaj jako osobne pole lub wiersz; ilość i lokalizację zapisuj w szczegółach.', fields: [
-      { id: 'doors', label: 'Drzwi', type: 'textarea', placeholder: 'Typ, wymiar, strona otwierania, pomieszczenie, ilość' },
+      { id: 'doors', label: 'Drzwi', type: 'textarea', repeatable: 'door', placeholder: 'Wybierz wariant, sposób otwierania i ilość' },
       { id: 'hatches', label: 'Włazy', type: 'textarea', placeholder: 'Typ, wymiar, ilość i lokalizacja' },
       { id: 'grilles', label: 'Kraty wentylacyjne', type: 'textarea', placeholder: 'Wymiar, ilość, lokalizacja' },
       { id: 'transformer-mesh', label: 'Siatka wygrodzeniowa transformatora', type: 'textarea', placeholder: 'Wymiar, ilość, lokalizacja' },
@@ -108,7 +110,6 @@ const DEFAULT_TEMPLATE: FormTemplate = {
 };
 
 function migrateTemplate(input: FormTemplate): FormTemplate {
-  if ((input.version || 0) >= 2) return input;
   const replacementIds = new Set(['sn', 'nn']);
   const sections = input.sections.map(section => ({
     ...section,
@@ -121,8 +122,31 @@ function migrateTemplate(input: FormTemplate): FormTemplate {
     const existingIds = new Set(equipment.fields.map(field => field.id));
     equipment.fields.push(...defaultEquipment.fields.filter(field => addedIds.has(field.id) && !existingIds.has(field.id)));
   }
-  return { ...input, version: 2, sections };
+  const normalizedSections = sections.map(section => ({ ...section, fields: section.fields.map(field => field.id === 'doors' ? { ...field, repeatable: 'door' as const, type: 'textarea' as const } : field) }));
+  return { ...input, version: 3, sections: normalizedSections };
 }
+
+const DOOR_VARIANTS = [
+  'Drzwi 950 × 2100 z kratami wentylacyjnymi do rozdzielnicy SN',
+  'Drzwi 950 × 2100 pełne do rozdzielnicy NN',
+  'Drzwi 1170 × 2100 z kratami wentylacyjnymi do transformatora',
+];
+const DOOR_OPENINGS = ['Jednoskrzydłowe lewe', 'Jednoskrzydłowe prawe', 'Dwuskrzydłowe'];
+const parseDoorRows = (value: unknown): DoorRow[] => {
+  if (Array.isArray(value)) return value.filter((row: any) => row && typeof row.variant === 'string').map((row: any) => ({ variant: row.variant, opening: String(row.opening || DOOR_OPENINGS[0]), quantity: Math.max(1, Number(row.quantity) || 1) }));
+  if (typeof value !== 'string' || !value.trim()) return [];
+  try { const parsed = JSON.parse(value); if (Array.isArray(parsed)) return parseDoorRows(parsed); } catch { /* legacy free text is handled below */ }
+  return [{ variant: 'Wpis historyczny: ' + value.trim(), opening: DOOR_OPENINGS[0], quantity: 1 }];
+};
+const doorRowsToValue = (rows: DoorRow[]) => JSON.stringify(rows);
+const formatFieldValue = (field: FormField, value: unknown): string => {
+  if (field.repeatable === 'door') {
+    const rows = parseDoorRows(value);
+    return rows.length ? rows.map(row => `${row.quantity} × ${row.variant} — ${row.opening}`).join('\n') : '';
+  }
+  if (value && typeof value === 'object') return JSON.stringify(value, null, 2);
+  return String(value ?? '');
+};
 
 const STORAGE_TEMPLATE_KEY = 'enco-form-template-v2';
 const storageDraftKey = (orderNumber: string) => 'enco-form-draft-v2:' + (orderNumber || 'bez-numeru');
@@ -305,6 +329,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
       const item = order.items.find(candidate => candidate.type === binding.itemType);
       existing = item ? readPath(item.details || {}, binding.key) : undefined;
     }
+    if (field.repeatable === 'door') return JSON.stringify(parseDoorRows(value)) !== JSON.stringify(parseDoorRows(existing));
     return value !== String(existing ?? '');
   }), [allFields, values, order]);
   const missingLinkedItems = useMemo(() => linkedChanges.filter(field => {
@@ -335,7 +360,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
       const binding = getFieldBinding(field);
       if (!binding) return;
       const raw = values[field.id] ?? field.defaultValue ?? '';
-      const value: any = field.type === 'number' && String(raw).trim() !== '' ? Number(raw) : raw;
+      const value: any = field.repeatable === 'door' ? parseDoorRows(raw) : field.type === 'number' && String(raw).trim() !== '' ? Number(raw) : raw;
       if (binding.scope === 'order') {
         if (ORDER_BINDABLE_KEYS.includes(binding.key)) (updated as any)[binding.key] = value;
         return;
@@ -413,6 +438,22 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
   const renderInput = (field: FormField, compact = false) => {
     const common = 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100';
     const value = values[field.id] ?? field.defaultValue ?? '';
+    if (field.repeatable === 'door') {
+      const rows = parseDoorRows(value);
+      const updateRows = (next: DoorRow[]) => updateValue(field.id, doorRowsToValue(next));
+      return <div className="space-y-3">
+        {rows.map((row, index) => <div key={`${field.id}-${index}`} className="rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
+          <div className="mb-3 flex items-center justify-between gap-2"><div className="text-xs font-black uppercase tracking-wide text-slate-500">Drzwi {index + 1}</div><button type="button" onClick={() => updateRows(rows.filter((_, rowIndex) => rowIndex !== index))} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-2.5 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-50"><Trash2 className="h-3.5 w-3.5" /> Usuń</button></div>
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_110px]">
+            <label className="block text-xs font-bold text-slate-600">Wariant drzwi<select value={DOOR_VARIANTS.includes(row.variant) ? row.variant : ''} onChange={event => updateRows(rows.map((item, rowIndex) => rowIndex === index ? { ...item, variant: event.target.value } : item))} className={common + ' mt-1'}><option value="">Wybierz wariant…</option>{DOOR_VARIANTS.map(variant => <option key={variant} value={variant}>{variant}</option>)}</select>{!DOOR_VARIANTS.includes(row.variant) && <span className="mt-1 block text-[10px] font-normal text-amber-700">Zapisana wartość historyczna: {row.variant}</span>}</label>
+            <label className="block text-xs font-bold text-slate-600">Sposób otwierania<select value={row.opening} onChange={event => updateRows(rows.map((item, rowIndex) => rowIndex === index ? { ...item, opening: event.target.value } : item))} className={common + ' mt-1'}>{DOOR_OPENINGS.map(opening => <option key={opening} value={opening}>{opening}</option>)}</select></label>
+            <label className="block text-xs font-bold text-slate-600">Ilość<input type="number" min={1} step={1} value={row.quantity} onChange={event => updateRows(rows.map((item, rowIndex) => rowIndex === index ? { ...item, quantity: Math.max(1, Number(event.target.value) || 1) } : item))} className={common + ' mt-1'} /></label>
+          </div>
+        </div>)}
+        <button type="button" onClick={() => updateRows([...rows, { variant: '', opening: DOOR_OPENINGS[0], quantity: 1 }])} className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-bold text-blue-800 hover:bg-blue-100"><Plus className="h-4 w-4" /> Dodaj wariant drzwi</button>
+        {rows.length === 0 && <p className="text-xs text-slate-500">Nie dodano jeszcze drzwi. Dodaj wariant, a następnie określ otwieranie i ilość.</p>}
+      </div>;
+    }
     if (field.type === 'checkbox') return <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"><input type="checkbox" checked={Boolean(value)} onChange={event => updateValue(field.id, event.target.checked)} className="h-4 w-4 accent-blue-600" />{field.placeholder || 'Tak'}</label>;
     if (field.type === 'textarea') return <textarea rows={compact ? 2 : 3} value={String(value)} onChange={event => updateValue(field.id, event.target.value)} placeholder={field.placeholder || 'Wpisz dane…'} className={common + ' resize-y'} />;
     if (field.type === 'select') return <select value={String(value)} onChange={event => updateValue(field.id, event.target.value)} className={common}><option value="">Wybierz…</option>{(field.options || []).map(option => <option key={option} value={option}>{option}</option>)}</select>;
@@ -500,7 +541,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
 
               {mode === 'preview' ? (
                 <div className="space-y-5 p-5 sm:p-7">
-                  {template.sections.map(section => <div key={section.id}><h4 className="border-b border-slate-200 pb-2 text-sm font-black text-slate-800">{section.title}</h4><div className="mt-2 grid grid-cols-1 gap-x-6 gap-y-3 md:grid-cols-2">{section.fields.map(field => <div key={field.id} className="border-b border-dashed border-slate-200 pb-2"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{field.label}</div><div className="mt-1 whitespace-pre-wrap text-sm text-slate-800">{String(values[field.id] ?? field.defaultValue ?? '') || '—'}</div></div>)}</div></div>)}
+                  {template.sections.map(section => <div key={section.id}><h4 className="border-b border-slate-200 pb-2 text-sm font-black text-slate-800">{section.title}</h4><div className="mt-2 grid grid-cols-1 gap-x-6 gap-y-3 md:grid-cols-2">{section.fields.map(field => <div key={field.id} className="border-b border-dashed border-slate-200 pb-2"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{field.label}</div><div className="mt-1 whitespace-pre-wrap text-sm text-slate-800">{formatFieldValue(field, values[field.id] ?? field.defaultValue ?? '') || '—'}</div></div>)}</div></div>)}
                   <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">To jest podgląd szkicu. Nie aktualizuje jeszcze danych w zleceniu. Aktualizacja nastąpi dopiero w docelowym etapie sprawdzenia i akceptacji zmian.</div>
                 </div>
               ) : (
@@ -539,7 +580,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
                         </div>
                       </div>
                       <div className="min-w-0">
-                        {mode === 'preview' ? <div className="min-h-10 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">{String(values[field.id] ?? field.defaultValue ?? '') || '—'}</div> : renderInput(field)}
+                        {mode === 'preview' ? <div className="min-h-10 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">{formatFieldValue(field, values[field.id] ?? field.defaultValue ?? '') || '—'}</div> : renderInput(field)}
                         {mode === 'manage' && <div className="mt-2 flex items-center justify-between gap-2"><span className="text-[10px] text-slate-400">ID pola: {field.id}</span><button type="button" onClick={() => removeField(currentSection.id, field.id)} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-[11px] font-bold text-rose-700 hover:bg-rose-50"><Trash2 className="h-3.5 w-3.5" /> Usuń pole</button></div>}
                       </div>
                     </div>
@@ -554,7 +595,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
           )}
           {reviewOpen && <section className="mb-4 rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-lg font-black text-slate-900">Sprawdzenie zmian przed aktualizacją</h3><p className="mt-1 text-sm text-slate-600">Poniższe wartości zostaną zapisane w odpowiednich polach zlecenia. Nic nie zmieni się, dopóki nie zatwierdzisz tej listy.</p></div><button type="button" onClick={() => setReviewOpen(false)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold">Wróć do formularza</button></div>
-            {linkedChanges.length === 0 ? <p className="mt-4 text-sm text-slate-500">Brak zmian do zastosowania.</p> : <div className="mt-4 space-y-2">{linkedChanges.map(field => { const binding = getFieldBinding(field); const item = binding?.scope === 'item' ? order.items.find(candidate => candidate.type === binding.itemType) : undefined; const before = binding?.scope === 'order' ? (order as any)[binding.key] : item ? readPath(item.details || {}, binding?.key || '') : undefined; return <div key={field.id} className="grid grid-cols-1 gap-2 rounded-xl border border-slate-100 p-3 sm:grid-cols-[minmax(0,1fr)_1fr_1fr]"><div><div className="text-sm font-bold text-slate-800">{field.label}</div><div className="mt-1 text-[10px] text-slate-500">{binding?.scope === 'order' ? 'Zlecenie' : binding?.itemType} · {binding?.key}</div></div><div><div className="text-[10px] font-bold uppercase text-slate-400">Obecnie</div><div className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-600">{before == null || before === '' ? '—' : String(before)}</div></div><div><div className="text-[10px] font-bold uppercase text-emerald-700">Po zatwierdzeniu</div><div className="mt-1 whitespace-pre-wrap break-words text-sm font-semibold text-slate-900">{String(values[field.id] ?? field.defaultValue ?? '') || '—'}</div></div></div>})}</div>}
+            {linkedChanges.length === 0 ? <p className="mt-4 text-sm text-slate-500">Brak zmian do zastosowania.</p> : <div className="mt-4 space-y-2">{linkedChanges.map(field => { const binding = getFieldBinding(field); const item = binding?.scope === 'item' ? order.items.find(candidate => candidate.type === binding.itemType) : undefined; const before = binding?.scope === 'order' ? (order as any)[binding.key] : item ? readPath(item.details || {}, binding?.key || '') : undefined; return <div key={field.id} className="grid grid-cols-1 gap-2 rounded-xl border border-slate-100 p-3 sm:grid-cols-[minmax(0,1fr)_1fr_1fr]"><div><div className="text-sm font-bold text-slate-800">{field.label}</div><div className="mt-1 text-[10px] text-slate-500">{binding?.scope === 'order' ? 'Zlecenie' : binding?.itemType} · {binding?.key}</div></div><div><div className="text-[10px] font-bold uppercase text-slate-400">Obecnie</div><div className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-600">{formatFieldValue(field, before) || '—'}</div></div><div><div className="text-[10px] font-bold uppercase text-emerald-700">Po zatwierdzeniu</div><div className="mt-1 whitespace-pre-wrap break-words text-sm font-semibold text-slate-900">{formatFieldValue(field, values[field.id] ?? field.defaultValue ?? '') || '—'}</div></div></div>})}</div>}
             {applyError && <div className="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-800">{applyError}</div>}
             {missingLinkedItems.length > 0 && <div className="mt-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-900">Nie znaleziono pozycji: {[...new Set(missingLinkedItems.map(field => getFieldBinding(field)?.itemType || ''))].join(', ')}. Te pola nie zostaną zapisane, dopóki odpowiednie pozycje nie istnieją w zleceniu.</div>}
             {permissionDeniedChanges.length > 0 && <div className="mt-3 rounded-lg bg-rose-50 p-3 text-xs text-rose-800">Nie masz uprawnień do aktualizacji pól w pozycjach: {[...new Set(permissionDeniedChanges.map(field => getFieldBinding(field)?.itemType || ''))].join(', ')}. Te pola zostaną pominięte.</div>}
