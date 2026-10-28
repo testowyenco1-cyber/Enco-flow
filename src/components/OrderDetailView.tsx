@@ -66,6 +66,11 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
   const [orderTab, setOrderTab] = useState<'details' | 'forms'>('details');
   // Rozbudowywalna konfiguracja formularza obudowy: dowolna liczba części i połączeń.
   const [buildingParts, setBuildingParts] = useState([{ id: 'part-1', name: 'B1', type: '' }]);
+  const [doorRows, setDoorRows] = useState(['Drzwi do pomieszczenia SN/NN', 'Drzwi do komory transformatora', 'Kratki / wentylatory', 'Siatka transformatora', 'Bariery ochronne', 'Właz piwnicy kablowej', 'Otwory SZK-40 / wskaźniki', 'Otwór anteny GSM Ø20', 'Kieszeń na schemat', 'Wyłączniki drzwiowe']);
+  const [cableRows, setCableRows] = useState(['BWS 100', 'BWS 150', 'HEA — przepust uziemiający', 'Przepust Ø100 z zaślepką / przegrodą', 'Inny przepust']);
+  const [equipmentRows, setEquipmentRows] = useState(['Rozdzielnica SN', 'Rozdzielnica NN', 'Szafa telemechaniki', 'Transformator', 'Wskaźniki zwarcia / SZK', 'Kompensator mocy biernej', 'Oświetlenie / wentylacja', 'Uziemienie / pozostałe wyposażenie']);
+  const [warsawDeliveryRows, setWarsawDeliveryRows] = useState(Array.from({ length: 5 }, () => ''));
+  const [pyskowiceDeliveryRows, setPyskowiceDeliveryRows] = useState(Array.from({ length: 5 }, () => ''));
   const [buildingConnections, setBuildingConnections] = useState([{ id: 'connection-1', from: 'B1', to: '', description: '' }]);
   const addBuildingPart = () => setBuildingParts(parts => [...parts, { id: `part-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, name: `B${parts.length + 1}`, type: '' }]);
   const updateBuildingPart = (id: string, patch: Partial<{ name: string; type: string }>) => setBuildingParts(parts => parts.map(part => part.id === id ? { ...part, ...patch } : part));
@@ -613,20 +618,22 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                 <section>
                   <h3 className="border-b border-slate-800 pb-1.5 text-sm font-black uppercase tracking-wide text-slate-900">3. Drzwi, wentylacja i otwory</h3>
                   <p className="mt-1 text-xs text-slate-500">Każde drzwi / otwór należy opisać oddzielnie. Nie zakładamy stałej liczby ani wymiarów.</p>
+                  <button type="button" onClick={() => setDoorRows(rows => [...rows, 'Nowy element'])} className="mt-2 rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">+ Dodaj drzwi / otwór / element</button>
                   <div className="mt-2 overflow-x-auto">
                     <table className="w-full min-w-[680px] border-collapse text-left text-xs">
                       <thead><tr className="bg-slate-100">{['Element', 'Ilość', 'Wymiar / typ', 'Strona / pomieszczenie', 'Uwagi'].map(h => <th key={h} className="border border-slate-300 px-2 py-2 font-bold text-slate-700">{h}</th>)}</tr></thead>
-                      <tbody>{['Drzwi do pomieszczenia SN/NN', 'Drzwi do komory transformatora', 'Kratki / wentylatory', 'Siatka transformatora', 'Bariery ochronne', 'Właz piwnicy kablowej', 'Otwory SZK-40 / wskaźniki', 'Otwór anteny GSM Ø20', 'Kieszeń na schemat', 'Wyłączniki drzwiowe'].map(name => <tr key={name}><td className="border border-slate-300 px-2 py-1.5 font-medium text-slate-700">{name}</td>{[0,1,2,3].map(i => <td key={i} className="border border-slate-300 p-1"><input aria-label={name} className="w-full min-w-16 border-0 bg-transparent px-1 py-1 outline-none focus:bg-blue-50" placeholder={i === 0 ? '—' : ''} /></td>)}</tr>)}</tbody>
+                      <tbody>{doorRows.map((name, rowIndex) => <tr key={`${name}-${rowIndex}`}><td className="border border-slate-300 p-1"><input aria-label="Nazwa elementu" value={name} onChange={event => setDoorRows(rows => rows.map((row, index) => index === rowIndex ? event.target.value : row))} className="w-full min-w-36 border-0 bg-transparent px-1 py-1 font-medium text-slate-700 outline-none focus:bg-blue-50" /></td>{[0,1,2,3].map(i => <td key={i} className="border border-slate-300 p-1"><input aria-label={`${name} — ${['Ilość','Wymiar / typ','Strona / pomieszczenie','Uwagi'][i]}`} className="w-full min-w-16 border-0 bg-transparent px-1 py-1 outline-none focus:bg-blue-50" /></td>)}</tr>)}</tbody>
                     </table>
                   </div>
                 </section>
 
                 <section>
                   <h3 className="border-b border-slate-800 pb-1.5 text-sm font-black uppercase tracking-wide text-slate-900">4. Przepusty kablowe i uziemienie</h3>
+                  <button type="button" onClick={() => setCableRows(rows => [...rows, 'Nowy przepust'])} className="mt-2 rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">+ Dodaj typ przepustu</button>
                   <div className="mt-2 overflow-x-auto">
                     <table className="w-full min-w-[680px] border-collapse text-left text-xs">
                       <thead><tr className="bg-slate-100">{['Typ elementu', 'Ilość', 'Lokalizacja', 'Wkład / pokrywa', 'Uwagi'].map(h => <th key={h} className="border border-slate-300 px-2 py-2 font-bold text-slate-700">{h}</th>)}</tr></thead>
-                      <tbody>{['BWS 100', 'BWS 150', 'HEA — przepust uziemiający', 'Przepust Ø100 z zaślepką / przegrodą', 'Inny przepust'].map(name => <tr key={name}><td className="border border-slate-300 px-2 py-1.5 font-medium text-slate-700">{name}</td>{[0,1,2,3].map(i => <td key={i} className="border border-slate-300 p-1"><input aria-label={name} className="w-full min-w-16 border-0 bg-transparent px-1 py-1 outline-none focus:bg-blue-50" /></td>)}</tr>)}</tbody>
+                      <tbody>{cableRows.map((name, rowIndex) => <tr key={`${name}-${rowIndex}`}><td className="border border-slate-300 p-1"><input aria-label="Typ elementu" value={name} onChange={event => setCableRows(rows => rows.map((row, index) => index === rowIndex ? event.target.value : row))} className="w-full min-w-36 border-0 bg-transparent px-1 py-1 font-medium text-slate-700 outline-none focus:bg-blue-50" /></td>{[0,1,2,3].map(i => <td key={i} className="border border-slate-300 p-1"><input aria-label={`${name} — ${['Ilość','Lokalizacja','Wkład / pokrywa','Uwagi'][i]}`} className="w-full min-w-16 border-0 bg-transparent px-1 py-1 outline-none focus:bg-blue-50" /></td>)}</tr>)}</tbody>
                     </table>
                   </div>
                   <label className="mt-3 block text-xs font-semibold text-slate-600">Uziemienie wewnętrzne i połączenia kontrolne<input placeholder="FeZn / FeCu / linka / przewód / złącza kontrolne" className="mt-1 w-full border border-slate-300 px-3 py-2 text-sm font-normal outline-none focus:border-blue-600" /></label>
@@ -634,10 +641,11 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
 
                 <section>
                   <h3 className="border-b border-slate-800 pb-1.5 text-sm font-black uppercase tracking-wide text-slate-900">5. Wyposażenie stacji</h3>
+                  <button type="button" onClick={() => setEquipmentRows(rows => [...rows, 'Nowy element wyposażenia'])} className="mt-2 rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">+ Dodaj wyposażenie</button>
                   <div className="mt-2 overflow-x-auto">
                     <table className="w-full min-w-[680px] border-collapse text-left text-xs">
                       <thead><tr className="bg-slate-100">{['Element', 'Producent / typ', 'Parametry / konfiguracja', 'Uwagi'].map(h => <th key={h} className="border border-slate-300 px-2 py-2 font-bold text-slate-700">{h}</th>)}</tr></thead>
-                      <tbody>{['Rozdzielnica SN', 'Rozdzielnica NN', 'Szafa telemechaniki', 'Transformator', 'Wskaźniki zwarcia / SZK', 'Kompensator mocy biernej', 'Oświetlenie / wentylacja', 'Uziemienie / pozostałe wyposażenie'].map(name => <tr key={name}><td className="border border-slate-300 px-2 py-1.5 font-medium text-slate-700">{name}</td>{[0,1,2].map(i => <td key={i} className="border border-slate-300 p-1"><input aria-label={name} className="w-full min-w-20 border-0 bg-transparent px-1 py-1 outline-none focus:bg-blue-50" /></td>)}</tr>)}</tbody>
+                      <tbody>{equipmentRows.map((name, rowIndex) => <tr key={`${name}-${rowIndex}`}><td className="border border-slate-300 p-1"><input aria-label="Element wyposażenia" value={name} onChange={event => setEquipmentRows(rows => rows.map((row, index) => index === rowIndex ? event.target.value : row))} className="w-full min-w-36 border-0 bg-transparent px-1 py-1 font-medium text-slate-700 outline-none focus:bg-blue-50" /></td>{[0,1,2].map(i => <td key={i} className="border border-slate-300 p-1"><input aria-label={`${name} — ${['Producent / typ','Parametry / konfiguracja','Uwagi'][i]}`} className="w-full min-w-20 border-0 bg-transparent px-1 py-1 outline-none focus:bg-blue-50" /></td>)}</tr>)}</tbody>
                     </table>
                   </div>
                 </section>
@@ -646,7 +654,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                   <h3 className="border-b border-slate-800 pb-1.5 text-sm font-black uppercase tracking-wide text-slate-900">6. Elementy do dostarczenia</h3>
                   <p className="mt-1 text-xs text-slate-500">Wykaz dostaw jest oddzielny od wyposażenia, które ma być zamontowane w stacji.</p>
                   <div className="mt-2 grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    {['Dostarcza Warszawa', 'Dostarczają Pyskowice'].map(title => <div key={title}><h4 className="bg-slate-100 px-3 py-2 text-xs font-black uppercase tracking-wide text-slate-700">{title}</h4><table className="w-full border-collapse text-xs"><thead><tr><th className="border border-slate-300 px-2 py-2 text-left">Pozycja</th><th className="w-20 border border-slate-300 px-2 py-2 text-left">Ilość</th><th className="border border-slate-300 px-2 py-2 text-left">Uwagi</th></tr></thead><tbody>{Array.from({length:5}, (_,i) => <tr key={i}>{[0,1,2].map(j => <td key={j} className="border border-slate-300 p-1"><input aria-label={title} className="w-full min-w-12 border-0 bg-transparent px-1 py-1 outline-none focus:bg-blue-50" /></td>)}</tr>)}</tbody></table></div>)}
+                    {([{title:'Dostarcza Warszawa', rows:warsawDeliveryRows, setRows:setWarsawDeliveryRows},{title:'Dostarczają Pyskowice', rows:pyskowiceDeliveryRows, setRows:setPyskowiceDeliveryRows}]).map(({title,rows,setRows}) => <div key={title}><h4 className="bg-slate-100 px-3 py-2 text-xs font-black uppercase tracking-wide text-slate-700">{title}</h4><table className="w-full border-collapse text-xs"><thead><tr><th className="border border-slate-300 px-2 py-2 text-left">Pozycja</th><th className="w-20 border border-slate-300 px-2 py-2 text-left">Ilość</th><th className="border border-slate-300 px-2 py-2 text-left">Uwagi</th></tr></thead><tbody>{rows.map((row,i)=><tr key={i}>{[0,1,2].map(j=><td key={j} className="border border-slate-300 p-1"><input aria-label={title} value={j===0?row:undefined} onChange={j===0?event=>setRows(current=>current.map((value,index)=>index===i?event.target.value:value)):undefined} className="w-full min-w-12 border-0 bg-transparent px-1 py-1 outline-none focus:bg-blue-50" /></td>)}</tr>)}</tbody></table><button type="button" onClick={()=>setRows(current=>[...current,''])} className="mt-1 rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100">+ Dodaj pozycję dostawy</button></div>)}
                   </div>
                 </section>
 
