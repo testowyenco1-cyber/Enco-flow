@@ -270,6 +270,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
   const [values, setValues] = useState<FormValues>(() => safeRead(storageDraftKey(orderNumber), {}));
   const [activeSection, setActiveSection] = useState('order');
   const [mode, setMode] = useState<'fill' | 'manage' | 'dictionaries' | 'preview'>('fill');
+  const [printRequested, setPrintRequested] = useState(false);
   const [dictionaryFieldId, setDictionaryFieldId] = useState('shell-type');
   const [newDictionaryOption, setNewDictionaryOption] = useState('');
   const [newFieldSection, setNewFieldSection] = useState('shell');
@@ -484,6 +485,21 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
     setSavedMessage('Przywrócono domyślny układ pól');
     window.setTimeout(() => setSavedMessage(''), 2200);
   };
+  useEffect(() => {
+    if (!printRequested || mode !== 'preview') return;
+    const timer = window.setTimeout(() => {
+      window.focus();
+      window.print();
+      setPrintRequested(false);
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [printRequested, mode]);
+
+  const startPrint = () => {
+    setPrintRequested(true);
+    setMode('preview');
+  };
+
   const updateValue = (id: string, value: string | boolean) => setValues(current => ({ ...current, [id]: value }));
 
   const renderInput = (field: FormField, compact = false) => {
@@ -530,10 +546,10 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
               {projectName && <div className="max-w-56 truncate text-xs text-slate-500">{projectName}</div>}
             </div>
             <button type="button" onClick={saveDraft} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700"><Save className="h-4 w-4" /> Zapisz szkic</button>
-            <button type="button" onClick={() => { setMode('preview'); window.setTimeout(() => window.print(), 150); }} className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50"><Printer className="h-4 w-4" /> Drukuj zlecenie</button>
+            <button type="button" onClick={startPrint} className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50"><Printer className="h-4 w-4" /> Drukuj zlecenie</button>
           </div>
         </div>
-        <div className="mx-auto mt-5 flex max-w-[1500px] flex-wrap items-center justify-between gap-3">
+        <div className="mx-auto mt-5 flex max-w-[1500px] flex-wrap items-center justify-between gap-3 print:hidden">
           <div className="flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1">
             <button type="button" onClick={() => setMode('fill')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (mode === 'fill' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800')}>Wypełnianie</button>
             <button type="button" onClick={() => setMode('manage')} className={'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ' + (mode === 'manage' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800')}><Settings2 className="h-4 w-4" /> Konfiguracja pól</button>
@@ -550,7 +566,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-[1500px] grid-cols-1 gap-5 p-4 sm:p-6 xl:grid-cols-[260px_minmax(0,1fr)] print:block print:p-0">
+      <div className="mx-auto grid max-w-[1500px] grid-cols-1 gap-5 p-4 sm:p-6 xl:grid-cols-[260px_minmax(0,1fr)] print:block print:p-0 print:max-w-none">
         <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-3 shadow-sm xl:sticky xl:top-4 print:hidden">
           <div className="flex items-center justify-between px-2 pb-2 pt-1">
             <div className="text-xs font-black uppercase tracking-wider text-slate-500">Sekcje formularza</div>
@@ -674,7 +690,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
             {permissionDeniedChanges.length > 0 && <div className="mt-3 rounded-lg bg-rose-50 p-3 text-xs text-rose-800">Nie masz uprawnień do aktualizacji pól w pozycjach: {[...new Set(permissionDeniedChanges.map(field => getFieldBinding(field)?.itemType || ''))].join(', ')}. Te pola zostaną pominięte.</div>}
             <div className="mt-4 flex flex-wrap justify-end gap-2"><button type="button" onClick={() => setReviewOpen(false)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold">Anuluj</button><button type="button" disabled={linkedChanges.length === 0} onClick={applyLinkedChanges} className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-40">Zatwierdź i aktualizuj zlecenie</button></div>
           </section>}
-          <div className="mt-4 flex flex-wrap items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-xs leading-5 text-slate-500"><div className="rounded-lg bg-amber-50 p-2 text-amber-700"><CircleHelp className="h-4 w-4" /></div><p className="flex-1">Konfiguracja pól jest zapisywana na serwerze i współdzielona z innymi użytkownikami. Wypełniony szkic jest obecnie przechowywany w tej przeglądarce. Formularz nie aktualizuje bezpośrednio danych zlecenia. Ten etap jest oddzielony od przyszłego procesu: uwagi i poprawki → sprawdzenie różnic → akceptacja aktualizacji.</p></div>
+          <div className="mt-4 flex flex-wrap items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-xs leading-5 text-slate-500 print:hidden"><div className="rounded-lg bg-amber-50 p-2 text-amber-700"><CircleHelp className="h-4 w-4" /></div><p className="flex-1">Konfiguracja pól jest zapisywana na serwerze i współdzielona z innymi użytkownikami. Wypełniony szkic jest obecnie przechowywany w tej przeglądarce. Formularz nie aktualizuje bezpośrednio danych zlecenia. Ten etap jest oddzielony od przyszłego procesu: uwagi i poprawki → sprawdzenie różnic → akceptacja aktualizacji.</p></div>
         </main>
       </div>
     </div>
