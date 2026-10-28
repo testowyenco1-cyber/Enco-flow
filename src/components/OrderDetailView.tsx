@@ -6,6 +6,7 @@ import { DepartureBadge } from './DepartureBadge';
 import { ItemDetailsCard } from './ItemDetailsCard';
 import { AttachmentList } from './AttachmentList';
 import { OrderDocumentFormModal } from './OrderDocumentFormModal';
+import { OfferDocumentModal } from './OfferDocumentModal';
 import { OrderFilesModal } from './OrderFilesModal';
 import {
   ArrowLeft,
@@ -71,6 +72,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
   const [editingGeneralNotes, setEditingGeneralNotes] = useState(false);
   const [generalNotesInput, setGeneralNotesInput] = useState(order.generalNotes);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
+  const [isTechnicalSheetOpen, setIsTechnicalSheetOpen] = useState(false);
   const [isOrderFilesModalOpen, setIsOrderFilesModalOpen] = useState(false);
   const [selectedFolderForModal, setSelectedFolderForModal] = useState<string>('01_Dokumentacja_Glowna');
 
@@ -439,6 +441,15 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
               >
                 <FileText className="w-3.5 h-3.5" />
                 <span>Formularze dokumentów</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsTechnicalSheetOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                title="Otwórz dotychczasową kartę techniczną stacji"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Karta techniczna</span>
               </button>
               <div className="flex flex-wrap items-center gap-1.5">
                 <DepartureBadge
@@ -920,6 +931,13 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
         onClose={() => setIsOfferModalOpen(false)}
         onSaveOrderChanges={onSaveOrderChanges}
         currentProfile={profile}
+        canDownload={profile.canDownload}
+      />
+
+      <OfferDocumentModal
+        order={order}
+        isOpen={isTechnicalSheetOpen}
+        onClose={() => setIsTechnicalSheetOpen(false)}
         canDownload={profile.canDownload}
       />
 
