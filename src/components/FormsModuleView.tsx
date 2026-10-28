@@ -119,8 +119,9 @@ interface FormsModuleViewProps {
 }
 
 const DEFAULT_BINDINGS: Record<string, FormBinding> = {
-  project:{scope:'order',key:'projectName'}, client:{scope:'order',key:'client'},
-  delivery:{scope:'item',itemType:'OBUDOWA',key:'terminDostawy'},
+  zd:{scope:'item',itemType:'OBUDOWA',key:'numerZD'}, 'zd-date':{scope:'item',itemType:'OBUDOWA',key:'dataZD'},
+  project:{scope:'order',key:'projectName'}, client:{scope:'order',key:'client'}, documentation:{scope:'item',itemType:'OBUDOWA',key:'numerDokumentacji'},
+  delivery:{scope:'item',itemType:'OBUDOWA',key:'terminDostawy'}, 'install-date':{scope:'item',itemType:'OBUDOWA',key:'terminMontazu'}, 'mounting-date':{scope:'item',itemType:'OBUDOWA',key:'terminMontazu'},
   'shell-type':{scope:'item',itemType:'OBUDOWA',key:'typObudowy'},
   'shell-size':{scope:'item',itemType:'OBUDOWA',key:'rozmiar'},
   'shell-dimensions':{scope:'item',itemType:'OBUDOWA',key:'wymiary'},
@@ -146,7 +147,7 @@ const DEFAULT_BINDINGS: Record<string, FormBinding> = {
   sn:{scope:'item',itemType:'ROZDZIELNICA_SN',key:'daneFormularzaObudowy'},
   nn:{scope:'item',itemType:'ROZDZIELNICA_NN',key:'daneFormularzaObudowy'},
   telemechanics:{scope:'item',itemType:'SZAFKA_TELEMECHANIKI',key:'daneFormularzaObudowy'},
-  transformer:{scope:'item',itemType:'TRANSFORMATOR_POTRZEB_WLASNYCH',key:'daneFormularzaObudowy'},
+  transformer:{scope:'item',itemType:'OBUDOWA',key:'wyposazenie.transformator'},
   'extra-equipment':{scope:'item',itemType:'OBUDOWA',key:'pozostaleWyposazenie'},
   'pysk-anti-vibration':{scope:'item',itemType:'OBUDOWA',key:'dostawy.pyskowice.podkladkiAntywibracyjne'},
   'pysk-cross-clamps':{scope:'item',itemType:'OBUDOWA',key:'dostawy.pyskowice.zaciskiKrzyzowe'},
