@@ -339,6 +339,20 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
   const departureOwner = getOrderFieldDepartment('departureDate');
   const actualDepartureDate = order.items.find((item) => item.type === 'DATA_WYJAZDU')?.completedDate || '';
 
+  // Formularz dokumentu działa jako osobna podstrona, a nie okno modalne.
+  if (isOfferModalOpen) {
+    return (
+      <OrderDocumentFormModal
+        order={order}
+        isOpen={isOfferModalOpen}
+        onClose={() => setIsOfferModalOpen(false)}
+        onSaveOrderChanges={onSaveOrderChanges}
+        currentProfile={profile}
+        canDownload={profile.canDownload}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col items-stretch gap-4 lg:flex-row lg:items-start">
       <div className="min-w-0 flex-1 space-y-8 pb-16">
