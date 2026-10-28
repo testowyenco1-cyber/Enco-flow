@@ -116,6 +116,7 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
   const [archiveSearch, setArchiveSearch] = useState('');
   const [activeModule, setActiveModule] = useState<'orders' | 'doors' | 'sn' | 'calendar' | 'actions' | 'dashboard' | 'forms'>(() => {
     const path = window.location.pathname;
+    if (path === '/formularze' || path.startsWith('/formularze/')) return 'forms';
     if (path === '/dashboard') return 'dashboard';
     if (path === '/dzialania') return 'actions';
     if (path === '/kalendarz') return 'calendar';
@@ -143,7 +144,7 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
     setCurrentPath(path);
     if (path === '/formularze' || path.startsWith('/formularze/')) {
       setActiveModule('forms');
-      const match = path.match(/^\\/formularze\\/([^/]+)$/);
+      const match = path.match(/^\/formularze\/([^/]+)$/);
       setSelectedOrderId(match ? decodeURIComponent(match[1]) : null);
       sessionStorage.setItem('enco_active_module', 'forms');
       if (match) sessionStorage.setItem('enco_selected_order_id', decodeURIComponent(match[1]));
