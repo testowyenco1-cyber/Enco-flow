@@ -483,31 +483,98 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
           </button>
         </div>
         {orderTab === 'forms' && (
-          <div className="space-y-4 bg-slate-50 p-6">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">Formularze zlecenia</h2>
-                <p className="mt-1 text-sm text-slate-600">Dokumenty powiązane ze zleceniem {order.orderNumber}. Formularze będą uzupełniane na podstawie danych zlecenia, a zmiany trafią do zlecenia dopiero po ich sprawdzeniu i zatwierdzeniu.</p>
+          <div className="space-y-5 bg-slate-50 p-6">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Formularze zlecenia {order.orderNumber}</h2>
+              <p className="mt-1 text-sm text-slate-600">Wybierz dokument do przygotowania. Na początek opracowujemy zlecenie obudowy na podstawie przekazanych przykładów.</p>
+            </div>
+            <div className="rounded-xl border border-blue-200 bg-white p-4 shadow-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-900">Zlecenie obudowy</h3>
+                  <p className="mt-1 text-sm text-slate-600">Dane zamówienia, wykonanie obudowy, drzwi, kolory, przepusty, wyposażenie, dostawy i montaż.</p>
+                </div>
+                <span className="w-fit rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">Wersja robocza formularza</span>
               </div>
-              <span className="inline-flex w-fit items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">Etap przygotowania</span>
+              <div className="mt-5 space-y-6">
+                <section className="space-y-3">
+                  <h4 className="border-b border-slate-200 pb-2 text-sm font-bold uppercase tracking-wide text-slate-700">1. Dane zlecenia</h4>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <label className="text-xs font-semibold text-slate-600">Numer ZL<input defaultValue={order.orderNumber} className="mt-1 w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-normal text-slate-900" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Nazwa obiektu / projektu<input defaultValue={order.projectName} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Klient<input defaultValue={order.client} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Numer ZD i data<input placeholder="np. ZD 30 / 22.04.2026" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Typ obudowy<input defaultValue={order.stationSize || ''} placeholder="np. BEK 250/420, NZ 110/173" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Termin dostawy<input placeholder="Data, miesiąc lub rok — zgodnie z ustaleniami" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Firma montażowa<input placeholder="Własna / zewnętrzna — nazwa firmy" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Termin montażu<input placeholder="Data / miesiąc / rok" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal text-slate-900" /></label>
+                  </div>
+                </section>
+                <section className="space-y-3">
+                  <h4 className="border-b border-slate-200 pb-2 text-sm font-bold uppercase tracking-wide text-slate-700">2. Konstrukcja i wykończenie</h4>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <label className="text-xs font-semibold text-slate-600">Kolor elewacji<input placeholder="np. RAL 7042 / do potwierdzenia" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Kolor dachu i obróbek<input placeholder="np. RAL 7016" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Wykończenie elewacji<input defaultValue="Tynk akrylowy strukturalny + powłoka antygraffiti" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Dach<select defaultValue="dwuspadowy" className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-normal"><option value="dwuspadowy">Betonowy dwuspadowy</option><option value="czterospadowy">Betonowy czterospadowy</option><option value="inne">Inny / do ustalenia</option></select></label>
+                    <label className="text-xs font-semibold text-slate-600">Ściany / odporność ogniowa<input placeholder="np. 3 ściany REI 120" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Dodatkowe rozwiązania<input placeholder="np. chłodnica gazowa, wentylatory" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal" /></label>
+                  </div>
+                </section>
+                <section className="space-y-3">
+                  <h4 className="border-b border-slate-200 pb-2 text-sm font-bold uppercase tracking-wide text-slate-700">3. Drzwi, otwory i elementy obudowy</h4>
+                  <p className="text-xs text-slate-500">Opisz każde wejście osobno, ponieważ liczba, wymiar, strona i przeznaczenie drzwi różnią się między zleceniami.</p>
+                  <textarea rows={3} placeholder={"Drzwi — liczba, wymiar, strona i pomieszczenie\nKratki wentylacyjne / wentylatory\nSiatka transformatora, bariery ochronne, właz piwnicy kablowej\nOtwory SZK-40, antena GSM Ø20, kieszeń na schemat, wyłączniki drzwiowe"} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm" />
+                </section>
+                <section className="space-y-3">
+                  <h4 className="border-b border-slate-200 pb-2 text-sm font-bold uppercase tracking-wide text-slate-700">4. Przepusty kablowe i uziemienie</h4>
+                  <p className="text-xs text-slate-500">Dla każdego wpisu podaj typ, ilość, lokalizację oraz wkład / pokrywę. Nie zakładamy automatycznie, że liczba przepustów i wkładów zawsze się zgadza.</p>
+                  <textarea rows={5} placeholder={"Typ | Ilość | Lokalizacja | Wkład / pokrywa | Uwagi\nBWS 100 | ... | tył / przód / lewa / prawa | HSD 100 | ...\nBWS 150 | ... | ... | HRD 150 | ...\nHEA uziemiające | ... | ...\nPrzepust Ø100 z wyjmowaną zaślepką / przegrodą | ... | ..."} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-sm" />
+                  <label className="block text-xs font-semibold text-slate-600">Uziemienie wewnętrzne<input placeholder="np. FeZn / FeCu 40×5 / linka lub przewód" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal" /></label>
+                </section>
+                <section className="space-y-3">
+                  <h4 className="border-b border-slate-200 pb-2 text-sm font-bold uppercase tracking-wide text-slate-700">5. Wyposażenie stacji</h4>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label className="text-xs font-semibold text-slate-600">Rozdzielnica SN<textarea rows={2} placeholder="Producent, typ, układ pól, napięcie, prąd, wytrzymałość, wysokość i uwagi" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Rozdzielnica NN<textarea rows={2} placeholder="Typ, liczba pól, wariant RTS-w / RTS-z i uwagi" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Szafa telemechaniki<textarea rows={2} placeholder="Wymiary, sterownik lub brak sterownika / samo miejsce rezerwowe" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Transformator<textarea rows={2} placeholder="Moc, dostawa inwestora lub inna odpowiedzialność" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Pozostałe wyposażenie<textarea rows={2} placeholder="Kompensator mocy biernej, wskaźniki zwarcia, oświetlenie, wentylacja, krańcówki drzwi i inne" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Uziemienie i połączenia<textarea rows={2} placeholder="Taśma, linka, złącza kontrolne, rogi uziemiające itp." className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal" /></label>
+                  </div>
+                </section>
+                <section className="space-y-3">
+                  <h4 className="border-b border-slate-200 pb-2 text-sm font-bold uppercase tracking-wide text-slate-700">6. Elementy do dostarczenia</h4>
+                  <p className="text-xs text-slate-500">Oddzielamy wykaz wyposażenia zamontowanego od wykazu rzeczy do dostarczenia. Dla każdej pozycji podaj ilość i odpowiedzialny oddział.</p>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <label className="text-xs font-semibold text-slate-600">Dostarcza Warszawa<textarea rows={5} placeholder={"Pozycja | Ilość | Uwagi\nMost SN / mosty NN\nZaciski krzyżowe — sprawdzić gwint\nWkłady HRD 150 / HSD 100\nInne elementy"} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Dostarczają Pyskowice<textarea rows={5} placeholder={"Pozycja | Ilość | Uwagi\nRozdzielnica SN / bezpieczniki\nWskaźniki zwarcia / lampy i przekładniki\nKompensator, antena i maszt\nInne elementy"} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal" /></label>
+                  </div>
+                </section>
+                <section className="space-y-3">
+                  <h4 className="border-b border-slate-200 pb-2 text-sm font-bold uppercase tracking-wide text-slate-700">7. Ustalenia i kontrola</h4>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label className="text-xs font-semibold text-slate-600">Opisy / ustalenia do potwierdzenia<input placeholder="np. OPISY: potwierdzimy" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Dokumentacja zdjęciowa<input placeholder="np. zdjęcia wnętrza, zewnątrz i piwnicy po wykonaniu" className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-normal" /></label>
+                  </div>
+                  <textarea rows={3} placeholder="Uwagi, niezgodności do wyjaśnienia, brakujące dane i ustalenia z klientem..." className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                </section>
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  Formularz jest na etapie opracowania. W tej wersji pola są roboczym szkicem interfejsu — nie zapisują jeszcze danych do zlecenia. Docelowo dane przejdą przez uwagi i poprawki, podgląd różnic oraz jawne zatwierdzenie.
+                </div>
+              </div>
             </div>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {[
-                { title: 'Zlecenie obudowy', description: 'Dane obudowy, wyposażenie, przepusty kablowe, kolory i ustalenia wykonawcze.' },
-                { title: 'Zlecenie produkcyjne NN', description: 'Zakres i parametry rozdzielnicy NN.' },
-                { title: 'Zlecenie produkcyjne szafy telemechaniki', description: 'Szafa, wymiary, sterownik i wyposażenie telemechaniki.' },
-                { title: 'Zapytanie / zamówienie Serwispol', description: 'Dane zapytania lub zamówienia oraz ustalenia z dostawcą.' },
+                { title: 'Zlecenie produkcyjne NN', description: 'Do przygotowania po zatwierdzeniu struktury formularza obudowy.' },
+                { title: 'Zlecenie produkcyjne szafy telemechaniki', description: 'Wymiary, sterownik, wyposażenie i zakres dostawy.' },
+                { title: 'Zapytanie / zamówienie Serwispol', description: 'Dane zapytania lub zamówienia i ustalenia z dostawcą.' },
                 { title: 'Zlecenie montażu', description: 'Zakres montażu, termin i informacje dla firmy montażowej.' },
               ].map((form) => (
-                <div key={form.title} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <div className="flex items-start gap-3">
-                    <div className="rounded-lg bg-blue-50 p-2 text-blue-700"><FileText className="h-5 w-5" /></div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-sm font-bold text-slate-900">{form.title}</h3>
-                      <p className="mt-1 text-xs leading-5 text-slate-600">{form.description}</p>
-                      <div className="mt-3 flex items-center gap-2 text-xs text-slate-500"><Clock className="h-3.5 w-3.5" /> Formularz nie został jeszcze skonfigurowany</div>
-                    </div>
-                  </div>
+                <div key={form.title} className="rounded-xl border border-slate-200 bg-white p-4">
+                  <h3 className="text-sm font-bold text-slate-900">{form.title}</h3>
+                  <p className="mt-1 text-xs leading-5 text-slate-600">{form.description}</p>
+                  <div className="mt-3 flex items-center gap-2 text-xs text-slate-500"><Clock className="h-3.5 w-3.5" /> Do opracowania</div>
                 </div>
               ))}
             </div>
