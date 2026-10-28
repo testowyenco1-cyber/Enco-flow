@@ -26,6 +26,7 @@ import {
   saveDoorOrdersToServer,
 } from './services/storageService';
 import { Header } from './components/Header';
+import { FormsModuleView } from './components/FormsModuleView';
 import { DashboardView } from './components/DashboardView';
 import { DashboardModuleView } from './components/DashboardModuleView';
 import { ActionDashboardView } from './components/ActionDashboardView';
@@ -113,7 +114,7 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
   }, [sidebarOpen]);
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
   const [archiveSearch, setArchiveSearch] = useState('');
-  const [activeModule, setActiveModule] = useState<'orders' | 'doors' | 'sn' | 'calendar' | 'actions' | 'dashboard'>(() => {
+  const [activeModule, setActiveModule] = useState<'orders' | 'doors' | 'sn' | 'calendar' | 'actions' | 'dashboard' | 'forms'>(() => {
     const path = window.location.pathname;
     if (path === '/dashboard') return 'dashboard';
     if (path === '/dzialania') return 'actions';
@@ -140,7 +141,14 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
   const navigate = (path: string) => {
     if (window.location.pathname !== path) window.history.pushState({}, '', path);
     setCurrentPath(path);
-    if (path === '/dashboard') {
+    if (path === '/formularze' || path.startsWith('/formularze/')) {
+      setActiveModule('forms');
+      const match = path.match(/^\\/formularze\\/([^/]+)$/);
+      setSelectedOrderId(match ? decodeURIComponent(match[1]) : null);
+      sessionStorage.setItem('enco_active_module', 'forms');
+      if (match) sessionStorage.setItem('enco_selected_order_id', decodeURIComponent(match[1]));
+      else sessionStorage.removeItem('enco_selected_order_id');
+    } else if (path === '/dashboard') {
       setActiveModule('dashboard');
       setSelectedOrderId(null);
       sessionStorage.setItem('enco_active_module', 'dashboard');
@@ -180,7 +188,11 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
     const handlePopState = () => {
       const path = window.location.pathname;
       setCurrentPath(path);
-      if (path === '/dashboard') {
+      if (path === '/formularze' || path.startsWith('/formularze/')) {
+        setActiveModule('forms');
+        const match = path.match(/^\\/formularze\\/([^/]+)$/);
+        setSelectedOrderId(match ? decodeURIComponent(match[1]) : null);
+      } else if (path === '/dashboard') {
         setActiveModule('dashboard');
         setSelectedOrderId(null);
       } else if (path === '/dzialania') {
@@ -650,7 +662,7 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
         problemCount={problemOrdersCount}
         actionOrders={activeOrders}
         activeModule={activeModule}
-        onSelectModule={(mod) => navigate(mod === 'dashboard' ? '/dashboard' : mod === 'actions' ? '/dzialania' : mod === 'doors' ? '/drzwi' : mod === 'sn' ? '/rozdzielnice-sn' : mod === 'calendar' ? '/kalendarz' : '/zlecenia')}
+        onSelectModule={(mod) => navigate(mod === 'dashboard' ? '/dashboard' : mod === 'actions' ? '/dzialania' : mod === 'doors' ? '/drzwi' : mod === 'sn' ? '/rozdzielnice-sn' : mod === 'calendar' ? '/kalendarz' : mod === 'forms' ? '/formularze' : '/zlecenia')}
         doorOrdersCount={doorOrders.length}
         doorOverdueCount={doorOverdueCount}
         currentProfile={currentProfile}
@@ -663,7 +675,29 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
       <main className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 transition-[padding] duration-200 ${sidebarOpen ? 'lg:pl-[clamp(236px,calc(16vw+16px),296px)]' : ''} ${
         selectedOrder ? (orderTasksPanelOpen ? 'max-w-full lg:pr-[363px]' : 'max-w-full lg:pr-3') : activeModule === 'doors' ? 'max-w-full 2xl:max-w-[1800px]' : 'max-w-[1800px]'
       }`}>
-        {activeModule === 'dashboard' ? (
+        {activeModule === 'forms' ? (
+          selectedOrder ? (
+            <FormsModuleView order={selectedOrder} onUpdateOrderStatus={handleUpdateOrderStatus} currentProfile={currentProfile} />
+          ) : (
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="mb-5">
+                <h1 className="text-2xl font-black text-slate-900">Formularze</h1>
+                <p className="mt-1 text-sm text-slate-600">Wybierz zlecenie, dla którego chcesz przygotować dokument obudowy.</p>
+              </div>
+              <input aria-label="Szukaj zlecenia" placeholder="Szukaj po numerze ZL lub nazwie obiektu…" value={archiveSearch} onChange={event => setArchiveSearch(event.target.value)} className="mb-4 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm" />
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {activeOrders.filter(order => [order.orderNumber, order.projectName, order.client].some(value => String(value || '').toLowerCase().includes(archiveSearch.toLowerCase()))).map(order => (
+                  <button key={order.id} type="button" onClick={() => navigate('/formularze/' + encodeURIComponent(order.id))} className="rounded-xl border border-slate-200 p-4 text-left transition hover:border-blue-400 hover:bg-blue-50">
+                    <div className="font-mono text-sm font-black text-blue-700">{order.orderNumber || 'Bez numeru ZL'}</div>
+                    <div className="mt-1 font-bold text-slate-900">{order.projectName || 'Bez nazwy obiektu'}</div>
+                    <div className="mt-1 text-xs text-slate-500">{order.client || 'Brak danych klienta'}</div>
+                    <div className="mt-3 text-xs font-semibold text-blue-700">Otwórz formularz →</div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )
+        ) : activeModule === 'dashboard' ? (
           <DashboardModuleView orders={activeOrders} onSelectOrder={handleSelectOrder} />
         ) : activeModule === 'actions' ? (
           <ActionDashboardErrorBoundary onGoToOrders={() => navigate('/zlecenia')}>
