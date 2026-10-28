@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Order } from '../types/enco';
+import { UserRoleProfile, USER_PROFILES, canEditItemType } from '../types/userRole';
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Settings2, FileText, Layers3,
   Save, RotateCcw, Check, GripVertical, Eye, CircleHelp,
@@ -140,6 +141,7 @@ function createId() {
 interface FormsModuleViewProps {
   order: Order;
   onUpdateOrderStatus: (orderId: string, updatedOrder: Order) => void;
+  currentProfile?: UserRoleProfile;
 }
 
 const DEFAULT_BINDINGS: Record<string, FormBinding> = {
@@ -214,7 +216,8 @@ const writePath = (source: Record<string, any>, path: string, value: any): Recor
 };
 const ORDER_BINDABLE_KEYS = ['projectName','client','stationSize','departureDate','generalNotes','additionalInfo'];
 
-export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdateOrderStatus }) => {
+export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdateOrderStatus, currentProfile }) => {
+  const profile = currentProfile || USER_PROFILES.admin;
   const orderNumber = order.orderNumber;
   const projectName = order.projectName || '';
   const client = order.client || '';
@@ -308,15 +311,24 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
     const binding = getFieldBinding(field);
     return binding?.scope === 'item' && !order.items.some(item => item.type === binding.itemType);
   }), [linkedChanges, order.items]);
+  const permissionDeniedChanges = useMemo(() => linkedChanges.filter(field => {
+    const binding = getFieldBinding(field);
+    return binding?.scope === 'item' && !canEditItemType(profile, binding.itemType || '');
+  }), [linkedChanges, profile]);
   const applyLinkedChanges = () => {
     setApplyError('');
     if (missingLinkedItems.length) {
       setApplyError('Zastosuję dostępne powiązania. Pominięte pola wymagają brakujących pozycji: ' + [...new Set(missingLinkedItems.map(field => getFieldBinding(field)?.itemType || ''))].join(', ') + '.');
     }
-    const applicableChanges = linkedChanges.filter(field => !missingLinkedItems.includes(field));
+    const applicableChanges = linkedChanges.filter(field => !missingLinkedItems.includes(field) && !permissionDeniedChanges.includes(field));
     if (applicableChanges.length === 0) {
-      setApplyError('Nie ma pól, które można teraz zapisać. Dodaj brakujące pozycje zlecenia lub popraw powiązania.');
+      setApplyError(permissionDeniedChanges.length
+        ? 'Twoje uprawnienia nie pozwalają edytować żadnego z powiązanych pól.'
+        : 'Nie ma pól, które można teraz zapisać. Dodaj brakujące pozycje zlecenia lub popraw powiązania.');
       return;
+    }
+    if (permissionDeniedChanges.length) {
+      setApplyError('Część pól pominięto z powodu uprawnień do pozycji: ' + [...new Set(permissionDeniedChanges.map(field => getFieldBinding(field)?.itemType || ''))].join(', ') + '.');
     }
     let updated: Order = { ...order, items: order.items.map(item => ({ ...item, details: { ...(item.details || {}) } })), updatedAt: new Date().toISOString() };
     applicableChanges.forEach(field => {
@@ -335,8 +347,8 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
     });
     onUpdateOrderStatus(order.id, updated);
     try { window.localStorage.removeItem(storageDraftKey(orderNumber)); } catch {}
-    setReviewOpen(missingLinkedItems.length > 0);
-    setSavedMessage(missingLinkedItems.length ? 'Zapisano dostępne pola; część wymaga brakujących pozycji.' : 'Zatwierdzone zmiany przekazano do zlecenia');
+    setReviewOpen(missingLinkedItems.length > 0 || permissionDeniedChanges.length > 0);
+    setSavedMessage(missingLinkedItems.length || permissionDeniedChanges.length ? 'Zapisano dostępne pola; część wymaga sprawdzenia.' : 'Zatwierdzone zmiany przekazano do zlecenia');
     window.setTimeout(() => setSavedMessage(''), 3000);
   };
 
@@ -545,6 +557,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
             {linkedChanges.length === 0 ? <p className="mt-4 text-sm text-slate-500">Brak zmian do zastosowania.</p> : <div className="mt-4 space-y-2">{linkedChanges.map(field => { const binding = getFieldBinding(field); const item = binding?.scope === 'item' ? order.items.find(candidate => candidate.type === binding.itemType) : undefined; const before = binding?.scope === 'order' ? (order as any)[binding.key] : item ? readPath(item.details || {}, binding?.key || '') : undefined; return <div key={field.id} className="grid grid-cols-1 gap-2 rounded-xl border border-slate-100 p-3 sm:grid-cols-[minmax(0,1fr)_1fr_1fr]"><div><div className="text-sm font-bold text-slate-800">{field.label}</div><div className="mt-1 text-[10px] text-slate-500">{binding?.scope === 'order' ? 'Zlecenie' : binding?.itemType} · {binding?.key}</div></div><div><div className="text-[10px] font-bold uppercase text-slate-400">Obecnie</div><div className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-600">{before == null || before === '' ? '—' : String(before)}</div></div><div><div className="text-[10px] font-bold uppercase text-emerald-700">Po zatwierdzeniu</div><div className="mt-1 whitespace-pre-wrap break-words text-sm font-semibold text-slate-900">{String(values[field.id] ?? field.defaultValue ?? '') || '—'}</div></div></div>})}</div>}
             {applyError && <div className="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-800">{applyError}</div>}
             {missingLinkedItems.length > 0 && <div className="mt-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-900">Nie znaleziono pozycji: {[...new Set(missingLinkedItems.map(field => getFieldBinding(field)?.itemType || ''))].join(', ')}. Te pola nie zostaną zapisane, dopóki odpowiednie pozycje nie istnieją w zleceniu.</div>}
+            {permissionDeniedChanges.length > 0 && <div className="mt-3 rounded-lg bg-rose-50 p-3 text-xs text-rose-800">Nie masz uprawnień do aktualizacji pól w pozycjach: {[...new Set(permissionDeniedChanges.map(field => getFieldBinding(field)?.itemType || ''))].join(', ')}. Te pola zostaną pominięte.</div>}
             <div className="mt-4 flex flex-wrap justify-end gap-2"><button type="button" onClick={() => setReviewOpen(false)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold">Anuluj</button><button type="button" disabled={linkedChanges.length === 0} onClick={applyLinkedChanges} className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-40">Zatwierdź i aktualizuj zlecenie</button></div>
           </section>}
           <div className="mt-4 flex flex-wrap items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-xs leading-5 text-slate-500"><div className="rounded-lg bg-amber-50 p-2 text-amber-700"><CircleHelp className="h-4 w-4" /></div><p className="flex-1">Konfiguracja pól jest zapisywana na serwerze i współdzielona z innymi użytkownikami. Wypełniony szkic jest obecnie przechowywany w tej przeglądarce. Formularz nie aktualizuje bezpośrednio danych zlecenia. Ten etap jest oddzielony od przyszłego procesu: uwagi i poprawki → sprawdzenie różnic → akceptacja aktualizacji.</p></div>
