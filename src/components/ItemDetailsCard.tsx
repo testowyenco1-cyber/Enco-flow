@@ -530,7 +530,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
             flattenLinkedValues(child, prefix ? `${prefix} · ${key}` : key)
           );
         }
-        if (Array.isArray(value)) return value.length ? [{ label: prefix, value: value.map(String).join(', ') }] : [];
+        if (Array.isArray(value)) return value.length ? [{ label: prefix, value: value.map((entry: any) => entry && typeof entry === 'object' ? (entry.variant ? `${entry.quantity || 1} × ${entry.variant}${entry.opening ? ` — ${entry.opening}` : ''}` : JSON.stringify(entry)) : String(entry)).join('; ') }] : [];
         return [{ label: prefix, value: String(value) }];
       };
       const linkedFormEntries = linkedFormKeys.flatMap(key => flattenLinkedValues(d[key], key))
