@@ -1584,6 +1584,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
           </div>
             </div>
         )}
+          </div>
 
           {/* Notes */}
           <div className="relative z-10 shrink-0 border-t-2 border-blue-200 bg-white px-1 pt-2 pb-1 shadow-[0_-4px_10px_rgba(15,23,42,0.06)]">
@@ -1598,7 +1599,6 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
               className="block min-h-[64px] max-h-[110px] w-full resize-y text-sm px-3 py-2 border border-slate-300 rounded-lg bg-amber-50/40 focus:ring-2 focus:ring-blue-500 focus:outline-hidden placeholder:text-slate-400"
             />
           </div>
-        </div>
 
           {/* Buttons */}
           <div className="relative z-20 flex shrink-0 items-center justify-between gap-3 border-t border-slate-200 bg-white pt-2 pb-1">
