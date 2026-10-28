@@ -604,7 +604,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
           )}
 
           {!currentSection ? <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-500">Brak sekcji. Przywróć domyślny układ.</div> : (
-            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <section className={(mode === 'dictionaries' ? 'hidden ' : '') + "overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"}>
               <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-5 py-5 sm:px-7">
                 <div><div className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-700">Sekcja {template.sections.findIndex(section => section.id === currentSection.id) + 1}</div><h3 className="mt-1 text-xl font-black text-slate-900">{currentSection.title}</h3>{currentSection.description && <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">{currentSection.description}</p>}</div>
                 <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">{currentSection.fields.length} pól</span>
