@@ -93,8 +93,6 @@ async function startServer() {
   const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
   const DOORS_FILE = path.join(DATA_DIR, 'door_orders.json');
   const OBUDOWA_VARIANTS_FILE = path.join(DATA_DIR, 'obudowa_variants.json');
-  const FORM_DICTIONARY_FILE = path.join(DATA_DIR, 'form_dictionary.json');
-  const FORM_TEMPLATE_FILE = path.join(DATA_DIR, 'form_template.json');
   const SN_SWITCHGEAR_FILE = path.join(DATA_DIR, 'sn_switchgear.json');
   const SN_CATALOG_FILE = path.join(DATA_DIR, 'sn_catalog.json');
   const DOOR_CATALOG_FILE = path.join(DATA_DIR, 'door_catalog.json');
@@ -165,124 +163,7 @@ async function startServer() {
     }
   }
 
-  // Shared form dictionaries. On startup, merge new categories into the existing file
-  // so deployments keep user-added values while receiving dictionaries for new fields.
-  const INITIAL_FORM_DICTIONARY: Record<string, string[]> = {
-    // Dane zlecenia
-    'numer-zd': [], 'data-zd': [], 'numer-zl': [], 'termin-dostawy': [],
-    'projekt-obiekt': [], 'klient': [], 'typ-obudowy': ['BEK 250/400', 'BEK 250/420', 'BEK 250/470', 'BEK 250/550', 'NZ 110/173', 'NZ 210/290'],
-    'termin-montazu': [], 'firma-montazowa': [], 'osoba-dzial-odpowiedzialny': [],
-    'dokumentacja-rysunek': [], 'uwagi-do-terminu': [],
-    // Części budynku i konstrukcja
-    'oznaczenie-czesci': ['B1', 'B2', 'B3', 'B4', 'B5', 'B6'],
-    'wariant-obudowy-czesci': ['BEK 250/420/B1', 'BEK 250/550/B2'],
-    'konstrukcja-fundament-dach': [], 'drzwi-wentylacja-otwory-opis': [],
-    'przepusty-uziemienie-opis': [], 'wyposazenie-czesci-opis': [],
-    'czesc-poczatkowa': [], 'czesc-docelowa': [],
-    'rodzaj-polaczenia': ['Przepusty kablowe', 'Sprzęgło', 'Połączenie uziemiające', 'Uszczelnienie', 'Inne'],
-    'uwagi-polaczenie': [],
-    // Zakres wykonania obudowy
-    'konstrukcja-wariant': ['BEK', 'NZ', 'Inny'],
-    'fundament-metaloplastyka': ['Standardowy', 'Według rysunku', 'Do uzgodnienia'],
-    'typ-dachu': ['Betonowy dwuspadowy', 'Betonowy czterospadowy', 'Inny'],
-    'sciany-odpornosc-ogniowa': ['REI 60', 'REI 120', 'REI 240', 'Do uzgodnienia'],
-    'wykonczenie-elewacji': ['Tynk akrylowy strukturalny', 'Tynk + antygraffiti', 'Antygraffiti', 'Inne'],
-    'kolor-ral': ['RAL 7044', 'RAL 7024'],
-    'rozwiazania-dodatkowe': [],
-    // Drzwi, wentylacja, otwory
-    'element-obudowy': ['Drzwi do pomieszczenia SN/NN', 'Drzwi do komory transformatora', 'Drzwi prawe', 'Drzwi lewe', 'Kratki / wentylatory', 'Siatka transformatora', 'Bariera ochronna', 'Właz piwnicy kablowej', 'Kieszeń na schemat', 'Wyłączniki drzwiowe', 'Otwór anteny GSM Ø20'],
-    'ilosc': ['1', '2', '3', '4', '5', '6', '8', '10'],
-    'wymiar-typ': [], 'strona-pomieszczenie': ['SN', 'NN', 'Transformator', 'Front stacji', 'Tył stacji', 'Lewy bok', 'Prawy bok', 'Wnętrze stacji'],
-    'uwagi-elementu': [],
-    // Przepusty i uziemienie
-    'typ-przepustu': ['BWS 100', 'BWS 150', 'HEA — przepust uziemiający', 'Przepust Ø100 z zaślepką / przegrodą'],
-    'lokalizacja': ['Front stacji', 'Tył stacji', 'Bok stacji', 'Pomiędzy budynkami', 'Wnętrze stacji'],
-    'wkład-uszczelniający': ['HSD 100-SSG', 'HRD 150-SG-3', 'Zaślepka', 'Pokrywa', 'Do ustalenia'],
-    'uziemienie-wewnetrzne': ['FeZn', 'FeCu', 'Linka', 'Przewód', 'Złącza kontrolne', 'Do ustalenia'],
-    // Wyposażenie stacji
-    'wyposażenie': ['Rozdzielnica SN', 'Rozdzielnica NN', 'Szafa telemechaniki', 'Transformator', 'Wskaźniki zwarcia / SZK', 'Kompensator mocy biernej', 'Oświetlenie / wentylacja', 'Uziemienie / pozostałe wyposażenie'],
-    'producent-typ': ['Schneider Electric', 'EATON', 'Siemens', 'Xiria', 'AirSeT', 'RTS-w', 'RTS-z'],
-    'parametry-konfiguracja': [], 'uwagi-wyposazenia': [],
-    // Dostawy
-    'pozycja-dostawy': ['Rozdzielnica SN', 'Rozdzielnica NN', 'Transformator', 'Szafa telemechaniki', 'Drzwi', 'Przepusty', 'Wyposażenie dodatkowe', 'Dokumentacja', 'Inne'],
-    'ilosc-dostawy': ['1', '2', '3', '4', '5', '6', '10'],
-    'uwagi-dostawy': [],
-    'zrodlo-dostawy': ['Warszawa', 'Pyskowice', 'Inwestor', 'Firma zewnętrzna'],
-    // Potwierdzenia, montaż i notatki
-    'opisy-dane-potwierdzenia': ['OPISY — potwierdzimy', 'Do potwierdzenia', 'Potwierdzone', 'Nie dotyczy'],
-    'dokumentacja-zdjeciowa': ['Wnętrze stacji', 'Zewnątrz stacji', 'Piwnica kablowa', 'Drzwi i otwory', 'Przepusty', 'Do wykonania', 'Wykonano'],
-    'uwagi-braki-wyjasnienia': [],
-    // Słowniki nowego formularza obudowy — klucze ASCII, żeby można było dodawać wartości przez API.
-    'rozmiar-obudowy': ['250/400', '250/420', '250/470', '250/550', '110/173', '210/290'],
-    'typ-wysokosci-obudowy': ['Standardowa', 'Podwyższona', 'Do ustalenia'],
-    'liczba-scian-rei': ['0', '1', '2', '3', '4', 'Do ustalenia'],
-    'odpornosc-ogniowa-rei': ['Bez odporności ogniowej', 'REI 60', 'REI 120', 'REI 240', 'Do ustalenia'],
-    'element-slusarki': ['Drzwi', 'Właz', 'Kratka wentylacyjna', 'Siatka wygrodzeniowa transformatora', 'Barierka ochronna', 'Inne'],
-    'typ-drzwi-obudowy': ['Drzwi SN/NN', 'Drzwi do komory transformatora', 'Drzwi jednoskrzydłowe', 'Drzwi dwuskrzydłowe', 'Do ustalenia'],
-    'strona-otwierania': ['Lewe', 'Prawe', 'Nie dotyczy', 'Do ustalenia'],
-    'typ-otworu': ['Otwór pod lampkę sygnalizacyjną', 'Otwór pod antenę', 'Inny otwór', 'Do ustalenia'],
-    'rodzaj-dachu': ['Betonowy dwuspadowy', 'Betonowy czterospadowy', 'Płaski', 'Inny', 'Do ustalenia'],
-    'typ-przepustu-obudowy': ['BWS', 'HSI', 'HEA', 'Ø100 mm', 'Inny', 'Do ustalenia'],
-    'srednica-przepustu': ['Ø100 mm', 'Ø125 mm', 'Ø150 mm', 'Inna', 'Nie dotyczy', 'Do ustalenia'],
-    'pozycja-przepustu': ['Ściana przednia', 'Ściana tylna', 'Ściana lewa', 'Ściana prawa', 'Podłoga', 'Dach', 'Między budynkami', 'Do ustalenia'],
-    'typ-wkladu-uszczelniajacego': ['HSD 100-SSG', 'HRD 150-SG-3', 'Inny', 'Nie dotyczy', 'Do ustalenia'],
-    'kolor-elewacji-ral': ['RAL 7044', 'RAL 7024', 'Do ustalenia'],
-    'kolor-drzwi-ral': ['RAL 8014', 'RAL 8017', 'RAL 7044', 'RAL 7024', 'Do ustalenia'],
-    'antygraffiti': ['Tak', 'Nie', 'Do potwierdzenia'],
-    'rodzaj-tynku': ['Baranek', 'Gładki', 'Inny', 'Nie dotyczy', 'Do ustalenia'],
-    'typ-rozdzielnicy-sn': ['Schneider Electric AirSeT', 'EATON Xiria', 'Siemens 8DJH 24 Blue GIS', 'Inny', 'Do ustalenia'],
-    'typ-rozdzielnicy-nn': ['Standardowa', 'Według projektu', 'Inny', 'Do ustalenia'],
-    'typ-telemechaniki': ['RTS-w', 'RTS-z', 'Inny', 'Nie dotyczy', 'Do ustalenia'],
-    'typ-transformatora': ['Olejowy', 'Suchy', 'Inny', 'Nie dotyczy', 'Do ustalenia'],
-    'rodzaj-uziemienia': ['Linka', 'Bednarka', 'Linka i bednarka', 'Inny', 'Do ustalenia'],
-    'komponent-pyskowice': [
-      'Podkładki antywibracyjne',
-      'Zaciski krzyżowe — sprawdzić zgodność gwintów z przepustami',
-      'Mosty nN wg ustaleń',
-      'Sprzęgło pomiędzy rozdzielnicami nN — 3x(4YKY(1x240 mm²))'
-    ],
-    'komponent-warszawa': [
-      'Blachy maskujące na połączeniu budynków',
-      'Most kablowy SN z głowicami POLT 24C/1XI — 2 kpl.',
-      'Wkłady uszczelniające HSD 100-SSG — 48 szt.',
-      'Wkłady uszczelniające HRD 150-SG-3 — 10 szt.',
-      'Uzgadniacz faz',
-      'Sensory prądowe',
-      'Sprzęgło SN z głowicami POLT 24C/1XI 3xYHAKXS (1x120 mm)',
-      'Sprzęgło pomiędzy rozdzielnicami nN — 3x(4YKY(1x240 mm²))'
-    ],
-    'jednostka-komponentu': ['szt.', 'kpl.', 'm', 'mb', 'wg ustaleń'],
-    // Zachowanie kompatybilności ze starszymi nazwami kategorii
-    'dach': ['Betonowy dwuspadowy', 'Betonowy czterospadowy', 'Inny'],
-    'typ-drzwi': ['Drzwi do pomieszczenia SN/NN', 'Drzwi do komory transformatora', 'Drzwi prawe', 'Drzwi lewe'],
-    'dostawca': ['Warszawa', 'Pyskowice', 'Inwestor', 'Firma zewnętrzna'],
-  };
-  let storedFormDictionary: Record<string, string[]> = {};
-  try {
-    if (fs.existsSync(FORM_DICTIONARY_FILE)) {
-      storedFormDictionary = JSON.parse(fs.readFileSync(FORM_DICTIONARY_FILE, 'utf-8'));
-    }
-  } catch (error) {
-    console.error('Could not read shared form dictionary; rebuilding missing defaults:', error);
-  }
-  let formDictionaryChanged = false;
-  for (const [category, values] of Object.entries(INITIAL_FORM_DICTIONARY)) {
-    if (!Array.isArray(storedFormDictionary[category])) {
-      storedFormDictionary[category] = values;
-      formDictionaryChanged = true;
-    } else {
-      const existing = storedFormDictionary[category];
-      const missing = values.filter(value => !existing.some(item => String(item).toLowerCase() === value.toLowerCase()));
-      if (missing.length) {
-        storedFormDictionary[category] = [...existing, ...missing];
-        formDictionaryChanged = true;
-      }
-    }
-  }
-  if (formDictionaryChanged || !fs.existsSync(FORM_DICTIONARY_FILE)) {
-    fs.writeFileSync(FORM_DICTIONARY_FILE, JSON.stringify(storedFormDictionary, null, 2), 'utf-8');
-  }
-
+  // Shared custom enclosure sizes are configuration data, not browser-local data.
   if (!fs.existsSync(OBUDOWA_VARIANTS_FILE)) {
     try {
       fs.writeFileSync(OBUDOWA_VARIANTS_FILE, JSON.stringify([], null, 2), 'utf-8');
@@ -1465,77 +1346,6 @@ async function startServer() {
   });
 
   // Shared custom enclosure-size catalogue. Changes reach other screens only on their next manual refresh.
-  // Shared editable form template. The template is independent from order data and drafts.
-  app.get('/api/form-template', (_req, res) => {
-    try {
-      if (!fs.existsSync(FORM_TEMPLATE_FILE)) {
-        return res.json({ success: true, template: null });
-      }
-      const template = JSON.parse(fs.readFileSync(FORM_TEMPLATE_FILE, 'utf-8'));
-      return res.json({ success: true, template });
-    } catch (error) {
-      console.error('Error reading shared form template:', error);
-      return res.status(500).json({ success: false, error: 'Nie można odczytać wspólnego szablonu formularza.' });
-    }
-  });
-
-  app.post('/api/form-template', requireItemPermission('OBUDOWA'), (req, res) => {
-    try {
-      const template = req.body?.template;
-      if (!template || !Array.isArray(template.sections) || template.sections.length > 100) {
-        return res.status(400).json({ success: false, error: 'Nieprawidłowy szablon formularza.' });
-      }
-      let fieldCount = 0;
-      for (const section of template.sections) {
-        if (!section || typeof section.id !== 'string' || typeof section.title !== 'string' || !Array.isArray(section.fields)) {
-          return res.status(400).json({ success: false, error: 'Nieprawidłowa sekcja formularza.' });
-        }
-        fieldCount += section.fields.length;
-        if (fieldCount > 1000 || section.fields.some((field: any) =>
-          !field || typeof field.id !== 'string' || typeof field.label !== 'string' ||
-          !['text', 'number', 'date', 'select', 'textarea', 'checkbox'].includes(field.type)
-        )) {
-          return res.status(400).json({ success: false, error: 'Nieprawidłowe pola formularza.' });
-        }
-      }
-      writeJsonAtomically(FORM_TEMPLATE_FILE, template);
-      return res.json({ success: true, savedAt: Date.now() });
-    } catch (error) {
-      console.error('Error saving shared form template:', error);
-      return res.status(500).json({ success: false, error: 'Nie udało się zapisać wspólnego szablonu formularza.' });
-    }
-  });
-
-  app.get('/api/form-dictionary', (_req, res) => {
-    try {
-      const dictionary = JSON.parse(fs.readFileSync(FORM_DICTIONARY_FILE, 'utf-8'));
-      return res.json({ success: true, dictionary });
-    } catch (err) {
-      console.error('Error reading form dictionary:', err);
-      return res.status(500).json({ success: false, error: 'Nie można odczytać słownika formularzy.' });
-    }
-  });
-
-  app.post('/api/form-dictionary', requireItemPermission('OBUDOWA'), (req, res) => {
-    try {
-      const category = typeof req.body?.category === 'string' ? req.body.category.trim() : '';
-      const value = typeof req.body?.value === 'string' ? req.body.value.trim() : '';
-      if (!/^[a-z0-9-]{2,60}$/.test(category) || !value || value.length > 160) {
-        return res.status(400).json({ success: false, error: 'Podaj prawidłową kategorię i wartość (maksymalnie 160 znaków).' });
-      }
-      const dictionary = JSON.parse(fs.readFileSync(FORM_DICTIONARY_FILE, 'utf-8'));
-      const values: string[] = Array.isArray(dictionary[category]) ? dictionary[category] : [];
-      const existing = values.find((item: string) => item.toLocaleLowerCase('pl') === value.toLocaleLowerCase('pl'));
-      if (!existing) values.push(value);
-      dictionary[category] = values;
-      writeJsonAtomically(FORM_DICTIONARY_FILE, dictionary);
-      return res.json({ success: true, dictionary, added: !existing, value: existing || value });
-    } catch (err) {
-      console.error('Error updating form dictionary:', err);
-      return res.status(500).json({ success: false, error: 'Nie można zapisać wartości w słowniku formularzy.' });
-    }
-  });
-
   app.get('/api/obudowa-variants', (_req, res) => {
     try {
       const raw = fs.readFileSync(OBUDOWA_VARIANTS_FILE, 'utf-8');
