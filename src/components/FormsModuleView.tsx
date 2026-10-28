@@ -650,9 +650,118 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
               </div>
 
               {mode === 'preview' ? (
-                <div className="print-document space-y-5 p-5 sm:p-7">
-                  {template.sections.map(section => <div key={section.id}><h4 className="border-b border-slate-200 pb-2 text-sm font-black text-slate-800">{section.title}</h4><div className="mt-2 grid grid-cols-1 gap-x-6 gap-y-3 md:grid-cols-2">{section.fields.map(field => <div key={field.id} className="border-b border-dashed border-slate-200 pb-2"><div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{field.label}</div><div className="mt-1 whitespace-pre-wrap text-sm text-slate-800">{formatFieldValue(field, values[field.id] ?? field.defaultValue ?? '') || '—'}</div></div>)}</div></div>)}
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">To jest podgląd szkicu. Nie aktualizuje jeszcze danych w zleceniu. Aktualizacja nastąpi dopiero w docelowym etapie sprawdzenia i akceptacji zmian.</div>
+                <div className="print-document space-y-4 p-5 sm:p-7 text-slate-900">
+                  <div className="text-center">
+                    <h1 className="text-lg font-black uppercase tracking-wide">WYKONANIE STACJI TRANSFORMATOROWEJ {String(values['shell-type'] || '—')} {String(values.project || '')}</h1>
+                    <p className="mt-2 font-bold">ZD NR {String(values.zd || '—')}{values['zd-date'] ? ' z dnia ' + String(values['zd-date']) : ''}</p>
+                    <p className="mt-1 text-base font-black">ZL {String(values.zl || '—')}</p>
+                  </div>
+                  <div className="border-b border-slate-400 pb-3">
+                    <p className="font-bold uppercase">DOT. WYKONANIA STACJI TRANSFORMATOROWEJ {String(values['shell-type'] || '—')} {String(values.project || '')}</p>
+                    <p className="mt-1"><strong>TERMIN REALIZACJI:</strong> {String(values.delivery || values['install-date'] || 'Nie uzupełniono')}</p>
+                  </div>
+                  <section>
+                    <h2 className="mb-2 border-b-2 border-slate-800 pb-1 font-black uppercase">ZAKRES PRAC</h2>
+                    <h3 className="font-bold uppercase">TYP OBUDOWY</h3>
+                    <p className="mt-1">Wykonanie obudowy {String(values['shell-type'] || '—')} wraz z fundamentem i przepustami kablowymi SN, nN i uziemiającymi, wraz z montażem ślusarki i rozdzielnicy SN i nN.</p>
+                    <ul className="my-2 list-disc space-y-1 pl-6">
+                      {#each parseDoorRows(values.doors).filter(row => row.variant.trim()) as door, idx}
+                        <li>{door.quantity} × {door.variant} — {door.opening}</li>
+                      {/each}
+                      {#each [
+                        ['fire-walls','Ściany o odporności ogniowej'],
+                        ['hatches','Włazy'],
+                        ['grilles','Kraty wentylacyjne'],
+                        ['transformer-mesh','Siatka wygrodzeniowa transformatora'],
+                        ['barrier','Barierka ochronna'],
+                        ['signal-hole','Otwory pod lampki sygnalizacyjne'],
+                        ['antenna-hole','Otwór pod antenę'],
+                        ['foundation','Fundament / metaloplastyka'],
+                      ] as item}
+                        {#if String(values[item[0]] || '').trim()}
+                          <li>{item[0] === 'fire-walls' ? String(values[item[0]]) + ' × ' : ''}{item[1]}: {String(values[item[0]])}</li>
+                        {/if}
+                      {/each}
+                    </ul>
+                    <p><strong>Dach:</strong> {String(values.roof || 'Nie uzupełniono')}</p>
+                    <p><strong>Rozmiar / wymiary:</strong> {[values['shell-size'], values['shell-dimensions']].filter(Boolean).join(' · ') || 'Nie uzupełniono'}</p>
+                  </section>
+                  <section>
+                    <h3 className="font-bold">Kolory i wykończenie:</h3>
+                    <p>Obudowa: {String(values['facade-color'] || 'Nie uzupełniono')}</p>
+                    <p>Ślusarka i dach: {String(values['roof-color'] || 'Nie uzupełniono')}</p>
+                    <p>Drzwi: {String(values['door-color'] || 'Nie uzupełniono')}</p>
+                    <p>{values.plaster ? 'Tynk: ' + String(values.plaster) : ''}{values['anti-graffiti'] ? ' + powłoka antygraffiti: ' + String(values['anti-graffiti']) : ''}</p>
+                  </section>
+                  <section>
+                    <h3 className="font-bold">Przepusty kablowe i uziemienie:</h3>
+                    {#each [
+                      ['penetration-bws','Przepusty BWS'],
+                      ['penetration-hsi','Przepusty HSI'],
+                      ['penetration-hea','Przepusty HEA'],
+                      ['penetration-100','Przepusty Ø100 mm'],
+                      ['penetration-other','Pozostałe przepusty'],
+                      ['earthing','Instalacja uziemiająca'],
+                    ] as item}
+                      {#if String(values[item[0]] || '').trim()}
+                        <p><strong>{item[1]}:</strong> {String(values[item[0]])}</p>
+                      {/if}
+                    {/each}
+                  </section>
+                  <section>
+                    <h3 className="font-bold">W stacji będą zamontowane następujące urządzenia:</h3>
+                    <ul className="list-disc space-y-1 pl-6">
+                      {#each [
+                        ['sn-producer','Rozdzielnica SN — producent'],
+                        ['sn-model','Rozdzielnica SN — model'],
+                        ['sn-type','Rozdzielnica SN — typ'],
+                        ['sn-config','Rozdzielnica SN — konfiguracja pól'],
+                        ['sn-fields-count','Rozdzielnica SN — liczba pól'],
+                        ['nn-type','Rozdzielnica nN — typ'],
+                        ['nn-fields-count','Rozdzielnica nN — liczba pól'],
+                        ['telemechanics','Szafka telemechaniki'],
+                        ['transformer','Transformator'],
+                        ['extra-equipment','Pozostałe wyposażenie'],
+                      ] as item}
+                        {#if String(values[item[0]] || '').trim()}
+                          <li><strong>{item[1]}:</strong> {String(values[item[0]])}</li>
+                        {/if}
+                      {/each}
+                    </ul>
+                  </section>
+                  <section className="grid grid-cols-2 gap-5 border-t border-slate-400 pt-3">
+                    <div>
+                      <h3 className="mb-2 font-black">Dostarcza Warszawa</h3>
+                      {#each template.sections.find(section => section.id === 'deliveries-warsaw')?.fields || [] as field}
+                        {#if String(values[field.id] ?? field.defaultValue ?? '').trim()}
+                          <p className="mb-1"><strong>{field.label}:</strong> {formatFieldValue(field, values[field.id] ?? field.defaultValue ?? '')}</p>
+                        {/if}
+                      {/each}
+                    </div>
+                    <div>
+                      <h3 className="mb-2 font-black">Dostarczają Pyskowice</h3>
+                      {#each template.sections.find(section => section.id === 'deliveries-pyskowice')?.fields || [] as field}
+                        {#if String(values[field.id] ?? field.defaultValue ?? '').trim()}
+                          <p className="mb-1"><strong>{field.label}:</strong> {formatFieldValue(field, values[field.id] ?? field.defaultValue ?? '')}</p>
+                        {/if}
+                      {/each}
+                    </div>
+                  </section>
+                  <section className="border-t border-slate-400 pt-3">
+                    {#each [
+                      ['descriptions','OPIS'],
+                      ['notes','UWAGI'],
+                      ['photo-docs','Dokumentacja zdjęciowa'],
+                      ['installer','DOTYCZY WYKONANIA MONTAŻU STACJI — firma zewnętrzna'],
+                      ['mounting-date','Termin montażu'],
+                    ] as item}
+                      {#if String(values[item[0]] || '').trim()}
+                        <p className="mb-2"><strong>{item[1]}:</strong> {String(values[item[0]])}</p>
+                      {/if}
+                    {/each}
+                    <p className="mt-4"><strong>Termin realizacji:</strong> {String(values.delivery || values['install-date'] || 'Nie uzupełniono')}</p>
+                    <p className="mt-6 text-right">{String(values['zd-date'] || '')}</p>
+                  </section>
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100">
