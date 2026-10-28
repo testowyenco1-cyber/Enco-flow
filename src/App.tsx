@@ -191,7 +191,7 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
       setCurrentPath(path);
       if (path === '/formularze' || path.startsWith('/formularze/')) {
         setActiveModule('forms');
-        const match = path.match(/^\\/formularze\\/([^/]+)$/);
+        const match = path.match(/^\/formularze\/([^/]+)$/);
         setSelectedOrderId(match ? decodeURIComponent(match[1]) : null);
       } else if (path === '/dashboard') {
         setActiveModule('dashboard');
