@@ -483,7 +483,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
             <FileText className="h-4 w-4" /> Formularze
           </button>
         </div>
-        {orderTab === 'forms' && <FormsModuleView orderNumber={order.orderNumber} projectName={order.projectName} client={order.client} />}
+        {orderTab === 'forms' && <FormsModuleView order={order} onUpdateOrderStatus={onUpdateOrderStatus} />}
         {/* General notes & Project-level attachments */}
         <div className={`p-6 bg-slate-50/50 grid grid-cols-1 lg:grid-cols-3 gap-6 border-b border-slate-200 ${orderTab === 'forms' ? 'hidden' : ''}`}>
           {/* General Notes */}
