@@ -64,6 +64,17 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
   const profile = currentProfile || USER_PROFILES.admin;
   const [itemsFilter, setItemsFilter] = useState<'all' | 'my_scope'>('all');
   const [orderTab, setOrderTab] = useState<'details' | 'forms'>('details');
+  // Rozbudowywalna konfiguracja formularza obudowy: dowolna liczba części i połączeń.
+  const [buildingParts, setBuildingParts] = useState([{ id: 'part-1', name: 'B1', type: '' }]);
+  const [buildingConnections, setBuildingConnections] = useState([{ id: 'connection-1', from: 'B1', to: '', description: '' }]);
+  const addBuildingPart = () => setBuildingParts(parts => [...parts, { id: `part-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, name: `B${parts.length + 1}`, type: '' }]);
+  const updateBuildingPart = (id: string, patch: Partial<{ name: string; type: string }>) => setBuildingParts(parts => parts.map(part => part.id === id ? { ...part, ...patch } : part));
+  const removeBuildingPart = (id: string) => {
+    setBuildingParts(parts => parts.length > 1 ? parts.filter(part => part.id !== id) : parts);
+    setBuildingConnections(connections => connections.filter(connection => connection.from !== buildingParts.find(part => part.id === id)?.name && connection.to !== buildingParts.find(part => part.id === id)?.name));
+  };
+  const addBuildingConnection = () => setBuildingConnections(connections => [...connections, { id: `connection-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, from: buildingParts[0]?.name || '', to: '', description: '' }]);
+  const updateBuildingConnection = (id: string, patch: Partial<{ from: string; to: string; description: string }>) => setBuildingConnections(connections => connections.map(connection => connection.id === id ? { ...connection, ...patch } : connection));
   const [showHiddenItems, setShowHiddenItems] = useState(false);
   const hiddenMainPositionTypes = ["OBUDOWA","ROZDZIELNICA_SN","ROZDZIELNICA_NN","TABLICA_POMIAROWA","RPW","MOST","SZAFKA_TELEMECHANIKI","TRANSFORMATOR_POTRZEB_WLASNYCH","WSKAZNIKI_ZWARC","RYS_AKCEPTACJA","KOLORY","OPISY","DRZWI","ZAP_SERWISPOL","ZAM_SERWISPOL","ZLECENIE_MONTAZU","ZLECENIE MONTAŻU","ZLECENIE_MONTAŻU","POWYKONAWCZA","DATA_WYJAZDU","DODATKOWE"];
   const isHiddenMainPosition = (item: OrderItem) => item.status === 'NOT_APPLICABLE' && hiddenMainPositionTypes.includes(item.type);
@@ -526,8 +537,68 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
                   </div>
                 </section>
 
+                <section className="rounded-lg border border-slate-400 p-3 sm:p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-black uppercase tracking-wide text-slate-900">Struktura obiektu — części / stacje</h3>
+                      <p className="mt-1 max-w-3xl text-xs text-slate-600">Dodaj tyle części, ile obejmuje obiekt. Każda część ma własne parametry, wyposażenie, drzwi i przepusty; wspólne dane zlecenia pozostają powyżej. Pola części są niezależne — nic nie jest automatycznie kopiowane.</p>
+                    </div>
+                    <button type="button" onClick={addBuildingPart} className="inline-flex items-center gap-2 rounded border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold text-white hover:bg-slate-700">+ Dodaj część budynku</button>
+                  </div>
+                  <div className="mt-3 space-y-3">
+                    {buildingParts.map((part, index) => (
+                      <div key={part.id} className="rounded border border-slate-300 bg-slate-50 p-3">
+                        <div className="flex flex-wrap items-end gap-3">
+                          <label className="min-w-24 flex-1 text-xs font-semibold text-slate-600">Oznaczenie części / stacji
+                            <input value={part.name} onChange={event => updateBuildingPart(part.id, { name: event.target.value })} placeholder={`B${index + 1}`} className="mt-1 w-full border border-slate-300 bg-white px-2 py-2 text-sm font-normal text-slate-900" />
+                          </label>
+                          <label className="min-w-48 flex-[2] text-xs font-semibold text-slate-600">Typ / wariant obudowy
+                            <input value={part.type} onChange={event => updateBuildingPart(part.id, { type: event.target.value })} placeholder="Np. BEK 250/420/B1" className="mt-1 w-full border border-slate-300 bg-white px-2 py-2 text-sm font-normal text-slate-900" />
+                          </label>
+                          <span className="pb-2 text-[11px] text-slate-500">Część {index + 1}</span>
+                          {buildingParts.length > 1 && <button type="button" onClick={() => removeBuildingPart(part.id)} className="mb-1 rounded border border-red-200 px-2 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50">Usuń część</button>}
+                        </div>
+                        {index === 0 ? <p className="mt-2 text-[11px] text-slate-500">Szczegółowe parametry pierwszej części uzupełnij w sekcjach 2–5 poniżej.</p> : (
+                          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                            <label className="text-xs font-semibold text-slate-600">Konstrukcja, fundament i dach<textarea rows={2} placeholder="Konstrukcja, fundament, rodzaj dachu, ściany REI..." className="mt-1 w-full border border-slate-300 bg-white px-2 py-2 text-sm font-normal" /></label>
+                            <label className="text-xs font-semibold text-slate-600">Drzwi, wentylacja i otwory<textarea rows={2} placeholder="Dowolna liczba pozycji; podaj ilości, wymiary i lokalizację..." className="mt-1 w-full border border-slate-300 bg-white px-2 py-2 text-sm font-normal" /></label>
+                            <label className="text-xs font-semibold text-slate-600">Przepusty i uziemienie<textarea rows={2} placeholder="Typ, ilość, wkład, strona stacji, połączenia..." className="mt-1 w-full border border-slate-300 bg-white px-2 py-2 text-sm font-normal" /></label>
+                            <label className="text-xs font-semibold text-slate-600">Wyposażenie montowane w tej części<textarea rows={2} placeholder="SN, NN, transformator, telemechanika, instalacje..." className="mt-1 w-full border border-slate-300 bg-white px-2 py-2 text-sm font-normal" /></label>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="rounded-lg border border-slate-300 p-3 sm:p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-sm font-black uppercase tracking-wide text-slate-900">Połączenia między częściami</h3>
+                      <p className="mt-1 text-xs text-slate-500">Opisuj osobno przepusty i przejścia między częściami, sprzęgła oraz sposób uszczelnienia. Można dodać wiele połączeń.</p>
+                    </div>
+                    <button type="button" onClick={addBuildingConnection} className="rounded border border-slate-400 bg-white px-3 py-2 text-xs font-bold text-slate-800 hover:bg-slate-100">+ Dodaj połączenie</button>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {buildingConnections.map((connection, index) => (
+                      <div key={connection.id} className="grid grid-cols-1 gap-2 rounded border border-slate-200 p-2 md:grid-cols-[1fr_1fr_2fr_auto]">
+                        <label className="text-[11px] font-semibold text-slate-600">Część początkowa
+                          <select value={connection.from} onChange={event => updateBuildingConnection(connection.id, { from: event.target.value })} className="mt-1 w-full border border-slate-300 bg-white px-2 py-2 text-sm font-normal">{buildingParts.map(part => <option key={part.id} value={part.name}>{part.name || 'Bez oznaczenia'}</option>)}</select>
+                        </label>
+                        <label className="text-[11px] font-semibold text-slate-600">Część docelowa
+                          <select value={connection.to} onChange={event => updateBuildingConnection(connection.id, { to: event.target.value })} className="mt-1 w-full border border-slate-300 bg-white px-2 py-2 text-sm font-normal"><option value="">Wybierz część</option>{buildingParts.filter(part => part.name !== connection.from).map(part => <option key={part.id} value={part.name}>{part.name || 'Bez oznaczenia'}</option>)}</select>
+                        </label>
+                        <label className="text-[11px] font-semibold text-slate-600">Rodzaj i uwagi do połączenia
+                          <input value={connection.description} onChange={event => updateBuildingConnection(connection.id, { description: event.target.value })} placeholder="Np. 2 × BWS 150, HRD 150-SG-3; uszczelnienie od wnętrza" className="mt-1 w-full border border-slate-300 px-2 py-2 text-sm font-normal" />
+                        </label>
+                        {buildingConnections.length > 1 && <button type="button" onClick={() => setBuildingConnections(connections => connections.filter(item => item.id !== connection.id))} className="self-end rounded border border-red-200 px-2 py-2 text-xs text-red-700 hover:bg-red-50">Usuń</button>}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
                 <section>
-                  <h3 className="border-b border-slate-800 pb-1.5 text-sm font-black uppercase tracking-wide text-slate-900">2. Zakres wykonania obudowy</h3>
+                  <h3 className="border-b border-slate-800 pb-1.5 text-sm font-black uppercase tracking-wide text-slate-900">2. Zakres wykonania obudowy — część {buildingParts[0]?.name || 'B1'}</h3>
                   <div className="mt-2 space-y-2 text-sm">
                     <label className="grid grid-cols-1 gap-2 sm:grid-cols-[190px_1fr] sm:items-center"><span className="font-semibold text-slate-700">Konstrukcja / wariant</span><input placeholder="np. BEK 250/420, NZ 110/173 podwyższona" className="w-full border border-slate-300 px-3 py-2 outline-none focus:border-blue-600" /></label>
                     <label className="grid grid-cols-1 gap-2 sm:grid-cols-[190px_1fr] sm:items-center"><span className="font-semibold text-slate-700">Fundament i metaloplastyka</span><input placeholder="Zakres zgodnie z rysunkami" className="w-full border border-slate-300 px-3 py-2 outline-none focus:border-blue-600" /></label>
