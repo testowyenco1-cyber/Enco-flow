@@ -269,7 +269,9 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
   const [templateSyncMessage, setTemplateSyncMessage] = useState('');
   const [values, setValues] = useState<FormValues>(() => safeRead(storageDraftKey(orderNumber), {}));
   const [activeSection, setActiveSection] = useState('order');
-  const [mode, setMode] = useState<'fill' | 'manage' | 'preview'>('fill');
+  const [mode, setMode] = useState<'fill' | 'manage' | 'dictionaries' | 'preview'>('fill');
+  const [dictionaryFieldId, setDictionaryFieldId] = useState('shell-type');
+  const [newDictionaryOption, setNewDictionaryOption] = useState('');
   const [newFieldSection, setNewFieldSection] = useState('shell');
   const [newFieldLabel, setNewFieldLabel] = useState('');
   const [newFieldType, setNewFieldType] = useState<FieldType>('text');
@@ -411,6 +413,30 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
     if (client && !values.client) setValues(current => ({ ...current, client }));
   }, [orderNumber, projectName, client]);
 
+  const dictionaryFields = useMemo(() => allFields.filter(field => field.type === 'select' || field.repeatable === 'door'), [allFields]);
+  const selectedDictionaryField = dictionaryFields.find(field => field.id === dictionaryFieldId) || dictionaryFields[0];
+  const selectedDictionaryOptions = selectedDictionaryField
+    ? selectedDictionaryField.repeatable === 'door' ? getDoorVariants(selectedDictionaryField) : (selectedDictionaryField.options || [])
+    : [];
+  const addDictionaryOption = () => {
+    const option = newDictionaryOption.trim();
+    if (!option || !selectedDictionaryField || selectedDictionaryOptions.some(value => value.toLocaleLowerCase() === option.toLocaleLowerCase())) return;
+    if (selectedDictionaryField.repeatable === 'door') {
+      updateField(selectedDictionaryField.id, { catalogOptions: [...selectedDictionaryOptions, option] });
+    } else {
+      updateField(selectedDictionaryField.id, { options: [...selectedDictionaryOptions, option] });
+    }
+    setNewDictionaryOption('');
+  };
+  const removeDictionaryOption = (option: string) => {
+    if (!selectedDictionaryField) return;
+    if (selectedDictionaryField.repeatable === 'door') {
+      updateField(selectedDictionaryField.id, { catalogOptions: selectedDictionaryOptions.filter(value => value !== option) });
+    } else {
+      updateField(selectedDictionaryField.id, { options: selectedDictionaryOptions.filter(value => value !== option) });
+    }
+  };
+
   const updateField = (fieldId: string, patch: Partial<FormField>) => {
     setTemplate(current => ({ ...current, sections: current.sections.map(section => ({
       ...section, fields: section.fields.map(field => field.id === fieldId ? { ...field, ...patch } : field),
@@ -510,6 +536,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
           <div className="flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1">
             <button type="button" onClick={() => setMode('fill')} className={'rounded-lg px-4 py-2 text-sm font-semibold ' + (mode === 'fill' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800')}>Wypełnianie</button>
             <button type="button" onClick={() => setMode('manage')} className={'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ' + (mode === 'manage' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800')}><Settings2 className="h-4 w-4" /> Konfiguracja pól</button>
+            <button type="button" onClick={() => setMode('dictionaries')} className={'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ' + (mode === 'dictionaries' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800')}><Layers3 className="h-4 w-4" /> Słowniki</button>
             <button type="button" onClick={() => setMode('preview')} className={'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold ' + (mode === 'preview' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800')}><Eye className="h-4 w-4" /> Podgląd</button>
             <button type="button" onClick={() => setReviewOpen(true)} disabled={linkedChanges.length === 0} className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">Sprawdź i zastosuj ({linkedChanges.length})</button>
           </div>
@@ -540,6 +567,25 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
         </aside>
 
         <main className="min-w-0">
+          {mode === 'dictionaries' && (
+            <section className="mb-4 rounded-2xl border border-violet-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-violet-100 p-2 text-violet-700"><Layers3 className="h-5 w-5" /></div>
+                <div><h3 className="text-base font-black text-slate-900">Słowniki konfiguracji</h3><p className="mt-1 text-sm text-slate-600">Dodawaj własne warianty do list formularza. Zmiany zapisują się we wspólnym szablonie i są dostępne dla pozostałych użytkowników.</p></div>
+              </div>
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_auto]">
+                <label className="text-xs font-bold text-slate-600">Słownik<select value={selectedDictionaryField?.id || ''} onChange={event => { setDictionaryFieldId(event.target.value); setNewDictionaryOption(''); }} className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm">{dictionaryFields.map(field => <option key={field.id} value={field.id}>{field.label}</option>)}</select></label>
+                <label className="text-xs font-bold text-slate-600">Nowa konfiguracja / pozycja<input value={newDictionaryOption} onChange={event => setNewDictionaryOption(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addDictionaryOption(); } }} placeholder="Wpisz wartość do dodania…" className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-normal" /></label>
+                <button type="button" onClick={addDictionaryOption} disabled={!newDictionaryOption.trim() || !selectedDictionaryField || selectedDictionaryOptions.some(value => value.toLocaleLowerCase() === newDictionaryOption.trim().toLocaleLowerCase())} className="self-end inline-flex items-center justify-center gap-2 rounded-lg bg-violet-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-violet-800 disabled:opacity-40"><Plus className="h-4 w-4" /> Dodaj</button>
+              </div>
+              <div className="mt-4">
+                <div className="mb-2 flex items-center justify-between gap-3"><h4 className="text-sm font-black text-slate-800">Pozycje słownika: {selectedDictionaryOptions.length}</h4><span className="text-[11px] text-slate-500">Duplikaty nie są dodawane</span></div>
+                {selectedDictionaryOptions.length === 0 ? <p className="rounded-lg bg-slate-50 p-4 text-sm text-slate-500">Ten słownik nie ma jeszcze pozycji.</p> : <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{selectedDictionaryOptions.map((option, index) => <div key={option} className="flex min-w-0 items-center gap-2 rounded-lg border border-slate-200 px-3 py-2"><span className="w-6 shrink-0 text-xs font-bold text-slate-400">{index + 1}.</span><span className="min-w-0 flex-1 break-words text-sm text-slate-800">{option}</span><button type="button" onClick={() => removeDictionaryOption(option)} title="Usuń pozycję ze słownika" className="rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-700"><Trash2 className="h-4 w-4" /></button></div>)}</div>}
+              </div>
+              <p className="mt-4 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-900">Usunięcie pozycji usuwa ją z listy wyboru, ale nie zmienia automatycznie wartości już zapisanych w szkicach ani zleceniach. Dla drzwi zarządzaj pełnym wariantem w słowniku „Drzwi”.</p>
+            </section>
+          )}
+
           {mode === 'manage' && (
             <section className="mb-4 rounded-2xl border border-blue-100 bg-blue-50/70 p-4 sm:p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
