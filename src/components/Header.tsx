@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import type { Order } from '../types/enco';
 import type { EncoTask } from '../types/tasks';
 import { fetchTasks } from '../services/taskService';
-import { Plus, RefreshCw, Zap, Layers, AlertTriangle, Lock, CircuitBoard, Menu, X, ChevronDown, Archive, ShieldCheck, Download, Save, LoaderCircle, CheckCircle2, CalendarDays, UsersRound, ListTodo, Database, LayoutDashboard } from 'lucide-react';
+import { Plus, RefreshCw, Zap, Layers, AlertTriangle, Lock, CircuitBoard, Menu, X, ChevronDown, Archive, ShieldCheck, Download, Save, LoaderCircle, CheckCircle2, CalendarDays, UsersRound, ListTodo, Database, LayoutDashboard, FileText } from 'lucide-react';
 import type { UserRoleProfile } from '../types/userRole';
 import type { AuthUser } from '../types/auth';
 import { UserRoleSelector } from './UserRoleSelector';
@@ -24,8 +24,8 @@ interface HeaderProps {
   onSelectTab?: (tab: string) => void;
   problemCount?: number;
   actionOrders?: Order[];
-  activeModule?: 'orders' | 'doors' | 'sn' | 'calendar' | 'actions' | 'dashboard';
-  onSelectModule?: (module: 'orders' | 'doors' | 'sn' | 'calendar' | 'actions') => void;
+  activeModule?: 'orders' | 'doors' | 'sn' | 'calendar' | 'actions' | 'dashboard' | 'forms';
+  onSelectModule?: (module: 'orders' | 'doors' | 'sn' | 'calendar' | 'actions' | 'dashboard' | 'forms') => void;
   doorOrdersCount?: number;
   doorOverdueCount?: number;
   currentProfile: UserRoleProfile;
@@ -41,6 +41,7 @@ const modules = [
   { id: 'doors', label: 'Moduł Drzwi', Icon: Layers },
   { id: 'sn', label: 'Zestawienie SN', Icon: CircuitBoard },
   { id: 'calendar', label: 'Kalendarz wyjazdów', Icon: CalendarDays },
+  { id: 'forms', label: 'Formularze', Icon: FileText },
 ] as const;
 
 const orderFilters = [
@@ -98,7 +99,7 @@ export const Header: React.FC<HeaderProps> = ({
   const selectedModule = modules.find((module) => module.id === activeModule) ?? modules[0];
   const SelectedIcon = archiveActive ? Archive : selectedModule.Icon;
 
-  const navigateModule = (id: 'orders' | 'doors' | 'sn' | 'calendar' | 'actions' | 'dashboard') => {
+  const navigateModule = (id: 'orders' | 'doors' | 'sn' | 'calendar' | 'actions' | 'dashboard' | 'forms') => {
     onSelectModule?.(id);
     
   };
