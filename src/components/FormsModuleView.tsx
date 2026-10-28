@@ -39,12 +39,12 @@ const DEFAULT_TEMPLATE: FormTemplate = {
       { id: 'documentation', label: 'Dokumentacja / rysunek', type: 'text', placeholder: 'Numer lub rewizja' },
     ]},
     { id: 'shell', title: 'Obudowa i konstrukcja', description: 'Wymiary, ściany, odporność ogniowa i dach.', fields: [
-      { id: 'shell-type', label: 'Typ obudowy', type: 'select', options: ['BEK', 'NZ', 'Inny'], required: true },
+      { id: 'shell-type', label: 'Typ obudowy', type: 'select', options: ['BEK 250/350', 'BEK 250/420', 'NZ 210/240 podwyższony', 'NZ 210/290', 'NZ 210/290 podwyższony', 'NZ 130/290', 'Inny'], required: true },
       { id: 'shell-size', label: 'Rozmiar obudowy', type: 'text', placeholder: 'Np. 250/420', required: true },
       { id: 'shell-dimensions', label: 'Wymiary / wariant', type: 'text', placeholder: 'Szerokość × głębokość × wysokość' },
       { id: 'fire-walls', label: 'Liczba ścian o odporności ogniowej', type: 'number', placeholder: 'Liczba ścian' },
       { id: 'fire-rating', label: 'Klasa odporności ogniowej', type: 'select', options: ['Bez odporności ogniowej', 'REI 60', 'REI 120', 'REI 240', 'Do ustalenia'] },
-      { id: 'roof', label: 'Rodzaj dachu', type: 'select', options: ['Betonowy dwuspadowy', 'Betonowy czterospadowy', 'Płaski', 'Inny', 'Do ustalenia'] },
+      { id: 'roof', label: 'Rodzaj dachu', type: 'select', options: ['Betonowy dwuspadowy', 'Betonowy kopertowy', 'Płaski', 'Inny', 'Do ustalenia'] },
       { id: 'foundation', label: 'Fundament / metaloplastyka', type: 'text', placeholder: 'Według projektu / rysunku' },
     ]},
     { id: 'joinery', title: 'Ślusarka, wentylacja i otwory', description: 'Każdy element dodawaj jako osobne pole lub wiersz; ilość i lokalizację zapisuj w szczegółach.', fields: [
@@ -69,7 +69,7 @@ const DEFAULT_TEMPLATE: FormTemplate = {
       { id: 'penetration-hea', label: 'Przepusty HEA', type: 'textarea', placeholder: 'Ilość i dokładna pozycja' },
       { id: 'penetration-100', label: 'Przepusty Ø100 mm', type: 'textarea', placeholder: 'Ilość, pozycja i uszczelnienie' },
       { id: 'penetration-other', label: 'Pozostałe przepusty', type: 'textarea', placeholder: 'Typ, ilość, średnica, pozycja, wkład' },
-      { id: 'earthing', label: 'Rodzaj instalacji uziemiającej', type: 'select', options: ['Linka', 'Bednarka', 'Linka i bednarka', 'Inne', 'Do ustalenia'] },
+      { id: 'earthing', label: 'Rodzaj instalacji uziemiającej', type: 'select', options: ['Linka', 'Linka 50 Cu', 'Bednarka FeZn + złącza kontrolne', 'Bednarka FeCu + złącza kontrolne', 'Linka i bednarka', 'Inne', 'Do ustalenia'] },
     ]},
     { id: 'equipment', title: 'Wyposażenie stacji', fields: [
       { id: 'sn-producer', label: 'Rozdzielnica SN — producent', type: 'text' },
@@ -123,14 +123,26 @@ function migrateTemplate(input: FormTemplate): FormTemplate {
     const existingIds = new Set(equipment.fields.map(field => field.id));
     equipment.fields.push(...defaultEquipment.fields.filter(field => addedIds.has(field.id) && !existingIds.has(field.id)));
   }
-  const normalizedSections = sections.map(section => ({ ...section, fields: section.fields.map(field => field.id === 'doors' ? { ...field, repeatable: 'door' as const, type: 'textarea' as const, catalogOptions: field.catalogOptions?.length ? field.catalogOptions : DOOR_VARIANTS } : field) }));
+  const dictionaryOptions: Record<string, string[]> = {
+    'shell-type': ['BEK 250/350', 'BEK 250/420', 'NZ 210/240 podwyższony', 'NZ 210/290', 'NZ 210/290 podwyższony', 'NZ 130/290', 'Inny'],
+    roof: ['Betonowy dwuspadowy', 'Betonowy kopertowy', 'Płaski', 'Inny', 'Do ustalenia'],
+    earthing: ['Linka', 'Linka 50 Cu', 'Bednarka FeZn + złącza kontrolne', 'Bednarka FeCu + złącza kontrolne', 'Linka i bednarka', 'Inne', 'Do ustalenia'],
+  };
+  const normalizedSections = sections.map(section => ({ ...section, fields: section.fields.map(field => {
+    if (field.id === 'doors') return { ...field, repeatable: 'door' as const, type: 'textarea' as const, catalogOptions: [...new Set([...(field.catalogOptions || []), ...DOOR_VARIANTS])] };
+    const options = dictionaryOptions[field.id];
+    return options ? { ...field, options: [...new Set([...(field.options || []), ...options])] } : field;
+  }) }));
   return { ...input, version: 3, sections: normalizedSections };
 }
 
 const DOOR_VARIANTS = [
   'Drzwi 950 × 2100 z kratami wentylacyjnymi do rozdzielnicy SN',
+  'Drzwi dwuskrzydłowe z kratami wentylacyjnymi do rozdzielnicy SN',
   'Drzwi 950 × 2100 pełne do rozdzielnicy NN',
+  'Drzwi dwuskrzydłowe z kratami wentylacyjnymi do rozdzielnicy NN',
   'Drzwi 1170 × 2100 z kratami wentylacyjnymi do transformatora',
+  'Drzwi jednoskrzydłowe z kratą wentylacyjną do transformatora',
 ];
 const DOOR_OPENINGS = ['Jednoskrzydłowe lewe', 'Jednoskrzydłowe prawe', 'Dwuskrzydłowe'];
 const getDoorVariants = (field: FormField) => field.catalogOptions?.length ? field.catalogOptions : DOOR_VARIANTS;
