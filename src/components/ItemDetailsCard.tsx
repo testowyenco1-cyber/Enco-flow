@@ -516,25 +516,6 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
       const drawingApprovalDate = orderItems.find((related) => related.type === 'RYS_AKCEPTACJA')?.details?.dataAkceptacji;
       const kolory = koloryItem?.details || {};
       const opisy = opisyItem?.details || {};
-      const linkedFormKeys = [
-        'numerZD', 'dataZD', 'numerDokumentacji', 'terminDostawy', 'terminMontazu',
-        'liczbaScianOdpornosciOgniowej', 'klasaOdpornosciOgniowej', 'rodzajDachu',
-        'fundamentMetaloplastyka', 'slusarka', 'otwory', 'kolorystyka', 'antygraffiti',
-        'rodzajTynku', 'przepusty', 'rodzajUziemienia', 'wyposazenie',
-        'pozostaleWyposazenie', 'dostawy', 'potwierdzenia', 'firmaMontazowa',
-      ];
-      const flattenLinkedValues = (value: unknown, prefix: string): Array<{ label: string; value: string }> => {
-        if (value === undefined || value === null || value === '') return [];
-        if (typeof value === 'object' && !Array.isArray(value)) {
-          return Object.entries(value as Record<string, unknown>).flatMap(([key, child]) =>
-            flattenLinkedValues(child, prefix ? `${prefix} · ${key}` : key)
-          );
-        }
-        if (Array.isArray(value)) return value.length ? [{ label: prefix, value: value.map((entry: any) => entry && typeof entry === 'object' ? (entry.variant ? `${entry.quantity || 1} × ${entry.variant}${entry.opening ? ` — ${entry.opening}` : ''}` : JSON.stringify(entry)) : String(entry)).join('; ') }] : [];
-        return [{ label: prefix, value: String(value) }];
-      };
-      const linkedFormEntries = linkedFormKeys.flatMap(key => flattenLinkedValues(d[key], key))
-        .filter(entry => entry.value.trim() !== '');
       const typName =
         d.typObudowy === 'NZ'
           ? 'NZ — obudowa zewnętrzna'
@@ -641,16 +622,6 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
               <Field label="Sposób wykonania opisów" value={displayValue(opisy.sposobWykonania)} />
             </div>
           </Section>
-
-          {linkedFormEntries.length > 0 && (
-            <Section title="6. Dane powiązane z formularzem">
-              <div className="space-y-0">
-                {linkedFormEntries.map((entry, index) => (
-                  <Field key={`${entry.label}-${index}`} label={entry.label} value={entry.value} />
-                ))}
-              </div>
-            </Section>
-          )}
         </div>
       );
     }
