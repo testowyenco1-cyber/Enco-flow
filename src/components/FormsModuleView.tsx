@@ -160,9 +160,9 @@ const DEFAULT_BINDINGS: Record<string, FormBinding> = {
   barrier:{scope:'item',itemType:'OBUDOWA',key:'slusarka.barierkaOchronna'},
   'signal-hole':{scope:'item',itemType:'OBUDOWA',key:'otwory.lampkiSygnalizacyjne'},
   'antenna-hole':{scope:'item',itemType:'OBUDOWA',key:'otwory.antenna'},
-  'facade-color':{scope:'item',itemType:'OBUDOWA',key:'kolorystyka.elewacjaRAL'},
-  'roof-color':{scope:'item',itemType:'OBUDOWA',key:'kolorystyka.dachRAL'},
-  'door-color':{scope:'item',itemType:'OBUDOWA',key:'kolorystyka.drzwiRAL'},
+  'facade-color':{scope:'item',itemType:'KOLORY',key:'kolorObudowy'},
+  'roof-color':{scope:'item',itemType:'KOLORY',key:'kolorDachu'},
+  'door-color':{scope:'item',itemType:'KOLORY',key:'kolorDrzwi'},
   'anti-graffiti':{scope:'item',itemType:'OBUDOWA',key:'antygraffiti'}, plaster:{scope:'item',itemType:'OBUDOWA',key:'rodzajTynku'},
   'penetration-bws':{scope:'item',itemType:'OBUDOWA',key:'przepusty.bws'},
   'penetration-hsi':{scope:'item',itemType:'OBUDOWA',key:'przepusty.hsi'},
@@ -193,7 +193,7 @@ const DEFAULT_BINDINGS: Record<string, FormBinding> = {
   'warsaw-sensors':{scope:'item',itemType:'OBUDOWA',key:'dostawy.warszawa.sensoryPradowe'},
   'warsaw-sn-coupling':{scope:'item',itemType:'OBUDOWA',key:'dostawy.warszawa.sprzegloSN'},
   'warsaw-nn-coupling':{scope:'item',itemType:'OBUDOWA',key:'dostawy.warszawa.sprzegloNN'},
-  installer:{scope:'item',itemType:'OBUDOWA',key:'firmaMontazowa'}, descriptions:{scope:'item',itemType:'OBUDOWA',key:'potwierdzenia.opisy'},
+  installer:{scope:'item',itemType:'OBUDOWA',key:'firmaMontazowa'}, descriptions:{scope:'item',itemType:'OPISY',key:'wymaganeOpisy'},
   'photo-docs':{scope:'item',itemType:'OBUDOWA',key:'potwierdzenia.dokumentacjaZdjecia'},
   notes:{scope:'order',key:'generalNotes'}
 };
@@ -528,7 +528,7 @@ export const FormsModuleView: React.FC<FormsModuleViewProps> = ({ order, onUpdat
                               </select>
                               {getFieldBinding(field) && <div className="grid grid-cols-1 gap-2">
                                 {getFieldBinding(field)?.scope === 'item' && <select value={getFieldBinding(field)?.itemType || 'OBUDOWA'} onChange={event => updateField(field.id, { binding: { ...(getFieldBinding(field) as FormBinding), itemType: event.target.value } })} className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs">
-                                  {['OBUDOWA','ROZDZIELNICA_SN','ROZDZIELNICA_NN','SZAFKA_TELEMECHANIKI','TRANSFORMATOR_POTRZEB_WLASNYCH','KOLORY','DRZWI','MOST','DODATKOWE'].map(type => <option key={type} value={type}>{type}</option>)}
+                                  {['OBUDOWA','ROZDZIELNICA_SN','ROZDZIELNICA_NN','SZAFKA_TELEMECHANIKI','TRANSFORMATOR_POTRZEB_WLASNYCH','KOLORY','OPISY','DRZWI','MOST','DODATKOWE'].map(type => <option key={type} value={type}>{type}</option>)}
                                 </select>}
                                 <input value={getFieldBinding(field)?.key || ''} onChange={event => updateField(field.id, { binding: { ...(getFieldBinding(field) as FormBinding), key: event.target.value } })} placeholder="Klucz pola, np. rozmiar lub przepusty.bws" className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs" />
                                 {getFieldBinding(field)?.scope === 'order' && <p className="text-[10px] text-slate-500">Dostępne pola główne: {ORDER_BINDABLE_KEYS.join(', ')}</p>}
