@@ -193,7 +193,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
         ];
       case 'TRANSFORMATOR_POTRZEB_WLASNYCH':
         return [
-          { key: 'va', label: 'Moc / VA', type: 'text', placeholder: 'np. 5000 VA' },
+          { key: 'va', label: 'Moc znamionowa transformatora potrzeb własnych (VA)', type: 'number', placeholder: 'np. 5000' },
           { key: 'dataDostawyPlan', label: 'Planowana data dostawy', type: 'date' },
           { key: 'numerSeryjny', label: 'Numer seryjny', type: 'text' },
           { key: 'dataPlDostawyPyskowice', label: 'Planowana dostawa do Pyskowic', type: 'date' },
@@ -1551,7 +1551,9 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                             </label>
                             <input
                               type={field.type}
-                              value={details[field.key] ?? ''}
+                              value={field.type === 'number' && details[field.key] !== undefined && details[field.key] !== null
+                                ? String(details[field.key]).replace(/\s*(?:kVA|VA)\s*$/i, '').replace(',', '.').trim()
+                                : details[field.key] ?? ''}
                               disabled={isReadOnly}
                               onChange={(e) => handleDetailChange(field.key, e.target.value)}
                               placeholder={field.placeholder || ''}
