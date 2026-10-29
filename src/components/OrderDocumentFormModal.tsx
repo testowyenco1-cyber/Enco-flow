@@ -668,14 +668,23 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
     setDesignerTab('structure');
   };
   const addField = () => {
-    const sectionId = selectedSection?.id || 'naglowek';
     const id = uid('wlasne-pole').replace(/[^a-zA-Z0-9_-]/g, '-');
     const field: FormField = { id, label: 'Nowe pole', valueKey: 'customFields.' + id, type: 'text', sourcePath: '', visible: true, required: false };
-    setWorkingTemplate((template) => ({
-      ...template,
-      fields: [...template.fields, field],
-      sections: template.sections.map((section) => section.id === sectionId ? { ...section, fieldIds: [...section.fieldIds, field.id] } : section),
-    }));
+    setWorkingTemplate((template) => {
+      let sections = [...template.sections];
+      let sectionId = selectedSection?.id;
+      if (!sectionId || !sections.some((section) => section.id === sectionId)) {
+        const newSection: FormSection = { id: uid('section'), title: 'Nowa sekcja', fieldIds: [], columns: 2, visible: true };
+        sections = [...sections, newSection];
+        sectionId = newSection.id;
+        setSelectedSectionId(sectionId);
+      }
+      return {
+        ...template,
+        fields: [...template.fields, field],
+        sections: sections.map((section) => section.id === sectionId ? { ...section, fieldIds: [...section.fieldIds, field.id] } : section),
+      };
+    });
     setSelectedFieldId(id);
     setDesignerTab('structure');
   };
@@ -697,11 +706,16 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
     if (selectedFieldId === fieldId) setSelectedFieldId('');
   };
   const removeSection = (sectionId: string) => {
-    setWorkingTemplate((template) => ({
-      ...template,
-      sections: template.sections.filter((section) => section.id !== sectionId),
-      fields: template.fields,
-    }));
+    setWorkingTemplate((template) => {
+      const section = template.sections.find((candidate) => candidate.id === sectionId);
+      const removedFieldIds = new Set(section?.fieldIds || []);
+      return {
+        ...template,
+        sections: template.sections.filter((candidate) => candidate.id !== sectionId),
+        fields: template.fields.filter((field) => !removedFieldIds.has(field.id)),
+        rules: template.rules.filter((rule) => !removedFieldIds.has(rule.triggerFieldId) && !removedFieldIds.has(rule.targetFieldId)),
+      };
+    });
     if (selectedSectionId === sectionId) setSelectedSectionId('');
   };
   const addRule = () => {
@@ -967,24 +981,6 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
     </div>
   );
 
-  const renderFormPicker = () => (
-    <section className="border-b border-slate-200 bg-white px-4 py-3 sm:px-6 print:hidden">
-      <div className="mb-2 flex items-center justify-between"><div><h2 className="text-sm font-bold text-slate-900">Wybierz typ formularza</h2><p className="text-xs text-slate-500">W tej wersji aktywna jest obsługa Zlecenia obudowy.</p></div><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">1 dostępny</span></div>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-5">
-        {[
-          { key: 'zlecenie-obudowy', title: 'Zlecenie obudowy', hint: 'Dokument dotyczący obudowy stacji.', icon: '▣', active: true },
-          { key: 'zlecenie-produkcyjne-nn', title: 'Zlecenie produkcyjne NN', hint: 'Dokument produkcyjny dla rozdzielnicy NN.', icon: '▤', active: false },
-          { key: 'zapytanie-serwispol', title: 'Zapytanie Serwispol', hint: 'Zapytanie ofertowe do Serwispol.', icon: '✉', active: false },
-          { key: 'zlecenie-telemechanika', title: 'Zlecenie telemechanika', hint: 'Dokument dotyczący telemechaniki.', icon: '⌁', active: false },
-          { key: 'zlecenie-montazu', title: 'Zlecenie montażu', hint: 'Dokument dotyczący prac montażowych.', icon: '⇄', active: false },
-        ].map((choice) => <button key={choice.key} type="button" onClick={() => { if (!choice.active) setMessage('Typ „' + choice.title + '” został przewidziany w nowym systemie, ale jego formularz zostanie dodany później. Zlecenie obudowy działa już w nowym edytorze.'); else setMessage(''); }} className={'flex items-start gap-2 rounded-xl border p-3 text-left transition-colors ' + (choice.active ? 'border-blue-400 bg-blue-50/70 hover:border-blue-500' : 'border-slate-200 bg-slate-50/70 text-slate-500 hover:bg-white')}>
-          <span className={'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-lg ' + (choice.active ? 'bg-white text-blue-700' : 'bg-slate-100 text-slate-400')}>{choice.icon}</span>
-          <span className="min-w-0"><span className="block text-xs font-bold">{choice.title}</span><span className="mt-1 block text-[10px] leading-4">{choice.hint}</span><span className={'mt-1 block text-[9px] font-bold uppercase tracking-wide ' + (choice.active ? 'text-blue-700' : 'text-slate-400')}>{choice.active ? 'Dostępny' : 'W przygotowaniu'}</span></span>
-        </button>)}
-      </div>
-    </section>
-  );
-
   const currentTemplateName = mode === 'custom' ? 'Custom Edit — tylko ten dokument' : mode === 'admin' ? 'Admin Edit — wzorzec wspólny' : 'Formularz dokumentu';
   const previewEmpty = renderedHtml.trim().length === 0;
   const titleVariant = form.rozmiar && form.typObudowy && form.rozmiar.toUpperCase().startsWith(form.typObudowy.toUpperCase()) ? form.rozmiar : [form.typObudowy, form.rozmiar].filter(Boolean).join(' ');
@@ -995,7 +991,6 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
       <div className="flex min-w-0 items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600"><FileText size={20}/></div><div className="min-w-0"><h1 className="truncate text-sm font-bold sm:text-base">Centrum formularzy · {order.orderNumber}</h1><p className="truncate text-xs text-slate-300">{order.projectName} · {currentTemplateName}</p></div></div>
       <div className="flex shrink-0 items-center gap-2"><span className="hidden rounded-full border border-slate-600 px-2.5 py-1 text-[10px] font-semibold text-slate-300 sm:inline">{profile.name}</span><button type="button" onClick={onClose} aria-label="Zamknij formularz" className="rounded-lg p-2 hover:bg-slate-800"><X size={19}/></button></div>
     </header>
-    {renderFormPicker()}
     <div className="flex min-h-0 flex-1 flex-col xl:flex-row print:block">
       <main className="min-h-0 min-w-0 flex-1 overflow-y-auto p-3 sm:p-5 xl:w-[48%] xl:flex-none print:hidden">
         <div className="mx-auto max-w-3xl space-y-4">
