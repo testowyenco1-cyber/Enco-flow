@@ -309,7 +309,7 @@ async function readJsonResponse(response: Response, operation: string): Promise<
     return JSON.parse(body);
   } catch {
     const contentType = response.headers.get('content-type') || 'brak nagłówka Content-Type';
-    const preview = body.replace(/\\s+/g, ' ').trim().slice(0, 180);
+    const preview = body.replace(/\s+/g, ' ').trim().slice(0, 180);
     throw new Error(`${operation}: odpowiedź serwera nie jest poprawnym JSON-em (HTTP ${response.status}; ${contentType}). Początek odpowiedzi: ${preview}`);
   }
 }
