@@ -1424,13 +1424,26 @@ async function startServer() {
       const store = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
       const record = store[templateKey] && typeof store[templateKey] === 'object' ? store[templateKey] : null;
       const template = record?.active && typeof record.active === 'object' ? record.active : null;
-      const versions = Array.isArray(record?.history)
-        ? record.history.map((entry: any) => ({
-            version: Number(entry?.version || 0),
-            updatedAt: typeof entry?.updatedAt === 'string' ? entry.updatedAt : '',
-            updatedBy: typeof entry?.updatedBy === 'string' ? entry.updatedBy : '',
-          }))
-        : [];
+      const versionEntries = [
+        ...(record?.active && typeof record.active === 'object' ? [record.active] : []),
+        ...(Array.isArray(record?.history) ? record.history : []),
+      ];
+      const seenVersions = new Set<number>();
+      const versions = versionEntries
+        .filter((entry: any) => entry && typeof entry === 'object')
+        .sort((left: any, right: any) => Number(right.version || 0) - Number(left.version || 0))
+        .filter((entry: any) => {
+          const version = Number(entry.version || 0);
+          if (!Number.isFinite(version) || version < 1 || seenVersions.has(version)) return false;
+          seenVersions.add(version);
+          return true;
+        })
+        .slice(0, 30)
+        .map((entry: any) => ({
+          version: Number(entry.version || 0),
+          updatedAt: typeof entry.updatedAt === 'string' ? entry.updatedAt : '',
+          updatedBy: typeof entry.updatedBy === 'string' ? entry.updatedBy : '',
+        }));
       return res.json({ success: true, template, versions, timestamp: Date.now() });
     } catch (err) {
       console.error('Error reading document-form template:', err);
@@ -1491,28 +1504,45 @@ async function startServer() {
         updatedAt: now,
         updatedBy: actor.displayName || actor.username,
       };
-      const history = Array.isArray(current.history) ? [...current.history] : [];
-      if (current.active) history.unshift({
+      const historyCandidates = Array.isArray(current.history) ? [...current.history] : [];
+      if (current.active) historyCandidates.unshift({
         version: current.active.version,
         updatedAt: current.active.updatedAt || '',
         updatedBy: current.active.updatedBy || '',
         template: current.active,
       });
-      history.unshift({
-        version: published.version,
-        updatedAt: published.updatedAt,
-        updatedBy: published.updatedBy,
-      });
-      store[templateKey] = { active: published, history: history.slice(0, 30) };
+      const seenHistoricalVersions = new Set<number>();
+      const history = historyCandidates
+        .filter((entry: any) => entry && typeof entry === 'object')
+        .sort((left: any, right: any) => Number(right.version || 0) - Number(left.version || 0))
+        .filter((entry: any) => {
+          const version = Number(entry.version || 0);
+          if (!Number.isFinite(version) || version < 1 || version >= nextVersion || seenHistoricalVersions.has(version)) return false;
+          seenHistoricalVersions.add(version);
+          return true;
+        })
+        .slice(0, 29);
+      store[templateKey] = { active: published, history };
       writeJsonAtomically(DOCUMENT_FORM_TEMPLATES_FILE, store);
+      const versionEntries = [published, ...history];
+      const seenVersions = new Set<number>();
+      const versions = versionEntries
+        .filter((entry: any) => {
+          const version = Number(entry?.version || 0);
+          if (!Number.isFinite(version) || version < 1 || seenVersions.has(version)) return false;
+          seenVersions.add(version);
+          return true;
+        })
+        .slice(0, 30)
+        .map((entry: any) => ({
+          version: Number(entry.version || 0),
+          updatedAt: typeof entry.updatedAt === 'string' ? entry.updatedAt : '',
+          updatedBy: typeof entry.updatedBy === 'string' ? entry.updatedBy : '',
+        }));
       return res.json({
         success: true,
         template: published,
-        versions: store[templateKey].history.map((entry: any) => ({
-          version: Number(entry?.version || 0),
-          updatedAt: typeof entry?.updatedAt === 'string' ? entry.updatedAt : '',
-          updatedBy: typeof entry?.updatedBy === 'string' ? entry.updatedBy : '',
-        })),
+        versions,
         timestamp: Date.now(),
       });
     } catch (err) {
