@@ -22,7 +22,7 @@ type Row = {
   exhaustFan?: boolean;
   _autoRuleId?: string;
 };
-type FieldType = 'text' | 'textarea' | 'number' | 'date' | 'select' | 'checkbox-list' | 'repeatable' | 'doors' | 'quantity-toggle' | 'static';
+type FieldType = 'text' | 'textarea' | 'number' | 'date' | 'select' | 'checkbox-list' | 'repeatable' | 'delivery-list' | 'doors' | 'quantity-toggle' | 'static';
 type FormField = {
   id: string;
   label: string;
@@ -86,8 +86,8 @@ type FormData = {
   przepusty: Row[];
   otwory: Row[];
   slusarka: Row[];
-  dostawaPyskowice: string;
-  dostawaWarszawa: string;
+  dostawaPyskowice: Row[];
+  dostawaWarszawa: Row[];
   uwagi: string;
   customFields: Record<string, any>;
   __templateSnapshot?: DocumentTemplate;
@@ -104,6 +104,24 @@ const localDate = () => {
 const uid = (prefix = 'field') => prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
+function normalizeDeliveryRows(value: unknown): Row[] {
+  if (Array.isArray(value)) return value.map((row: any) => typeof row === 'string'
+    ? { id: uid('delivery'), type: row, quantity: '1', position: '' }
+    : { id: String(row?.id || uid('delivery')), type: String(row?.type || ''), quantity: String(row?.quantity || '1'), position: String(row?.position || '') });
+  if (typeof value === 'string' && value.trim()) return value.split(/\r?\n/).map((v) => v.trim()).filter(Boolean).map((type) => ({ id: uid('delivery'), type, quantity: '1', position: '' }));
+  return [];
+}
+function deliveryTableHtml(form: FormData): string {
+  const rows = ([
+    ['Warszawa', normalizeDeliveryRows(form.dostawaWarszawa)],
+    ['Pyskowice', normalizeDeliveryRows(form.dostawaPyskowice)],
+  ] as Array<[string, Row[]]>).flatMap(([source, items]) => items.filter((row) => row.type.trim()).map((row) =>
+    '<tr><td>' + escapeHtml(source) + '</td><td>' + escapeHtml(row.type) + '</td><td style="text-align:center;">' + escapeHtml(row.quantity || '1') + '</td><td>' + escapeHtml(row.position || '') + '</td></tr>'));
+  if (!rows.length) return '<p>Nie wskazano elementów dostawy.</p>';
+  return '<table style="width:100%;border-collapse:collapse;font-size:9pt;margin:3px 0 5px;"><thead><tr>' +
+    ['Dostawca', 'Element', 'Ilość', 'Uwagi'].map((name) => '<th style="background-color:#e9eff6;border:1px solid #cbd5e1;padding:3px;">' + name + '</th>').join('') +
+    '</tr></thead><tbody>' + rows.join('') + '</tbody></table>';
+}
 const TEMPLATE_FIELDS: FormField[] = [
   { id: 'typBudowli', label: 'Typ budowli', valueKey: 'typBudowli', type: 'text', sourcePath: 'item.details.typBudowli', required: true, helpText: 'Pobierany ze zlecenia, jeśli jest określony.' },
   { id: 'typObudowy', label: 'Typ obudowy', valueKey: 'typObudowy', type: 'select', options: ['BEK', 'NZ'], sourcePath: 'item.details.typObudowy', required: true },
@@ -138,8 +156,8 @@ const TEMPLATE_FIELDS: FormField[] = [
   { id: 'uziemienie', label: 'Rodzaj instalacji uziemiającej', valueKey: 'customFields.uziemienie', type: 'text', sourcePath: 'order.itemByType.OBUDOWA.documentGrounding', liveBinding: true, helpText: 'Pobierane z danych pozycji Obudowa, jeśli zostało zapisane.' },
   { id: 'instalacjaOswietleniowa', label: 'Informacja o instalacji oświetleniowej', valueKey: 'customFields.instalacjaOswietleniowa', type: 'text', sourcePath: 'order.itemByType.OBUDOWA.documentLighting', liveBinding: true, helpText: 'Pobierane z danych pozycji Obudowa, jeśli zostało zapisane.' },
   { id: 'inneUrzadzenia', label: 'Inne urządzenia / uwagi', valueKey: 'customFields.inneUrzadzenia', type: 'textarea', fullWidth: true, sourcePath: 'order.itemByType.DODATKOWE.documentSummary', liveBinding: true, readOnly: true, helpText: 'Pobierane z pozycji DODATKOWE w bieżącym zleceniu.' },
-  { id: 'dostawaWarszawa', label: 'Elementy dostarczane przez Warszawę', valueKey: 'dostawaWarszawa', type: 'textarea', fullWidth: true },
-  { id: 'dostawaPyskowice', label: 'Elementy dostarczane przez Pyskowice', valueKey: 'dostawaPyskowice', type: 'textarea', fullWidth: true },
+  { id: 'dostawaWarszawa', label: 'Elementy dostarczane przez Warszawę', valueKey: 'dostawaWarszawa', type: 'delivery-list', fullWidth: true },
+  { id: 'dostawaPyskowice', label: 'Elementy dostarczane przez Pyskowice', valueKey: 'dostawaPyskowice', type: 'delivery-list', fullWidth: true },
   { id: 'uwagi', label: 'Uwagi i poprawki do dokumentu', valueKey: 'uwagi', type: 'textarea', fullWidth: true },
 ];
 
@@ -161,6 +179,7 @@ const ORDER_BOUND_FIELD_CONFIG: Record<string, { sourcePath: string; readOnly: b
   inneUrzadzenia: { sourcePath: 'order.itemByType.DODATKOWE.documentSummary', readOnly: true, helpText: 'Pobierane z pozycji DODATKOWE w bieżącym zleceniu.', legacyPaths: ['item.details.inneUrzadzenia'] },
 };
 function normalizeOrderBoundFields(template: DocumentTemplate): DocumentTemplate {
+  template = { ...template, fields: (template.fields || []).map((field) => ['dostawaWarszawa', 'dostawaPyskowice'].includes(field.id) ? { ...field, type: 'delivery-list' as FieldType } : field) };
   return {
     ...template,
     fields: (template.fields || []).map((field) => {
@@ -194,23 +213,21 @@ const DEFAULT_TEMPLATE: DocumentTemplate = {
   ],
   fields: TEMPLATE_FIELDS,
   contentHtml:
-    '<div style="font-family:Arial,sans-serif;color:#111827;font-size:11pt;">' +
-    '<p style="text-align:center;font-size:10pt;color:#475569;"><strong>ENCO · ZLECENIE PRODUKCYJNE</strong></p>' +
-    '<h1 style="text-align:center;font-size:19pt;">ZLECENIE OBUDOWY</h1>' +
-    '<p style="text-align:center;font-size:13pt;"><strong>{{derived.title}}</strong></p>' +
-    '<table style="width:100%;border-collapse:collapse;"><tbody>' +
-    '<tr><td style="border:1px solid #cbd5e1;padding:6px;"><strong>NR ZL:</strong> {{form.numerZL}}</td><td style="border:1px solid #cbd5e1;padding:6px;"><strong>Data wystawienia:</strong> {{form.dataWystawienia}}</td></tr>' +
-    '<tr><td style="border:1px solid #cbd5e1;padding:6px;"><strong>Termin realizacji:</strong> {{form.terminRealizacji}}</td><td style="border:1px solid #cbd5e1;padding:6px;"><strong>DOT.:</strong> {{derived.dot}}</td></tr>' +
-    '</tbody></table>' +
-    '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">1. TYP OBUDOWY</h2>' +
-    '<p>{{form.opisObudowy}}</p>' +
-    '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">2. DRZWI I ŚLUSARKA</h2><p>{{form.slusarka}}</p><p><strong>Siatka wygradzająca:</strong> {{form.customFields.siatkaDrzwi}}</p>' +
-    '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">3. DACH I WYPOSAŻENIE</h2><p><strong>Dach:</strong> {{form.customFields.dachMaterial}} {{form.dachTyp}}</p><p>{{form.customFields.wyposazenieDachu}}</p><p>{{form.dodatkoweWyposazenie}}</p><p><strong>Siatka wygradzająca:</strong> {{form.customFields.siatkaDach}}</p>' +
-    '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">4. OTWORY I PRZEPUSTY KABLOWE</h2><p><strong>Przepusty:</strong> {{form.przepusty}}</p><p><strong>Pozostałe otwory:</strong> {{form.otwory}}</p>' +
-    '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">5. KOLORY I OPISY</h2><p>Obudowa: {{form.kolorObudowy}}; ślusarka: {{form.kolorSlusarki}}; dach: {{form.kolorDachu}}; drzwi i kraty: {{form.kolorDrzwiKraty}}.</p><p>Wykończenie: {{form.tynk}}; antygraffiti: {{form.antygraffiti}}</p><p>{{form.customFields.opisy}}</p>' +
-    '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">6. OGÓLNE URZĄDZENIA W STACJI</h2><p><strong>Rozdzielnica SN:</strong> {{form.customFields.rozdzielnicaSN}}</p><p><strong>Rozdzielnica NN:</strong> {{form.customFields.rozdzielnicaNN}}</p><p><strong>Telemechanika:</strong> {{form.customFields.telemechanika}}</p><p><strong>Transformator stacyjny (TRAFO):</strong> {{form.customFields.transformator}}</p><p><strong>Transformator potrzeb własnych (TPW):</strong> {{form.customFields.transformatorPotrzebWlasnych}}</p><p><strong>Uziemienie:</strong> {{form.customFields.uziemienie}}</p><p><strong>Instalacja oświetleniowa:</strong> {{form.customFields.instalacjaOswietleniowa}}</p><p><strong>Inne:</strong> {{form.customFields.inneUrzadzenia}}</p>' +
-    '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">7. ELEMENTY DOSTARCZANE</h2><p><strong>Warszawa:</strong> {{form.dostawaWarszawa}}</p><p><strong>Pyskowice:</strong> {{form.dostawaPyskowice}}</p><p><strong>Uwagi:</strong> {{form.uwagi}}</p>' +
-    '<p style="margin-top:28px;font-size:9pt;color:#64748b;">Dokument przygotowany w Enco-flow. Wydruk nie aktualizuje danych zlecenia.</p></div>',
+    '<div style="font-family:Arial,sans-serif;color:#172334;font-size:9pt;line-height:1.2;">' +
+    '<p style="text-align:center;font-size:8pt;margin:0;"><strong>ENCO · ZLECENIE PRODUKCYJNE</strong></p>' +
+    '<h1 style="text-align:center;font-size:15pt;margin:2px 0;">ZLECENIE OBUDOWY</h1>' +
+    '<p style="text-align:center;font-size:10pt;margin:1px 0 5px;"><strong>{{derived.title}}</strong></p>' +
+    '<table style="width:100%;border-collapse:collapse;margin:2px 0 5px;font-size:8pt;"><tbody>' +
+    '<tr><td style="border:1px solid #cbd5e1;padding:3px;"><strong>NR ZL:</strong> {{form.numerZL}}</td><td style="border:1px solid #cbd5e1;padding:3px;"><strong>Wystawiono:</strong> {{form.dataWystawienia}}</td></tr>' +
+    '<tr><td style="border:1px solid #cbd5e1;padding:3px;"><strong>Termin:</strong> {{form.terminRealizacji}}</td><td style="border:1px solid #cbd5e1;padding:3px;"><strong>DOT.:</strong> {{derived.dot}}</td></tr></tbody></table>' +
+    '<h2>OBUDOWA</h2><p>{{form.opisObudowy}}</p>' +
+    '<h2>DRZWI I ŚLUSARKA</h2><p>{{form.slusarka}}</p><p><strong>Siatka:</strong> {{form.customFields.siatkaDrzwi}}</p>' +
+    '<h2>DACH I WYPOSAŻENIE</h2><p><strong>Dach:</strong> {{form.customFields.dachMaterial}} {{form.dachTyp}}</p><p>{{form.customFields.wyposazenieDachu}}</p><p>{{form.dodatkoweWyposazenie}}</p><p><strong>Siatka:</strong> {{form.customFields.siatkaDach}}</p>' +
+    '<h2>OTWORY I PRZEPUSTY</h2><p><strong>Przepusty:</strong> {{form.przepusty}}</p><p><strong>Otwory:</strong> {{form.otwory}}</p>' +
+    '<h2>KOLORY I OPISY</h2><p><strong>Obudowa:</strong> {{form.kolorObudowy}}; <strong>ślusarka:</strong> {{form.kolorSlusarki}}; <strong>dach:</strong> {{form.kolorDachu}}; <strong>drzwi i kraty:</strong> {{form.kolorDrzwiKraty}}.</p><p><strong>Wykończenie:</strong> {{form.tynk}}; <strong>antygraffiti:</strong> {{form.antygraffiti}}</p><p>{{form.customFields.opisy}}</p>' +
+    '<h2>URZĄDZENIA W STACJI</h2><p><strong>SN:</strong> {{form.customFields.rozdzielnicaSN}}; <strong>NN:</strong> {{form.customFields.rozdzielnicaNN}}</p><p><strong>Telemechanika:</strong> {{form.customFields.telemechanika}}; <strong>TRAFO:</strong> {{form.customFields.transformator}}; <strong>TPW:</strong> {{form.customFields.transformatorPotrzebWlasnych}}</p><p><strong>Uziemienie:</strong> {{form.customFields.uziemienie}}; <strong>Oświetlenie:</strong> {{form.customFields.instalacjaOswietleniowa}}; <strong>Inne:</strong> {{form.customFields.inneUrzadzenia}}</p>' +
+    '<h2>ELEMENTY DOSTARCZANE</h2>{{derived.deliveryTable}}<p><strong>Uwagi:</strong> {{form.uwagi}}</p>' +
+    '</div>',
   rules: [
     { id: 'antena-otwor', triggerFieldId: 'dodatkoweWyposazenie', triggerValue: 'Antena', targetFieldId: 'roofEquipment', targetValue: 'Otwór do wyprowadzenia kabla do anteny', action: 'automatic' },
     { id: 'lampki-otwor', triggerFieldId: 'dodatkoweWyposazenie', triggerValue: 'Lampki ostrzegawcze', targetFieldId: 'roofEquipment', targetValue: 'Otwory do lampek wskaźnika zwarć', action: 'automatic' },
@@ -254,8 +271,8 @@ const blankForm = (item?: OrderItem, order?: Order): FormData => {
       { id: uid('door'), type: 'Drzwi SN i NN', category: 'Drzwi SN i NN', quantity: '1', position: 'Do rozdzielnic SN i NN', wings: 'Jednoskrzydłowe', openingSide: 'Lewe', width: typObudowy.toUpperCase().startsWith('BEK') ? '950' : '', height: typObudowy.toUpperCase().startsWith('BEK') ? '2100' : '', ventilationGrille: true, intakeFan: false, exhaustFan: false },
       { id: uid('door'), type: 'Drzwi Trafo', category: 'Drzwi Trafo', quantity: '1', position: 'Do komory transformatora', wings: 'Jednoskrzydłowe', openingSide: 'Lewe', width: typObudowy.toUpperCase().startsWith('BEK') ? '1170' : '', height: typObudowy.toUpperCase().startsWith('BEK') ? '2100' : '', ventilationGrille: true, intakeFan: false, exhaustFan: false },
     ],
-    dostawaPyskowice: String(d.dostawaPyskowice || ''),
-    dostawaWarszawa: String(d.dostawaWarszawa || ''),
+    dostawaPyskowice: normalizeDeliveryRows(d.dostawaPyskowice),
+    dostawaWarszawa: normalizeDeliveryRows(d.dostawaWarszawa),
     uwagi: String(d.uwagiDoZleceniaObudowy || ''),
     customFields: {
       dachMaterial: String(d.dachMaterial || ''),
@@ -542,6 +559,7 @@ function renderTemplateHtml(template: DocumentTemplate, form: FormData, order: O
   const html = template.contentHtml.replace(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g, (_match, path: string) => {
     if (path === 'derived.title') return escapeHtml(title || '—');
     if (path === 'derived.dot') return escapeHtml(dot || '—');
+    if (path === 'derived.deliveryTable') return deliveryTableHtml(form);
     const staticField = template.fields.find((field) => field.type === 'static' && path === 'form.' + field.valueKey);
     if (staticField) return escapeHtml(displayValue(staticField.defaultValue ?? staticField.helpText ?? staticField.label));
     let value: any;
@@ -696,6 +714,19 @@ const FormFieldInput: React.FC<{
       </div>)}
     </div>;
   }
+  if (field.type === 'delivery-list') {
+    const rows = normalizeDeliveryRows(value);
+    return <div className="space-y-2">
+      <div className="flex justify-end"><button type="button" onClick={() => onChange([...rows, { id: uid('delivery'), type: '', quantity: '1', position: '' }])} className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold"><Plus size={14}/> Dodaj element</button></div>
+      {!rows.length && <p className="text-xs text-slate-500">Brak elementów. Dodaj pierwszą pozycję dostawy.</p>}
+      {rows.map((row) => <div key={row.id} className="grid grid-cols-1 gap-2 rounded-lg border border-slate-200 p-2 sm:grid-cols-[minmax(0,1.6fr)_70px_minmax(0,1fr)_32px]">
+        <label className="space-y-1 text-xs font-semibold text-slate-600">Element<input value={row.type} onChange={(e) => onChange(rows.map((x) => x.id === row.id ? { ...x, type: e.target.value } : x))} className={commonInput} placeholder="Nazwa elementu"/></label>
+        <label className="space-y-1 text-xs font-semibold text-slate-600">Ilość<input type="number" min="1" value={row.quantity} onChange={(e) => onChange(rows.map((x) => x.id === row.id ? { ...x, quantity: e.target.value } : x))} className={commonInput}/></label>
+        <label className="space-y-1 text-xs font-semibold text-slate-600">Uwagi<input value={row.position} onChange={(e) => onChange(rows.map((x) => x.id === row.id ? { ...x, position: e.target.value } : x))} className={commonInput}/></label>
+        <button type="button" title="Usuń element" onClick={() => onChange(rows.filter((x) => x.id !== row.id))} className="self-end rounded border border-red-200 p-2 text-red-600"><Trash2 size={15}/></button>
+      </div>)}
+    </div>;
+  }
   if (field.type === 'doors') {
     const rows: Row[] = Array.isArray(value) ? value : [];
     const update = (rowId: string, patch: Partial<Row>) => onChange(rows.map((row) => row.id === rowId ? { ...row, ...patch } : row));
@@ -805,6 +836,8 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
           setCustomDraft(clone(safeTemplate));
         }
         const hydrated = hydrateFromBindings(base, savedTemplate || safeTemplate, order, item, Boolean(saved));
+        hydrated.dostawaWarszawa = normalizeDeliveryRows(hydrated.dostawaWarszawa);
+        hydrated.dostawaPyskowice = normalizeDeliveryRows(hydrated.dostawaPyskowice);
         setForm(hydrated);
         setOriginalForm(clone(hydrated));
       })
@@ -813,6 +846,8 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
         const cause = error instanceof Error ? error.message : 'nieznany błąd';
         setMessage('Nie udało się wczytać wzorca z serwera: ' + cause + '. Użyto lokalnego wzorca domyślnego.');
         const hydrated = hydrateFromBindings(base, savedTemplate || DEFAULT_TEMPLATE, order, item, Boolean(saved));
+        hydrated.dostawaWarszawa = normalizeDeliveryRows(hydrated.dostawaWarszawa);
+        hydrated.dostawaPyskowice = normalizeDeliveryRows(hydrated.dostawaPyskowice);
         setForm(hydrated);
         setOriginalForm(clone(hydrated));
       })
@@ -1169,7 +1204,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
             <h4 className="text-sm font-bold">Edycja pola</h4>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <label className="block space-y-1 text-xs font-semibold text-slate-600">Nazwa pola<input value={selectedField.label} onChange={(event) => updateTemplateField(selectedField.id, { label: event.target.value })} className="w-full rounded-lg border px-3 py-2 text-sm font-normal"/></label>
-              <label className="block space-y-1 text-xs font-semibold text-slate-600">Typ pola<select value={selectedField.type} onChange={(event) => updateTemplateField(selectedField.id, { type: event.target.value as FieldType })} className="w-full rounded-lg border px-3 py-2 text-sm font-normal"><option value="text">Tekst</option><option value="textarea">Długi tekst</option><option value="number">Liczba</option><option value="date">Data</option><option value="select">Lista wyboru</option><option value="checkbox-list">Lista checkboxów</option><option value="repeatable">Lista pozycji</option><option value="doors">Konfigurator drzwi</option><option value="quantity-toggle">Obecność + ilość</option><option value="static">Tekst stały</option></select></label>
+              <label className="block space-y-1 text-xs font-semibold text-slate-600">Typ pola<select value={selectedField.type} onChange={(event) => updateTemplateField(selectedField.id, { type: event.target.value as FieldType })} className="w-full rounded-lg border px-3 py-2 text-sm font-normal"><option value="text">Tekst</option><option value="textarea">Długi tekst</option><option value="number">Liczba</option><option value="date">Data</option><option value="select">Lista wyboru</option><option value="checkbox-list">Lista checkboxów</option><option value="repeatable">Lista pozycji</option><option value="delivery-list">Lista elementów dostawy</option><option value="doors">Konfigurator drzwi</option><option value="quantity-toggle">Obecność + ilość</option><option value="static">Tekst stały</option></select></label>
               <label className="block space-y-1 text-xs font-semibold text-slate-600">Klucz danych<input value={selectedField.valueKey} onChange={(event) => updateTemplateField(selectedField.id, { valueKey: event.target.value })} className="w-full rounded-lg border px-3 py-2 text-sm font-normal"/></label>
               <label className="flex items-center gap-2 pt-6 text-xs font-semibold text-slate-600"><input type="checkbox" checked={Boolean(selectedField.required)} onChange={(event) => updateTemplateField(selectedField.id, { required: event.target.checked })}/> Pole wymagane</label>
               <label className="flex items-center gap-2 pt-6 text-xs font-semibold text-slate-600"><input type="checkbox" checked={Boolean(selectedField.fullWidth)} onChange={(event) => updateTemplateField(selectedField.id, { fullWidth: event.target.checked })}/> Pole na całą szerokość</label>
@@ -1252,7 +1287,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
         </div>
         <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-5">
           <article className="document-print-target mx-auto min-h-[700px] w-full max-w-[850px] bg-white p-6 text-slate-900 shadow-md sm:p-10 print:min-h-0 print:max-w-none print:p-0 print:shadow-none">
-            {previewEmpty ? <p className="text-sm text-slate-400">Treść dokumentu jest pusta.</p> : <div className="document-live-preview text-sm leading-6 [&_h1]:my-3 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:my-3 [&_h2]:text-lg [&_h2]:font-bold [&_p]:my-2 [&_table]:my-3 [&_table]:w-full [&_td]:border [&_td]:border-slate-300 [&_td]:p-1.5" dangerouslySetInnerHTML={{ __html: renderedHtml }}/>}
+            {previewEmpty ? <p className="text-sm text-slate-400">Treść dokumentu jest pusta.</p> : <div className="document-live-preview text-[10px] leading-[1.2] [&_h1]:my-1 [&_h1]:text-[15px] [&_h1]:font-bold [&_h2]:my-1 [&_h2]:border-l-2 [&_h2]:border-blue-800 [&_h2]:bg-slate-100 [&_h2]:px-2 [&_h2]:py-0.5 [&_h2]:text-[11px] [&_h2]:font-bold [&_p]:my-0.5 [&_table]:my-1 [&_table]:w-full [&_td]:border [&_td]:border-slate-300 [&_td]:p-1 [&_th]:border [&_th]:border-slate-300 [&_th]:p-1" dangerouslySetInnerHTML={{ __html: renderedHtml }}/>}
           </article>
           {mode === 'admin' && <div className="mx-auto mt-3 max-w-[850px] rounded-lg border border-blue-200 bg-white p-3 text-xs text-blue-900">Administrator widzi tu podgląd nowego wzorca razem z aktualnymi danymi przykładowego dokumentu. Nie oznacza to aktualizacji zlecenia.</div>}
         </div>
@@ -1269,7 +1304,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
         </section>
         <section className="min-h-0 overflow-y-auto bg-slate-200/60 p-3 sm:p-5 print:bg-white print:p-0">
           <div className="mb-2 flex items-center justify-between gap-2 print:hidden"><h3 className="text-xs font-bold text-slate-700">Końcowy podgląd dokumentu</h3><button type="button" disabled={!canDownload} onClick={() => window.print()} className="inline-flex items-center gap-1 rounded-lg border bg-white px-3 py-1.5 text-xs font-semibold disabled:opacity-40"><Printer size={13}/> Drukuj / PDF</button></div>
-          <article className="document-print-target mx-auto min-h-[600px] w-full max-w-[850px] bg-white p-6 text-slate-900 shadow print:min-h-0 print:max-w-none print:p-0 print:shadow-none"><div className="document-live-preview text-sm leading-6 [&_h1]:my-3 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:my-3 [&_h2]:text-lg [&_h2]:font-bold [&_p]:my-2 [&_table]:my-3 [&_table]:w-full [&_td]:border [&_td]:border-slate-300 [&_td]:p-1.5" dangerouslySetInnerHTML={{ __html: renderedHtml }}/></article>
+          <article className="document-print-target mx-auto min-h-[600px] w-full max-w-[850px] bg-white p-6 text-slate-900 shadow print:min-h-0 print:max-w-none print:p-0 print:shadow-none"><div className="document-live-preview text-[10px] leading-[1.2] [&_h1]:my-1 [&_h1]:text-[15px] [&_h1]:font-bold [&_h2]:my-1 [&_h2]:border-l-2 [&_h2]:border-blue-800 [&_h2]:bg-slate-100 [&_h2]:px-2 [&_h2]:py-0.5 [&_h2]:text-[11px] [&_h2]:font-bold [&_p]:my-0.5 [&_table]:my-1 [&_table]:w-full [&_td]:border [&_td]:border-slate-300 [&_td]:p-1 [&_th]:border [&_th]:border-slate-300 [&_th]:p-1" dangerouslySetInnerHTML={{ __html: renderedHtml }}/></article>
         </section>
       </div>
       <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-3 print:hidden">
