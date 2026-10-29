@@ -133,7 +133,7 @@ const TEMPLATE_FIELDS: FormField[] = [
   { id: 'rozdzielnicaSN', label: 'Rozdzielnica SN', valueKey: 'customFields.rozdzielnicaSN', type: 'textarea', fullWidth: true, sourcePath: 'order.itemByType.ROZDZIELNICA_SN.documentSummary', liveBinding: true, readOnly: true, helpText: 'Producent, rodzaj/model, liczba i konfiguracja pól są pobierane z pozycji ROZDZIELNICA SN.' },
   { id: 'rozdzielnicaNN', label: 'Rozdzielnica NN', valueKey: 'customFields.rozdzielnicaNN', type: 'textarea', fullWidth: true, sourcePath: 'order.itemByType.ROZDZIELNICA_NN.documentSummary', liveBinding: true, readOnly: true, helpText: 'Typ, liczba pól i wyposażenie są pobierane z pozycji ROZDZIELNICA NN.' },
   { id: 'telemechanika', label: 'Telemechanika', valueKey: 'customFields.telemechanika', type: 'textarea', fullWidth: true, sourcePath: 'order.itemByType.SZAFKA_TELEMECHANIKI.documentSummary', liveBinding: true, readOnly: true, helpText: 'Pobierane z pozycji SZAFKA TELEMECHANIKI.' },
-  { id: 'transformator', label: 'Transformator', valueKey: 'customFields.transformator', type: 'textarea', fullWidth: true, sourcePath: 'order.itemByType.TRANSFORMATOR_POTRZEB_WLASNYCH.documentSummary', liveBinding: true, readOnly: true, helpText: 'Moc i numer seryjny są pobierane z pozycji transformatora potrzeb własnych.' },
+  { id: 'transformator', label: 'Transformator stacyjny (TRAFO)', valueKey: 'customFields.transformator', type: 'textarea', fullWidth: true, sourcePath: 'order.itemByType.TRANSFORMATOR.documentSummary', liveBinding: true, readOnly: true, helpText: 'Typ/model, moc znamionowa w kVA i numer seryjny są pobierane z pozycji TRANSFORMATOR.' },
   { id: 'uziemienie', label: 'Rodzaj instalacji uziemiającej', valueKey: 'customFields.uziemienie', type: 'text', sourcePath: 'order.itemByType.OBUDOWA.documentGrounding', liveBinding: true, helpText: 'Pobierane z danych pozycji Obudowa, jeśli zostało zapisane.' },
   { id: 'instalacjaOswietleniowa', label: 'Informacja o instalacji oświetleniowej', valueKey: 'customFields.instalacjaOswietleniowa', type: 'text', sourcePath: 'order.itemByType.OBUDOWA.documentLighting', liveBinding: true, helpText: 'Pobierane z danych pozycji Obudowa, jeśli zostało zapisane.' },
   { id: 'inneUrzadzenia', label: 'Inne urządzenia / uwagi', valueKey: 'customFields.inneUrzadzenia', type: 'textarea', fullWidth: true, sourcePath: 'order.itemByType.DODATKOWE.documentSummary', liveBinding: true, readOnly: true, helpText: 'Pobierane z pozycji DODATKOWE w bieżącym zleceniu.' },
@@ -153,7 +153,7 @@ const ORDER_BOUND_FIELD_CONFIG: Record<string, { sourcePath: string; readOnly: b
   rozdzielnicaSN: { sourcePath: 'order.itemByType.ROZDZIELNICA_SN.documentSummary', readOnly: true, helpText: 'Producent, rodzaj/model, liczba i konfiguracja pól są pobierane z pozycji ROZDZIELNICA SN.', legacyPaths: ['item.details.rozdzielnicaSN'] },
   rozdzielnicaNN: { sourcePath: 'order.itemByType.ROZDZIELNICA_NN.documentSummary', readOnly: true, helpText: 'Typ, liczba pól i wyposażenie są pobierane z pozycji ROZDZIELNICA NN.', legacyPaths: ['item.details.rozdzielnicaNN'] },
   telemechanika: { sourcePath: 'order.itemByType.SZAFKA_TELEMECHANIKI.documentSummary', readOnly: true, helpText: 'Pobierane z pozycji SZAFKA TELEMECHANIKI.', legacyPaths: ['item.details.telemechanika'] },
-  transformator: { sourcePath: 'order.itemByType.TRANSFORMATOR_POTRZEB_WLASNYCH.documentSummary', readOnly: true, helpText: 'Moc i numer seryjny są pobierane z pozycji transformatora potrzeb własnych.', legacyPaths: ['item.details.transformator'] },
+  transformator: { sourcePath: 'order.itemByType.TRANSFORMATOR.documentSummary', readOnly: true, helpText: 'Typ/model, moc znamionowa w kVA i numer seryjny są pobierane z pozycji TRANSFORMATOR.', legacyPaths: ['item.details.transformator', 'order.itemByType.TRANSFORMATOR_POTRZEB_WLASNYCH.documentSummary'] },
   uziemienie: { sourcePath: 'order.itemByType.OBUDOWA.documentGrounding', readOnly: false, helpText: 'Pobierane z danych pozycji Obudowa, jeśli zostało zapisane.', legacyPaths: ['item.details.uziemienie'] },
   instalacjaOswietleniowa: { sourcePath: 'order.itemByType.OBUDOWA.documentLighting', readOnly: false, helpText: 'Pobierane z danych pozycji Obudowa, jeśli zostało zapisane.', legacyPaths: ['item.details.instalacjaOswietleniowa'] },
   inneUrzadzenia: { sourcePath: 'order.itemByType.DODATKOWE.documentSummary', readOnly: true, helpText: 'Pobierane z pozycji DODATKOWE w bieżącym zleceniu.', legacyPaths: ['item.details.inneUrzadzenia'] },
@@ -397,6 +397,13 @@ function getRelatedItemDocumentValue(order: Order, type: string, key: string): a
         labelledSource('Informacje techniczne', details.informacjeTechniczne),
         labelledSource('Sensory napięciowe', details.sensoryNapieciowe),
       ) || sourceText(related.notes) || undefined;
+    case 'TRANSFORMATOR':
+      return sourceSummary(
+        labelledSource('Producent', details.producent),
+        labelledSource('Typ / model', details.typ),
+        labelledSource('Moc znamionowa', details.mocKVA !== undefined && details.mocKVA !== '' ? `${sourceText(details.mocKVA)} kVA` : ''),
+        labelledSource('Numer seryjny', details.numerSeryjny),
+      ) || sourceText(related.notes) || '';
     case 'TRANSFORMATOR_POTRZEB_WLASNYCH':
       return sourceSummary(
         labelledSource('Moc', details.va),
@@ -555,7 +562,8 @@ const sourceExamples = [
   'order.itemByType.KOLORY.documentColorShell', 'order.itemByType.KOLORY.documentColorMetalwork',
   'order.itemByType.KOLORY.documentColorRoof', 'order.itemByType.KOLORY.documentColorDoorsAndGrilles',
   'order.itemByType.OPISY.documentSummary', 'order.itemByType.SZAFKA_TELEMECHANIKI.documentSummary',
-  'order.itemByType.TRANSFORMATOR_POTRZEB_WLASNYCH.documentSummary', 'order.itemByType.DODATKOWE.documentSummary',
+  'order.itemByType.TRANSFORMATOR.documentSummary', 'order.itemByType.TRANSFORMATOR_POTRZEB_WLASNYCH.documentSummary',
+  'order.itemByType.DODATKOWE.documentSummary',
   'order.itemByType.OBUDOWA.documentFinish', 'order.itemByType.OBUDOWA.documentAntigraffiti',
   'order.itemByType.OBUDOWA.documentGrounding', 'order.itemByType.OBUDOWA.documentLighting',
 ];
