@@ -212,7 +212,7 @@ const blankForm = (item?: OrderItem, order?: Order): FormData => {
     dodatkoweWyposazenie: Array.isArray(d.dodatkoweWyposazenie) ? d.dodatkoweWyposazenie : [],
     przepusty: Array.isArray(d.przepusty) ? d.przepusty : [],
     otwory: Array.isArray(d.otwory) ? d.otwory : [],
-    slusarka: Array.isArray(d.slusarka) ? d.slusarka : [
+    slusarka: Array.isArray(d.slusarka) && d.slusarka.length ? d.slusarka : [
       { id: uid('door'), type: 'Drzwi SN i NN', category: 'Drzwi SN i NN', quantity: '1', position: 'Do rozdzielnic SN i NN', wings: 'Jednoskrzydłowe', openingSide: 'Lewe', width: typObudowy === 'BEK' ? '950' : '', height: typObudowy === 'BEK' ? '2100' : '', ventilationGrille: true, intakeFan: false, exhaustFan: false },
       { id: uid('door'), type: 'Drzwi Trafo', category: 'Drzwi Trafo', quantity: '1', position: 'Do komory transformatora', wings: 'Jednoskrzydłowe', openingSide: 'Lewe', width: typObudowy === 'BEK' ? '1170' : '', height: typObudowy === 'BEK' ? '2100' : '', ventilationGrille: true, intakeFan: false, exhaustFan: false },
     ],
@@ -344,7 +344,7 @@ function renderTemplateHtml(template: DocumentTemplate, form: FormData, order: O
     else if (path.startsWith('order.') || path.startsWith('item.')) value = getPathValue(path, order, item, form);
     else value = undefined;
     if (path === 'form.przepusty' || path === 'form.otwory' || path === 'form.slusarka' || path.startsWith('form.customFields.')) value = getPathValue(path, order, item, form);
-    if ((path === 'form.dataWystawienia' || path === 'form.terminRealizacji') && typeof value === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(value)) value = value.slice(8, 10) + '.' + value.slice(5, 7) + '.' + value.slice(0, 4);
+    if ((path === 'form.dataWystawienia' || path === 'form.terminRealizacji') && typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) value = value.slice(8, 10) + '.' + value.slice(5, 7) + '.' + value.slice(0, 4);
     return escapeHtml(displayValue(value));
   });
   return sanitizeHtml(html);
@@ -596,6 +596,12 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
   };
   const selectedSection = workingTemplate.sections.find((section) => section.id === selectedSectionId) || workingTemplate.sections[0];
   const selectedField = workingTemplate.fields.find((field) => field.id === selectedFieldId) || workingTemplate.fields[0];
+
+  // Keep the visual editor's DOM stable while typing; reinitialise only when switching editor modes/tabs.
+  useEffect(() => {
+    if (mode === 'form' || designerTab !== 'content' || sourceHtmlMode) return;
+    if (editorRef.current) editorRef.current.innerHTML = sanitizeHtml(workingTemplate.contentHtml);
+  }, [mode, designerTab, sourceHtmlMode]);
 
   const updateFormField = (field: FormField, value: any) => {
     const previous = form;
@@ -855,7 +861,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
           </div>
         </div>
         {sourceHtmlMode ? <textarea aria-label="Kod HTML wzorca dokumentu" value={workingTemplate.contentHtml} onChange={(event) => setWorkingTemplate((template) => ({ ...template, contentHtml: event.target.value }))} rows={24} className="w-full resize-y border-0 p-4 font-mono text-xs leading-5 outline-none"/> :
-          <div ref={editorRef} contentEditable suppressContentEditableWarning onInput={(event) => setWorkingTemplate((template) => ({ ...template, contentHtml: (event.currentTarget as HTMLDivElement).innerHTML }))} dangerouslySetInnerHTML={{ __html: sanitizeHtml(workingTemplate.contentHtml) }} className="min-h-[420px] w-full bg-white p-5 text-sm leading-6 outline-none [&_h1]:my-3 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:my-3 [&_h2]:text-lg [&_h2]:font-bold [&_p]:my-2 [&_table]:my-3 [&_td]:border [&_td]:border-slate-300 [&_td]:p-1.5"/>}
+          <div ref={editorRef} contentEditable suppressContentEditableWarning onInput={(event) => setWorkingTemplate((template) => ({ ...template, contentHtml: (event.currentTarget as HTMLDivElement).innerHTML }))} className="min-h-[420px] w-full bg-white p-5 text-sm leading-6 outline-none [&_h1]:my-3 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:my-3 [&_h2]:text-lg [&_h2]:font-bold [&_p]:my-2 [&_table]:my-3 [&_td]:border [&_td]:border-slate-300 [&_td]:p-1.5"/>}
         <p className="border-t bg-slate-50 px-3 py-2 text-[11px] text-slate-500">Możesz wpisywać treść jak w edytorze tekstu i wklejać sformatowany tekst z Worda. Pola w nawiasach klamrowych podstawiają dane na podglądzie i wydruku.</p>
       </section>}
       {designerTab === 'structure' && <div className="grid grid-cols-1 gap-4 2xl:grid-cols-[minmax(220px,0.85fr)_minmax(0,1.25fr)]">
