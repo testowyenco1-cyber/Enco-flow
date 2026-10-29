@@ -416,7 +416,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
       case 'TRANSFORMATOR':
         entries.push({ label: 'Producent', value: d.producent ? String(d.producent) : '—' });
         entries.push({ label: 'Typ / model transformatora', value: d.typ ? String(d.typ) : '—' });
-        entries.push({ label: 'Moc znamionowa (kVA)', value: d.mocKVA !== undefined && d.mocKVA !== '' ? (/kVA\\s*$/i.test(String(d.mocKVA).trim()) ? String(d.mocKVA).trim() : `${d.mocKVA} kVA`) : '—' });
+        entries.push({ label: 'Moc znamionowa (kVA)', value: d.mocKVA !== undefined && d.mocKVA !== '' ? (/kVA\s*$/i.test(String(d.mocKVA).trim()) ? String(d.mocKVA).trim() : `${d.mocKVA} kVA`) : '—' });
         entries.push({ label: 'Numer seryjny', value: d.numerSeryjny ? String(d.numerSeryjny) : '—' });
         entries.push({ label: 'Planowana data dostawy', value: d.dataDostawyPlan ? formatDatePL(String(d.dataDostawyPlan)) : '—' });
         entries.push({ label: 'Data dostawy do Pyskowic', value: d.dataPlDostawyPyskowice ? formatDatePL(String(d.dataPlDostawyPyskowice)) : '—' });
@@ -424,7 +424,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         break;
 
       case 'TRANSFORMATOR_POTRZEB_WLASNYCH':
-        entries.push({ label: 'Moc znamionowa transformatora potrzeb własnych (VA)', value: d.va !== undefined && d.va !== '' ? (/VA\\s*$/i.test(String(d.va).trim()) ? String(d.va).trim() : `${d.va} VA`) : '—' });
+        entries.push({ label: 'Moc znamionowa transformatora potrzeb własnych (VA)', value: d.va !== undefined && d.va !== '' ? (/VA\s*$/i.test(String(d.va).trim()) ? String(d.va).trim() : `${d.va} VA`) : '—' });
         
         entries.push({ label: 'Numer seryjny', value: d.numerSeryjny ? String(d.numerSeryjny) : '—' });
         
@@ -844,7 +844,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
       };
       const invalidNumbers = (positiveNumberFields[item.type] || []).filter(({ key }) => {
         const value = valueForKey(key);
-        const numberText = String(value ?? '').trim().replace(/\\s*(?:kVA|VA)\\s*$/i, '').replace(',', '.').trim();
+        const numberText = String(value ?? '').trim().replace(/\s*(?:kVA|VA)\s*$/i, '').replace(',', '.').trim();
         const number = typeof value === 'number' ? value : Number(numberText);
         const mustBeInteger = ['liczbaPol', 'iloscPol', 'iloscGlowic', 'ilosc'].includes(key);
         return !Number.isFinite(number) || number <= 0 || (mustBeInteger && !Number.isInteger(number));
