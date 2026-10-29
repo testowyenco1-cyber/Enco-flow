@@ -331,23 +331,25 @@ function getRelatedItemDocumentValue(order: Order, type: string, key: string): a
 
   if (key === 'documentFinish' && type === 'OBUDOWA') {
     if (!related) return undefined;
-    return sourceText(firstSourceValue(details.tynk, details.wykonczenie, details['wykończenie'], details.materialWykonczenia));
+    const value = firstSourceValue(details.tynk, details.wykonczenie, details['wykończenie'], details.materialWykonczenia);
+    return value === undefined ? undefined : sourceText(value);
   }
   if (key === 'documentAntigraffiti' && type === 'OBUDOWA') {
     if (!related) return undefined;
     const value = firstSourceValue(details.antygraffitiStatus, typeof details.antygraffiti === 'boolean' ? details.antygraffiti : undefined);
-    return value === undefined ? '' : typeof value === 'boolean' ? (value ? 'Tak' : 'Nie') : sourceText(value);
+    return value === undefined ? undefined : typeof value === 'boolean' ? (value ? 'Tak' : 'Nie') : sourceText(value);
   }
   if (key === 'documentGrounding' && type === 'OBUDOWA') {
     if (!related) return undefined;
-    return sourceText(firstSourceValue(details.uziemienie, details.typUziemienia, details.instalacjaUziemiajaca, details.opisUziemienia, details.sposobUziemienia));
+    const value = firstSourceValue(details.uziemienie, details.typUziemienia, details.instalacjaUziemiajaca, details.opisUziemienia, details.sposobUziemienia);
+    return value === undefined ? undefined : sourceText(value);
   }
   if (key === 'documentLighting' && type === 'OBUDOWA') {
     if (!related) return undefined;
     const direct = firstSourceValue(details.instalacjaOswietleniowa, details.instalacjaOswietlenia, details.oswietlenie, details.oswietlenieWewnetrzneZewnetrzne, details.oswietlenieOpis);
     if (direct !== undefined) return sourceText(direct);
     const equipment = sourceText(firstSourceValue(details.dodatkoweWyposazenie, details.wyposazenieDodatkowe, details.wyposazenie));
-    return /oświetlen|oswietlen/i.test(equipment) ? equipment : '';
+    return /oświetlen|oswietlen/i.test(equipment) ? equipment : undefined;
   }
 
   if (key !== 'documentSummary') return undefined;
