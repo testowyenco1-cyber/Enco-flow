@@ -300,6 +300,19 @@ function displayValue(value: any): string {
 function escapeHtml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
+async function readJsonResponse(response: Response, operation: string): Promise<any> {
+  const body = await response.text();
+  if (!body.trim()) {
+    throw new Error(`${operation}: serwer zwrócił pustą odpowiedź (HTTP ${response.status} ${response.statusText}).`);
+  }
+  try {
+    return JSON.parse(body);
+  } catch {
+    const contentType = response.headers.get('content-type') || 'brak nagłówka Content-Type';
+    const preview = body.replace(/\\s+/g, ' ').trim().slice(0, 180);
+    throw new Error(`${operation}: odpowiedź serwera nie jest poprawnym JSON-em (HTTP ${response.status}; ${contentType}). Początek odpowiedzi: ${preview}`);
+  }
+}
 function sanitizeHtml(html: string): string {
   if (typeof DOMParser === 'undefined') {
     return html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<(iframe|object|embed|form)\b[^>]*>[\s\S]*?<\/\1>/gi, '').replace(/\son\w+\s*=\s*(['"]).*?\1/gi, '');
@@ -568,8 +581,11 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
     setTemplateLoading(true);
     fetch('/api/document-form-templates/zlecenie-obudowy', { credentials: 'same-origin' })
       .then(async (response) => {
-        if (!response.ok) throw new Error('Nie udało się pobrać wzorca dokumentu.');
-        return response.json();
+        const result = await readJsonResponse(response, 'Odczyt wzorca formularza');
+        if (!response.ok || !result?.success) {
+          throw new Error(result?.error || `Serwer nie udostępnił wzorca (HTTP ${response.status} ${response.statusText}).`);
+        }
+        return result;
       })
       .then((result) => {
         if (!mounted) return;
@@ -586,9 +602,10 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
         setForm(hydrated);
         setOriginalForm(clone(hydrated));
       })
-      .catch(() => {
+      .catch((error) => {
         if (!mounted) return;
-        setMessage('Nie udało się wczytać wzorca z serwera. Użyto lokalnego wzorca domyślnego.');
+        const cause = error instanceof Error ? error.message : 'nieznany błąd';
+        setMessage('Nie udało się wczytać wzorca z serwera: ' + cause + '. Użyto lokalnego wzorca domyślnego.');
         const hydrated = hydrateFromBindings(base, savedTemplate || DEFAULT_TEMPLATE, order, item, Boolean(saved));
         setForm(hydrated);
         setOriginalForm(clone(hydrated));
@@ -772,8 +789,10 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ template: sanitized }),
       });
-      const result = await response.json();
-      if (!response.ok || !result?.success || !result?.template) throw new Error(result?.error || 'Nie udało się zapisać wzorca.');
+      const result = await readJsonResponse(response, 'Publikacja wzorca formularza');
+      if (!response.ok || !result?.success || !result?.template) {
+        throw new Error(result?.error || `Serwer nie opublikował wzorca (HTTP ${response.status} ${response.statusText}).`);
+      }
       const published = { ...sanitized, ...result.template, contentHtml: sanitizeHtml(String(result.template.contentHtml || sanitized.contentHtml)) } as DocumentTemplate;
       setGlobalTemplate(published);
       setAdminDraft(clone(published));
