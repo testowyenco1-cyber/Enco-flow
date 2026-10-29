@@ -1,84 +1,1047 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Order, OrderItem } from '../types/enco';
 import { UserRoleProfile, USER_PROFILES, canEditItemType } from '../types/userRole';
-import { Printer, X, ChevronLeft, ChevronRight, Plus, Trash2, Database, Save, CheckCircle2, FileText } from 'lucide-react';
+import {
+  ArrowDown, ArrowLeft, ArrowUp, Bold, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight,
+  Code2, FileText, Heading1, Heading2, Italic, List, ListOrdered, Loader2, Plus, Printer,
+  Save, Settings2, ShieldCheck, Strikethrough, Table2, Trash2, Underline, X, Eye, EyeOff
+} from 'lucide-react';
 
-type Row = { id: string; type: string; quantity: string; position: string };
-type Key = 'typObudowy'|'rozmiary'|'konstrukcja'|'scianyIlosc'|'scianyKlasa'|'dachTyp'|'dachKlasa'|'kolory'|'tynk'|'przepusty'|'otwory'|'slusarka'|'wyposazenie';
-type Dict = Record<Key,string[]>;
+type Row = {
+  id: string;
+  type: string;
+  quantity: string;
+  position: string;
+  category?: string;
+  wings?: string;
+  openingSide?: string;
+  width?: string;
+  height?: string;
+  ventilationGrille?: boolean;
+  intakeFan?: boolean;
+  exhaustFan?: boolean;
+  _autoRuleId?: string;
+};
+type FieldType = 'text' | 'textarea' | 'number' | 'date' | 'select' | 'checkbox-list' | 'repeatable' | 'doors' | 'quantity-toggle' | 'static';
+type FormField = {
+  id: string;
+  label: string;
+  valueKey: string;
+  type: FieldType;
+  options?: string[];
+  sourcePath?: string;
+  defaultValue?: any;
+  helpText?: string;
+  required?: boolean;
+  visible?: boolean;
+  fullWidth?: boolean;
+};
+type FormSection = { id: string; title: string; fieldIds: string[]; columns?: 1 | 2 | 3; visible?: boolean };
+type TemplateRule = {
+  id: string;
+  triggerFieldId: string;
+  triggerValue: string;
+  targetFieldId: string;
+  targetValue: string;
+  action: 'automatic' | 'suggestion' | 'warning';
+};
+type DocumentTemplate = {
+  key: string;
+  title: string;
+  version: number;
+  updatedAt?: string;
+  updatedBy?: string;
+  sections: FormSection[];
+  fields: FormField[];
+  contentHtml: string;
+  rules: TemplateRule[];
+};
 type FormData = {
- typObudowy:string; rozmiar:string; dlugosc:string; szerokosc:string; wysokosc:string; konstrukcja:string;
- scianyIlosc:string; scianyKlasa:string; dachTyp:string; dachKlasa:string; kolorObudowy:string; kolorSlusarki:string;
- kolorDachu:string; kolorDrzwiKraty:string; antygraffiti:string; tynk:string; dodatkoweWyposazenie:string[];
- przepusty:Row[]; otwory:Row[]; slusarka:Row[]; dostawaPyskowice:string; dostawaWarszawa:string; uwagi:string;
+  typBudowli: string;
+  typObudowy: string;
+  rozmiar: string;
+  nazwaObiektu: string;
+  numerZL: string;
+  dataWystawienia: string;
+  terminRealizacji: string;
+  dotExtra: string;
+  opisObudowy: string;
+  dlugosc: string;
+  szerokosc: string;
+  wysokosc: string;
+  konstrukcja: string;
+  scianyIlosc: string;
+  scianyKlasa: string;
+  dachTyp: string;
+  dachKlasa: string;
+  kolorObudowy: string;
+  kolorSlusarki: string;
+  kolorDachu: string;
+  kolorDrzwiKraty: string;
+  antygraffiti: string;
+  tynk: string;
+  dodatkoweWyposazenie: string[];
+  przepusty: Row[];
+  otwory: Row[];
+  slusarka: Row[];
+  dostawaPyskowice: string;
+  dostawaWarszawa: string;
+  uwagi: string;
+  customFields: Record<string, any>;
+  __templateSnapshot?: DocumentTemplate;
+  __templateVersion?: number;
 };
-const DEFAULT: Dict = {
- typObudowy:['NZ','BEK'], rozmiary:['NZ 130/240','NZ 210/290','BEK 250/350','BEK 250/400','BEK 300/450'],
- konstrukcja:['Żelbetowa z betonu C35/45','Żelbetowa z betonu C30/37','Lekka aluminiowa'], scianyIlosc:['0','1','2','3','4'],
- scianyKlasa:['REI 60','REI 90','REI 120','REI 180'], dachTyp:['Kopertowy','Dwuspadowy','Wannowy','Płaski','Brak'],
- dachKlasa:['REI 60','REI 90','REI 120','REI 180','Brak'],
- kolory:['RAL 1013 (kremowy)','RAL 8014 (brązowy)','RAL 7035 (szary)','RAL 7016 (antracyt)','RAL 9006 (srebrny)','RAL 6005 (zielony)'],
- tynk:['Brak','Tynk akrylowy','Tynk mineralny','Do uzgodnienia'], przepusty:['BWS 100','BWS 150','HSI 90','HSI 150','HEA','Ø100'],
- otwory:['Otwór Ø100','Otwór kablowy','Otwór wentylacyjny','Otwór drzwiowy','Inny'],
- slusarka:['Drzwi jednoskrzydłowe pełne','Drzwi dwuskrzydłowe z kratą wentylacyjną','Drzwi EI 120','Drzwi EI 60','Krata wentylacyjna','Otwór fi 100 z zaślepieniem','Inna ślusarka'],
- wyposazenie:['Wewnętrzna instalacja uziemiająca','Instalacja oświetleniowa','Powłoka antygraffiti','Dodatkowy przedział kablowy','Fundament podwyższony','Instalacja ogrzewania i klimatyzacji']
+
+type Mode = 'form' | 'custom' | 'admin';
+type DesignerTab = 'content' | 'structure' | 'bindings';
+
+const localDate = () => {
+  const date = new Date();
+  return String(date.getFullYear()) + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
 };
-const LABEL: Record<Key,string> = {typObudowy:'Typ obudowy',rozmiary:'Rozmiary obudowy',konstrukcja:'Konstrukcja budynku',scianyIlosc:'Liczba ścian REI',scianyKlasa:'Klasa REI ścian',dachTyp:'Typ dachu',dachKlasa:'Klasa REI dachu',kolory:'Kolory RAL',tynk:'Wykończenie / tynk',przepusty:'Typy przepustów',otwory:'Typy otworów',slusarka:'Typy ślusarki / drzwi',wyposazenie:'Wyposażenie'};
-const uid = () => 'form-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,7);
-const blank = ():FormData => ({typObudowy:'',rozmiar:'',dlugosc:'',szerokosc:'',wysokosc:'',konstrukcja:'',scianyIlosc:'',scianyKlasa:'',dachTyp:'',dachKlasa:'',kolorObudowy:'',kolorSlusarki:'',kolorDachu:'',kolorDrzwiKraty:'',antygraffiti:'',tynk:'',dodatkoweWyposazenie:[],przepusty:[],otwory:[],slusarka:[],dostawaPyskowice:'',dostawaWarszawa:'',uwagi:''});
-function readForm(item?:OrderItem):FormData {
- const saved=item?.details?.formularze?.zlecenieObudowy;
- if(saved && typeof saved==='object') return {...blank(),...saved};
- const d=item?.details||{};
- return {...blank(),typObudowy:d.typObudowy||'',rozmiar:d.rozmiar||'',dlugosc:d.dlugoscObudowy||d.dlugosc||'',szerokosc:d.szerokoscObudowy||d.szerokosc||'',wysokosc:d.wysokoscObudowy||d.wysokosc||'',konstrukcja:d.konstrukcjaBudynku||d.konstrukcja||'',scianyIlosc:d.scianyREIIlosc||'',scianyKlasa:d.scianyREIKlasa||'',dachTyp:d.typDachu||'',dachKlasa:d.dachREIKlasa||'',kolorObudowy:d.kolorObudowy||d.kolor||'',kolorSlusarki:d.kolorSlusarki||'',kolorDachu:d.kolorDachu||'',kolorDrzwiKraty:d.kolorDrzwiKraty||'',antygraffiti:d.antygraffiti===true?'Tak':d.antygraffiti===false&&d.antygraffiti!==undefined?'Nie':'',tynk:d.tynk||'',dodatkoweWyposazenie:Array.isArray(d.dodatkoweWyposazenie)?d.dodatkoweWyposazenie:[],przepusty:Array.isArray(d.przepusty)?d.przepusty:[],otwory:Array.isArray(d.otwory)?d.otwory:[],slusarka:Array.isArray(d.slusarka)?d.slusarka:[],dostawaPyskowice:d.dostawaPyskowice||'',dostawaWarszawa:d.dostawaWarszawa||'',uwagi:d.uwagiDoZleceniaObudowy||''};
+const uid = (prefix = 'field') => prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+
+const TEMPLATE_FIELDS: FormField[] = [
+  { id: 'typBudowli', label: 'Typ budowli', valueKey: 'typBudowli', type: 'text', sourcePath: 'order.stationType', helpText: 'Pobierany ze zlecenia, jeśli jest określony.' },
+  { id: 'typObudowy', label: 'Typ obudowy', valueKey: 'typObudowy', type: 'select', options: ['BEK', 'NZ'], sourcePath: 'item.details.typObudowy', required: true },
+  { id: 'rozmiar', label: 'Rozmiar obudowy', valueKey: 'rozmiar', type: 'text', sourcePath: 'item.details.rozmiar', required: true },
+  { id: 'nazwaObiektu', label: 'Nazwa obiektu', valueKey: 'nazwaObiektu', type: 'text', sourcePath: 'order.projectName', required: true },
+  { id: 'numerZL', label: 'Numer ZL', valueKey: 'numerZL', type: 'text', sourcePath: 'order.orderNumber', required: true },
+  { id: 'dataWystawienia', label: 'Data wystawienia dokumentu', valueKey: 'dataWystawienia', type: 'date', sourcePath: 'system.today', required: true },
+  { id: 'terminRealizacji', label: 'Termin realizacji', valueKey: 'terminRealizacji', type: 'date', sourcePath: 'item.plannedDate' },
+  { id: 'dotExtra', label: 'Dodatkowa wzmianka DOT.', valueKey: 'dotExtra', type: 'text', helpText: 'Treść podstawowa DOT. jest składana z tytułu; to pole dodaje osobną wzmiankę.' },
+  { id: 'opisObudowy', label: 'Opis obudowy — pełne zdanie', valueKey: 'opisObudowy', type: 'textarea', required: true, fullWidth: true },
+  { id: 'slusarka', label: 'Drzwi i ślusarka', valueKey: 'slusarka', type: 'doors', fullWidth: true },
+  { id: 'siatkaDrzwi', label: 'Siatka wygradzająca — drzwi i ślusarka', valueKey: 'customFields.siatkaDrzwi', type: 'quantity-toggle', defaultValue: { enabled: true, quantity: '1' } },
+  { id: 'dachTyp', label: 'Rodzaj dachu', valueKey: 'dachTyp', type: 'select', options: ['Kopertowy', 'Dwuspadowy', 'Wannowy'], sourcePath: 'item.details.typDachu' },
+  { id: 'dachMaterial', label: 'Materiał dachu', valueKey: 'customFields.dachMaterial', type: 'select', options: ['Betonowy', 'Stalowy', 'Inny'], sourcePath: 'item.details.dachMaterial', defaultValue: 'Betonowy' },
+  { id: 'roofEquipment', label: 'Dach i wyposażenie — pozycje domyślne', valueKey: 'customFields.wyposazenieDachu', type: 'checkbox-list', fullWidth: true, options: ['Chłodnica gazów', 'Siatka wygradzająca', 'Otwory do lampek wskaźnika zwarć', 'Otwór do wyprowadzenia kabla do anteny', '1 x kieszenie na schemat'], defaultValue: ['Chłodnica gazów', 'Siatka wygradzająca', 'Otwory do lampek wskaźnika zwarć', 'Otwór do wyprowadzenia kabla do anteny', '1 x kieszenie na schemat'] },
+  { id: 'siatkaDach', label: 'Siatka wygradzająca — dach i wyposażenie', valueKey: 'customFields.siatkaDach', type: 'quantity-toggle', defaultValue: { enabled: true, quantity: '1' } },
+  { id: 'dodatkoweWyposazenie', label: 'Dodatkowe wyposażenie', valueKey: 'dodatkoweWyposazenie', type: 'checkbox-list', fullWidth: true, options: ['Oświetlenie wewnętrzne i zewnętrzne', 'Antena', 'Lampki ostrzegawcze'] },
+  { id: 'przepusty', label: 'Przepusty kablowe', valueKey: 'przepusty', type: 'repeatable', fullWidth: true, options: ['Przepust HEA', 'BWS 100', 'BWS 150', 'HSI 90', 'HSI 150', 'Ø100', 'Inny przepust'] },
+  { id: 'otwory', label: 'Otwory i przepusty — pozostałe', valueKey: 'otwory', type: 'repeatable', fullWidth: true, options: ['Przepust HEA', 'Otwór Ø100', 'Otwór kablowy', 'Otwór wentylacyjny', 'Otwór drzwiowy', 'Otwór do lampek wskaźnika zwarć', 'Otwór do wyprowadzenia kabla do anteny', 'Inny'] },
+  { id: 'kolorObudowy', label: 'Kolor obudowy (RAL)', valueKey: 'kolorObudowy', type: 'text', sourcePath: 'item.details.kolorObudowy' },
+  { id: 'kolorSlusarki', label: 'Kolor ślusarki (RAL)', valueKey: 'kolorSlusarki', type: 'text', sourcePath: 'item.details.kolorSlusarki' },
+  { id: 'kolorDachu', label: 'Kolor dachu (RAL)', valueKey: 'kolorDachu', type: 'text', sourcePath: 'item.details.kolorDachu' },
+  { id: 'kolorDrzwiKraty', label: 'Kolor drzwi i krat (RAL)', valueKey: 'kolorDrzwiKraty', type: 'text', sourcePath: 'item.details.kolorDrzwiKraty' },
+  { id: 'tynk', label: 'Tynk / wykończenie', valueKey: 'tynk', type: 'text', sourcePath: 'item.details.tynk' },
+  { id: 'antygraffiti', label: 'Powłoka antygraffiti', valueKey: 'antygraffiti', type: 'select', options: ['Tak', 'Nie'], sourcePath: 'item.details.antygraffitiStatus' },
+  { id: 'opisy', label: 'Kolory i opisy — dodatkowe uwagi', valueKey: 'customFields.opisy', type: 'textarea', fullWidth: true, sourcePath: 'item.details.opisy' },
+  { id: 'rozdzielnicaSN', label: 'Rozdzielnica SN', valueKey: 'customFields.rozdzielnicaSN', type: 'textarea', fullWidth: true, sourcePath: 'item.details.rozdzielnicaSN' },
+  { id: 'rozdzielnicaNN', label: 'Rozdzielnica NN', valueKey: 'customFields.rozdzielnicaNN', type: 'textarea', fullWidth: true, sourcePath: 'item.details.rozdzielnicaNN' },
+  { id: 'telemechanika', label: 'Telemechanika', valueKey: 'customFields.telemechanika', type: 'textarea', fullWidth: true, sourcePath: 'item.details.telemechanika' },
+  { id: 'transformator', label: 'Transformator', valueKey: 'customFields.transformator', type: 'textarea', fullWidth: true, sourcePath: 'item.details.transformator' },
+  { id: 'uziemienie', label: 'Rodzaj instalacji uziemiającej', valueKey: 'customFields.uziemienie', type: 'text', sourcePath: 'item.details.uziemienie' },
+  { id: 'instalacjaOswietleniowa', label: 'Informacja o instalacji oświetleniowej', valueKey: 'customFields.instalacjaOswietleniowa', type: 'text', sourcePath: 'item.details.instalacjaOswietleniowa' },
+  { id: 'inneUrzadzenia', label: 'Inne urządzenia / uwagi', valueKey: 'customFields.inneUrzadzenia', type: 'textarea', fullWidth: true, sourcePath: 'item.details.inneUrzadzenia' },
+  { id: 'dostawaWarszawa', label: 'Elementy dostarczane przez Warszawę', valueKey: 'dostawaWarszawa', type: 'textarea', fullWidth: true },
+  { id: 'dostawaPyskowice', label: 'Elementy dostarczane przez Pyskowice', valueKey: 'dostawaPyskowice', type: 'textarea', fullWidth: true },
+  { id: 'uwagi', label: 'Uwagi i poprawki do dokumentu', valueKey: 'uwagi', type: 'textarea', fullWidth: true },
+];
+
+const DEFAULT_TEMPLATE: DocumentTemplate = {
+  key: 'zlecenie-obudowy',
+  title: 'Zlecenie obudowy',
+  version: 1,
+  sections: [
+    { id: 'naglowek', title: 'Nagłówek', fieldIds: ['typBudowli', 'typObudowy', 'rozmiar', 'nazwaObiektu', 'numerZL', 'dataWystawienia', 'terminRealizacji', 'dotExtra'], columns: 2 },
+    { id: 'opis', title: 'TYP OBUDOWY — opis', fieldIds: ['opisObudowy'], columns: 1 },
+    { id: 'drzwi', title: 'Drzwi i ślusarka', fieldIds: ['slusarka', 'siatkaDrzwi'], columns: 2 },
+    { id: 'dach', title: 'Dach i wyposażenie', fieldIds: ['dachTyp', 'dachMaterial', 'roofEquipment', 'siatkaDach', 'dodatkoweWyposazenie'], columns: 2 },
+    { id: 'otwory', title: 'Otwory i przepusty kablowe', fieldIds: ['przepusty', 'otwory'], columns: 1 },
+    { id: 'kolory', title: 'Kolory i opisy', fieldIds: ['kolorObudowy', 'kolorSlusarki', 'kolorDachu', 'kolorDrzwiKraty', 'tynk', 'antygraffiti', 'opisy'], columns: 2 },
+    { id: 'urzadzenia', title: 'Ogólne urządzenia w stacji', fieldIds: ['rozdzielnicaSN', 'rozdzielnicaNN', 'telemechanika', 'transformator', 'uziemienie', 'instalacjaOswietleniowa', 'inneUrzadzenia'], columns: 2 },
+    { id: 'dostawy', title: 'Elementy dostarczane przez Warszawę i Pyskowice', fieldIds: ['dostawaWarszawa', 'dostawaPyskowice', 'uwagi'], columns: 2 },
+  ],
+  fields: TEMPLATE_FIELDS,
+  contentHtml:
+    '<div style="font-family:Arial,sans-serif;color:#111827;font-size:11pt;">' +
+    '<p style="text-align:center;font-size:10pt;color:#475569;"><strong>ENCO · ZLECENIE PRODUKCYJNE</strong></p>' +
+    '<h1 style="text-align:center;font-size:19pt;">ZLECENIE OBUDOWY</h1>' +
+    '<p style="text-align:center;font-size:13pt;"><strong>{{derived.title}}</strong></p>' +
+    '<table style="width:100%;border-collapse:collapse;"><tbody>' +
+    '<tr><td style="border:1px solid #cbd5e1;padding:6px;"><strong>NR ZL:</strong> {{form.numerZL}}</td><td style="border:1px solid #cbd5e1;padding:6px;"><strong>Data wystawienia:</strong> {{form.dataWystawienia}}</td></tr>' +
+    '<tr><td style="border:1px solid #cbd5e1;padding:6px;"><strong>Termin realizacji:</strong> {{form.terminRealizacji}}</td><td style="border:1px solid #cbd5e1;padding:6px;"><strong>DOT.:</strong> {{derived.dot}}</td></tr>' +
+    '</tbody></table>' +
+    '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">1. TYP OBUDOWY</h2>' +
+    '<p>{{form.opisObudowy}}</p>' +
+    '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">2. DRZWI I ŚLUSARKA</h2><p>{{form.slusarka}}</p><p>{{form.customFields.siatkaDrzwi}}</p>' +
+    '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">3. DACH I WYPOSAŻENIE</h2><p><strong>Dach:</strong> {{form.dachMaterial}} {{form.dachTyp}}</p><p>{{form.customFields.wyposazenieDachu}}</p><p>{{form.dodatkoweWyposazenie}}</p><p>{{form.customFields.siatkaDach}}</p>' +
+    '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">4. OTWORY I PRZEPUSTY KABLOWE</h2><p><strong>Przepusty:</strong> {{form.przepusty}}</p><p><strong>Pozostałe otwory:</strong> {{form.otwory}}</p>' +
+    '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">5. KOLORY I OPISY</h2><p>Obudowa: {{form.kolorObudowy}}; ślusarka: {{form.kolorSlusarki}}; dach: {{form.kolorDachu}}; drzwi i kraty: {{form.kolorDrzwiKraty}}.</p><p>Wykończenie: {{form.tynk}}; antygraffiti: {{form.antygraffiti}}</p><p>{{form.customFields.opisy}}</p>' +
+    '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">6. OGÓLNE URZĄDZENIA W STACJI</h2><p><strong>Rozdzielnica SN:</strong> {{form.customFields.rozdzielnicaSN}}</p><p><strong>Rozdzielnica NN:</strong> {{form.customFields.rozdzielnicaNN}}</p><p><strong>Telemechanika:</strong> {{form.customFields.telemechanika}}</p><p><strong>Transformator:</strong> {{form.customFields.transformator}}</p><p><strong>Uziemienie:</strong> {{form.customFields.uziemienie}}</p><p><strong>Instalacja oświetleniowa:</strong> {{form.customFields.instalacjaOswietleniowa}}</p><p><strong>Inne:</strong> {{form.customFields.inneUrzadzenia}}</p>' +
+    '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">7. ELEMENTY DOSTARCZANE</h2><p><strong>Warszawa:</strong> {{form.dostawaWarszawa}}</p><p><strong>Pyskowice:</strong> {{form.dostawaPyskowice}}</p><p><strong>Uwagi:</strong> {{form.uwagi}}</p>' +
+    '<p style="margin-top:28px;font-size:9pt;color:#64748b;">Dokument przygotowany w Enco-flow. Wydruk nie aktualizuje danych zlecenia.</p></div>',
+  rules: [
+    { id: 'antena-otwor', triggerFieldId: 'dodatkoweWyposazenie', triggerValue: 'Antena', targetFieldId: 'otwory', targetValue: 'Otwór do wyprowadzenia kabla do anteny', action: 'automatic' },
+    { id: 'lampki-otwor', triggerFieldId: 'dodatkoweWyposazenie', triggerValue: 'Lampki ostrzegawcze', targetFieldId: 'otwory', targetValue: 'Otwór do lampek wskaźnika zwarć', action: 'suggestion' },
+  ],
+};
+
+const blankForm = (item?: OrderItem, order?: Order): FormData => {
+  const d = item?.details || {};
+  const typObudowy = String(d.typObudowy || '');
+  const rozmiar = String(d.rozmiar || '');
+  const savedDate = item?.createdAt ? String(item.createdAt).slice(0, 10) : '';
+  return {
+    typBudowli: String(d.typBudowli || ''),
+    typObudowy,
+    rozmiar,
+    nazwaObiektu: String(order?.projectName || ''),
+    numerZL: String(order?.orderNumber || ''),
+    dataWystawienia: savedDate || localDate(),
+    terminRealizacji: String(item?.plannedDate || d.terminRealizacji || d.terminObudowy || ''),
+    dotExtra: '',
+    opisObudowy: 'Wykonanie obudowy ' + [typObudowy, rozmiar].filter(Boolean).join(' ') + ' wraz z fundamentem i przepustami kablowymi SN, nN i uziemiającymi, wraz z montażem ślusarki i rozdzielnicy SN i nN.',
+    dlugosc: String(d.dlugoscObudowy || d.dlugosc || ''),
+    szerokosc: String(d.szerokoscObudowy || d.szerokosc || ''),
+    wysokosc: String(d.wysokoscObudowy || d.wysokosc || ''),
+    konstrukcja: String(d.konstrukcjaBudynku || d.konstrukcja || ''),
+    scianyIlosc: String(d.scianyREIIlosc || ''),
+    scianyKlasa: String(d.scianyREIKlasa || ''),
+    dachTyp: String(d.typDachu || 'Kopertowy'),
+    dachKlasa: String(d.dachREIKlasa || ''),
+    kolorObudowy: String(d.kolorObudowy || d.kolor || ''),
+    kolorSlusarki: String(d.kolorSlusarki || ''),
+    kolorDachu: String(d.kolorDachu || ''),
+    kolorDrzwiKraty: String(d.kolorDrzwiKraty || ''),
+    antygraffiti: d.antygraffiti === true ? 'Tak' : d.antygraffiti === false && d.antygraffiti !== undefined ? 'Nie' : String(d.antygraffitiStatus || ''),
+    tynk: String(d.tynk || ''),
+    dodatkoweWyposazenie: Array.isArray(d.dodatkoweWyposazenie) ? d.dodatkoweWyposazenie : [],
+    przepusty: Array.isArray(d.przepusty) ? d.przepusty : [],
+    otwory: Array.isArray(d.otwory) ? d.otwory : [],
+    slusarka: Array.isArray(d.slusarka) ? d.slusarka : [],
+    dostawaPyskowice: String(d.dostawaPyskowice || ''),
+    dostawaWarszawa: String(d.dostawaWarszawa || ''),
+    uwagi: String(d.uwagiDoZleceniaObudowy || ''),
+    customFields: {
+      dachMaterial: String(d.dachMaterial || 'Betonowy'),
+      wyposazenieDachu: ['Chłodnica gazów', 'Siatka wygradzająca', 'Otwory do lampek wskaźnika zwarć', 'Otwór do wyprowadzenia kabla do anteny', '1 x kieszenie na schemat'],
+      siatkaDrzwi: { enabled: true, quantity: '1' },
+      siatkaDach: { enabled: true, quantity: '1' },
+      opisy: String(d.opisy || ''),
+      rozdzielnicaSN: String(d.rozdzielnicaSN || ''),
+      rozdzielnicaNN: String(d.rozdzielnicaNN || ''),
+      telemechanika: String(d.telemechanika || ''),
+      transformator: String(d.transformator || ''),
+      uziemienie: String(d.uziemienie || ''),
+      instalacjaOswietleniowa: String(d.instalacjaOswietleniowa || ''),
+      inneUrzadzenia: String(d.inneUrzadzenia || ''),
+    },
+  };
+};
+
+function readForm(item?: OrderItem, order?: Order): FormData {
+  const base = blankForm(item, order);
+  const saved = item?.details?.formularze?.zlecenieObudowy;
+  if (saved && typeof saved === 'object') {
+    const result = { ...base, ...saved, customFields: { ...base.customFields, ...(saved.customFields || {}) } } as FormData;
+    if (!result.dataWystawienia) result.dataWystawienia = String(item?.createdAt || order?.createdAt || localDate()).slice(0, 10);
+    return result;
+  }
+  return base;
 }
-const Field: React.FC<{label:string;value:string;onChange:(v:string)=>void;options?:string[];dictKey?:Key;type?:string}> = ({label,value,onChange,options,type='text'}) => <label className="block min-w-0 space-y-1"><span className="block text-xs font-semibold text-slate-600">{label}</span>{options?<select value={value} onChange={e=>onChange(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"><option value="">— Nie uzupełniono —</option>{value&&!options.includes(value)&&<option value={value}>{value} (wartość zapisana)</option>}{options.map(v=><option key={v} value={v}>{v}</option>)}</select>:<input type={type} value={value} onChange={e=>onChange(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"/>}</label>;
 
-interface Props { order:Order; isOpen:boolean; onClose:()=>void; onSaveOrderChanges:(order:Order)=>void; currentProfile?:UserRoleProfile; canDownload?:boolean; }
-export const OrderDocumentFormModal:React.FC<Props> = ({order,isOpen,onClose,onSaveOrderChanges,currentProfile,canDownload=true}) => {
- const profile=currentProfile||USER_PROFILES.admin;
- const item=order.items.find(i=>i.type==='OBUDOWA');
- const canEdit=canEditItemType(profile,'OBUDOWA');
- const [form,setForm]=useState<FormData>(()=>readForm(item));
- const [originalForm,setOriginalForm]=useState<FormData>(()=>readForm(item));
- const [step,setStep]=useState(0); const [review,setReview]=useState(false); const [dictOpen,setDictOpen]=useState(false);
- const [dict,setDict]=useState<Dict>(DEFAULT); const [dictKey,setDictKey]=useState<Key>('typObudowy'); const [newValue,setNewValue]=useState(''); const [dictMessage,setDictMessage]=useState('');
- const steps=['Dane obudowy','Ściany i dach','Przepusty, otwory i ślusarka','Wykończenie i wyposażenie','Dostawy i uwagi'];
- useEffect(()=>{if(!isOpen)return;const loaded=readForm(order.items.find(i=>i.type==='OBUDOWA'));setForm(loaded);setOriginalForm(loaded);setStep(0);setReview(false);fetch('/api/order-form-dictionaries').then(async r=>{if(!r.ok)return;const d=await r.json();if(d.success&&d.dictionaries)setDict({...DEFAULT,...d.dictionaries});}).catch(()=>{});},[isOpen,order.id]);
- const set=<K extends keyof FormData>(key:K,value:FormData[K])=>setForm(f=>({...f,[key]:value}));
- const addRow=(key:'przepusty'|'otwory'|'slusarka')=>set(key,[...form[key],{id:uid(),type:'',quantity:'1',position:''}]);
- const changeRow=(key:'przepusty'|'otwory'|'slusarka',id:string,field:keyof Row,value:string)=>set(key,form[key].map(r=>r.id===id?{...r,[field]:value}:r));
- const saveDict=async()=>{try{const r=await fetch('/api/order-form-dictionaries',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({categoryKey:dictKey,values:dict[dictKey]})});const d=await r.json();if(!r.ok||!d.success)throw new Error(d.error||'Błąd zapisu');setDict(v=>({...v,[dictKey]:d.values}));setDictMessage('Zapisano słownik na serwerze.');}catch(e){setDictMessage(e instanceof Error?e.message:'Błąd zapisu słownika.');}};
- const apply=()=>{if(!canEdit||!item)return;const updatedOrder:Order={...order,items:order.items.map(i=>i.id!==item.id?i:{...i,details:{...i.details,typObudowy:form.typObudowy,rozmiar:form.rozmiar,dlugoscObudowy:form.dlugosc,szerokoscObudowy:form.szerokosc,wysokoscObudowy:form.wysokosc,konstrukcjaBudynku:form.konstrukcja,scianyREIIlosc:form.scianyIlosc,scianyREIKlasa:form.scianyKlasa,typDachu:form.dachTyp,dachREIKlasa:form.dachKlasa,kolorObudowy:form.kolorObudowy,kolorSlusarki:form.kolorSlusarki,kolorDachu:form.kolorDachu,kolorDrzwiKraty:form.kolorDrzwiKraty,antygraffiti:form.antygraffiti ? form.antygraffiti === 'Tak' : i.details?.antygraffiti,antygraffitiStatus:form.antygraffiti,tynk:form.tynk,dodatkoweWyposazenie:form.dodatkoweWyposazenie,przepusty:form.przepusty,otwory:form.otwory,slusarka:form.slusarka,dostawaPyskowice:form.dostawaPyskowice,dostawaWarszawa:form.dostawaWarszawa,uwagiDoZleceniaObudowy:form.uwagi,formularze:{...(i.details?.formularze||{}),zlecenieObudowy:form}},updatedAt:new Date().toISOString()}),updatedAt:new Date().toISOString()};onSaveOrderChanges(updatedOrder);onClose();};
+function getPathValue(path: string | undefined, order: Order, item: OrderItem | undefined, form: FormData): any {
+  if (!path) return undefined;
+  if (path === 'system.today') return localDate();
+  const bits = path.split('.');
+  const root = bits.shift();
+  let value: any = root === 'order' ? order : root === 'item' ? item : root === 'form' ? form : undefined;
+  for (const bit of bits) {
+    if (value == null) return undefined;
+    value = value[bit];
+  }
+  return value;
+}
+function getValueByKey(form: FormData, key: string): any {
+  if (key.startsWith('customFields.')) return form.customFields[key.slice('customFields.'.length)];
+  return (form as any)[key];
+}
+function setValueByKey(form: FormData, key: string, value: any): FormData {
+  if (key.startsWith('customFields.')) {
+    return { ...form, customFields: { ...form.customFields, [key.slice('customFields.'.length)]: value } };
+  }
+  return { ...form, [key]: value };
+}
+function displayValue(value: any): string {
+  if (value === undefined || value === null || value === '') return '—';
+  if (Array.isArray(value)) return value.map(displayValue).filter((x) => x !== '—').join('; ') || '—';
+  if (typeof value === 'object') {
+    if ('enabled' in value && 'quantity' in value) return value.enabled ? 'Tak, ilość: ' + String(value.quantity || '1') : 'Nie';
+    if ('type' in value) {
+      const row = value as Row;
+      if (row.category || row.wings) {
+        const pieces = [
+          row.category || row.type,
+          row.wings,
+          row.openingSide ? 'otwierane ' + row.openingSide : '',
+          row.width && row.height ? row.width + ' × ' + row.height + ' mm' : '',
+          row.ventilationGrille ? 'krata wentylacyjna' : '',
+          row.intakeFan ? 'wentylator nawiewny' : '',
+          row.exhaustFan ? 'wentylator wyciągowy' : '',
+          row.quantity ? 'ilość: ' + row.quantity : '',
+          row.position,
+        ].filter(Boolean);
+        return pieces.join(', ');
+      }
+      return [row.type, row.quantity ? 'ilość: ' + row.quantity : '', row.position].filter(Boolean).join(' — ');
+    }
+    return Object.values(value).map(displayValue).join(' ');
+  }
+  return String(value);
+}
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function sanitizeHtml(html: string): string {
+  if (typeof DOMParser === 'undefined') {
+    return html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<(iframe|object|embed|form)\b[^>]*>[\s\S]*?<\/\1>/gi, '').replace(/\son\w+\s*=\s*(['"]).*?\1/gi, '');
+  }
+  const parsed = new DOMParser().parseFromString(html, 'text/html');
+  const allowedTags = new Set(['DIV', 'P', 'BR', 'STRONG', 'B', 'EM', 'I', 'U', 'S', 'H1', 'H2', 'H3', 'H4', 'UL', 'OL', 'LI', 'BLOCKQUOTE', 'TABLE', 'THEAD', 'TBODY', 'TFOOT', 'TR', 'TH', 'TD', 'SPAN', 'HR']);
+  const allowedStyles = new Set(['font-family', 'font-size', 'font-weight', 'font-style', 'color', 'background-color', 'text-align', 'text-decoration', 'line-height', 'margin', 'margin-top', 'margin-bottom', 'margin-left', 'margin-right', 'padding', 'border', 'border-bottom', 'width']);
+  const cleanNode = (node: Node): string => {
+    if (node.nodeType === Node.TEXT_NODE) return escapeHtml(node.textContent || '');
+    if (node.nodeType !== Node.ELEMENT_NODE) return '';
+    const el = node as HTMLElement;
+    if (['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'FORM', 'SVG', 'MATH'].includes(el.tagName)) return '';
+    const children = Array.from(el.childNodes).map(cleanNode).join('');
+    if (!allowedTags.has(el.tagName)) return children;
+    let attributes = '';
+    const style = el.getAttribute('style');
+    if (style) {
+      const safeStyle = style.split(';').map((entry) => entry.trim()).filter(Boolean).filter((entry) => {
+        const colon = entry.indexOf(':');
+        if (colon < 0) return false;
+        const name = entry.slice(0, colon).trim().toLowerCase();
+        const value = entry.slice(colon + 1).trim();
+        return allowedStyles.has(name) && !/url\s*\(|expression|javascript:/i.test(value);
+      }).join('; ');
+      if (safeStyle) attributes += ' style="' + escapeHtml(safeStyle) + '"';
+    }
+    if (el.hasAttribute('colspan') && el.tagName === 'TD') attributes += ' colspan="' + escapeHtml(el.getAttribute('colspan') || '1') + '"';
+    if (el.hasAttribute('rowspan') && el.tagName === 'TD') attributes += ' rowspan="' + escapeHtml(el.getAttribute('rowspan') || '1') + '"';
+    return '<' + el.tagName.toLowerCase() + attributes + '>' + children + '</' + el.tagName.toLowerCase() + '>';
+  };
+  return Array.from(parsed.body.childNodes).map(cleanNode).join('');
+}
+function renderTemplateHtml(template: DocumentTemplate, form: FormData, order: Order, item?: OrderItem): string {
+  const titleParts = [form.typBudowli, [form.typObudowy, form.rozmiar].filter(Boolean).join(' ') , form.nazwaObiektu].filter(Boolean);
+  const title = titleParts.join(' ').replace(/\s+/g, ' ').trim();
+  const dot = [title, form.dotExtra].filter(Boolean).join(' — ');
+  const html = template.contentHtml.replace(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g, (_match, path: string) => {
+    if (path === 'derived.title') return escapeHtml(title || '—');
+    if (path === 'derived.dot') return escapeHtml(dot || '—');
+    let value: any;
+    if (path.startsWith('form.')) value = getPathValue(path, order, item, form);
+    else if (path.startsWith('order.') || path.startsWith('item.')) value = getPathValue(path, order, item, form);
+    else value = undefined;
+    if (path === 'form.przepusty' || path === 'form.otwory' || path === 'form.slusarka' || path.startsWith('form.customFields.')) value = getPathValue(path, order, item, form);
+    return escapeHtml(displayValue(value));
+  });
+  return sanitizeHtml(html);
+}
+const resolveFieldLabel = (template: DocumentTemplate, fieldId: string) => template.fields.find((field) => field.id === fieldId)?.label || fieldId;
+const sourceExamples = [
+  'order.orderNumber', 'order.projectName', 'order.client', 'order.stationSize', 'order.departureDate', 'order.createdAt',
+  'order.stationType', 'item.plannedDate', 'item.orderDate', 'item.details.typObudowy', 'item.details.rozmiar',
+  'item.details.typDachu', 'item.details.kolorObudowy', 'item.details.terminRealizacji', 'form.nazwaObiektu',
+];
+function doorDimensions(stationType: string, category: string): { width: string; height: string } {
+  if (stationType !== 'BEK') return { width: '', height: '' };
+  if (category === 'Drzwi Trafo') return { width: '1170', height: '2100' };
+  if (['Drzwi SN i NN', 'Drzwi SN', 'Drzwi NN'].includes(category)) return { width: '950', height: '2100' };
+  return { width: '', height: '' };
+}
+function doorRowDescription(row: Row): string {
+  return displayValue({ ...row, category: row.category || row.type });
+}
+function rowDefaults(key: string, form: FormData): Row {
+  if (key === 'slusarka') {
+    const category = 'Drzwi SN i NN';
+    const dims = doorDimensions(form.typObudowy, category);
+    return { id: uid('door'), type: category, category, quantity: '1', position: '', wings: 'Jednoskrzydłowe', openingSide: 'Lewe', width: dims.width, height: dims.height, ventilationGrille: true, intakeFan: false, exhaustFan: false };
+  }
+  return { id: uid('row'), type: '', quantity: '1', position: '' };
+}
+function hydrateFromBindings(form: FormData, template: DocumentTemplate, order: Order, item: OrderItem | undefined, hasSaved: boolean): FormData {
+  let next = form;
+  for (const field of template.fields) {
+    if (!field.sourcePath || !field.valueKey || field.type === 'static') continue;
+    const existing = getValueByKey(next, field.valueKey);
+    if (hasSaved && existing !== undefined) continue;
+    if (existing !== undefined && existing !== null && existing !== '' && !(Array.isArray(existing) && existing.length === 0)) continue;
+    const source = getPathValue(field.sourcePath, order, item, next);
+    if (source !== undefined && source !== null && source !== '') next = setValueByKey(next, field.valueKey, source);
+    else if (!hasSaved && field.defaultValue !== undefined && existing === undefined) next = setValueByKey(next, field.valueKey, clone(field.defaultValue));
+  }
+  return next;
+}
+function ruleMatches(value: any, triggerValue: string): boolean {
+  return Array.isArray(value) ? value.includes(triggerValue) : String(value ?? '') === triggerValue;
+}
+function applyRuleChanges(form: FormData, template: DocumentTemplate, changedFieldId: string, value: any): { form: FormData; notices: string[] } {
+  let next = form;
+  const notices: string[] = [];
+  for (const rule of template.rules || []) {
+    if (rule.triggerFieldId !== changedFieldId) continue;
+    const target = template.fields.find((field) => field.id === rule.targetFieldId);
+    if (!target) continue;
+    const matched = ruleMatches(value, rule.triggerValue);
+    const current = getValueByKey(next, target.valueKey);
+    if (rule.action === 'suggestion' && matched) {
+      notices.push('Sugestia: ' + resolveFieldLabel(template, rule.targetFieldId) + ' — ' + rule.targetValue + '.');
+      continue;
+    }
+    if (rule.action === 'warning' && matched) {
+      notices.push('Uwaga: po wybraniu „' + rule.triggerValue + '” sprawdź pole „' + target.label + '”.');
+      continue;
+    }
+    if (rule.action !== 'automatic') continue;
+    if (matched) {
+      if (Array.isArray(current)) {
+        if (target.type === 'repeatable' || target.type === 'doors') {
+          const exists = current.some((row: any) => row.type === rule.targetValue && row._autoRuleId === rule.id);
+          if (!exists) next = setValueByKey(next, target.valueKey, [...current, { id: uid('auto'), type: rule.targetValue, quantity: '1', position: '', _autoRuleId: rule.id }]);
+        } else if (!current.includes(rule.targetValue)) next = setValueByKey(next, target.valueKey, [...current, rule.targetValue]);
+      } else if (current !== rule.targetValue) next = setValueByKey(next, target.valueKey, rule.targetValue);
+    } else if (Array.isArray(current) && (target.type === 'repeatable' || target.type === 'doors')) {
+      next = setValueByKey(next, target.valueKey, current.filter((row: any) => row._autoRuleId !== rule.id));
+    } else if (Array.isArray(current)) {
+      next = setValueByKey(next, target.valueKey, current.filter((item: any) => item !== rule.targetValue));
+    } else if (current === rule.targetValue) {
+      next = setValueByKey(next, target.valueKey, '');
+    }
+  }
+  return { form: next, notices };
+}
 
- const rows=(key:'przepusty'|'otwory'|'slusarka',title:string,options:string[])=> <section className="rounded-xl border border-slate-200 p-4"><div className="mb-3 flex items-center justify-between gap-2"><h4 className="font-bold">{title}</h4><button type="button" onClick={()=>addRow(key)} className="inline-flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs font-semibold"><Plus size={14}/> Dodaj pozycję</button></div>{!form[key].length&&<p className="text-sm text-slate-500">Nie dodano pozycji.</p>}{form[key].map(r=><div key={r.id} className="grid grid-cols-1 gap-2 border-t py-3 md:grid-cols-[1.4fr_90px_1fr_36px]"><Field label="Typ" value={r.type} onChange={v=>changeRow(key,r.id,'type',v)} options={options}/><Field label="Ilość" type="number" value={r.quantity} onChange={v=>changeRow(key,r.id,'quantity',v)}/><Field label="Położenie / opis" value={r.position} onChange={v=>changeRow(key,r.id,'position',v)}/><button type="button" onClick={()=>set(key,form[key].filter(x=>x.id!==r.id))} className="self-end rounded-lg border border-red-200 p-2 text-red-600"><Trash2 size={15}/></button></div>)}</section>;
- if(!isOpen)return null;
- const printDate=new Date().toLocaleDateString('pl-PL');
- const CHANGE_LABELS:Record<keyof FormData,string>={typObudowy:'Typ obudowy',rozmiar:'Gabaryt / wariant',dlugosc:'Długość',szerokosc:'Szerokość',wysokosc:'Wysokość',konstrukcja:'Konstrukcja budynku',scianyIlosc:'Liczba ścian REI',scianyKlasa:'Klasa REI ścian',dachTyp:'Typ dachu',dachKlasa:'Klasa REI dachu',kolorObudowy:'Kolor obudowy',kolorSlusarki:'Kolor ślusarki',kolorDachu:'Kolor dachu',kolorDrzwiKraty:'Kolor drzwi i krat',antygraffiti:'Powłoka antygraffiti',tynk:'Tynk / wykończenie',dodatkoweWyposazenie:'Wyposażenie dodatkowe',przepusty:'Przepusty kablowe',otwory:'Otwory i przejścia',slusarka:'Ślusarka, drzwi i kraty',dostawaPyskowice:'Dostawa — Pyskowice',dostawaWarszawa:'Dostawa — Warszawa',uwagi:'Uwagi i poprawki'};
- const changedKeys=(Object.keys(CHANGE_LABELS) as (keyof FormData)[]).filter(k=>JSON.stringify(form[k])!==JSON.stringify(originalForm[k]));
- const showValue=(value:unknown):string=>Array.isArray(value)?(value.length?value.map(v=>typeof v==='object'&&v?[(v as Row).type,(v as Row).quantity,(v as Row).position].filter(Boolean).join(' — '):String(v)).join('; '):'Nie uzupełniono'):String(value||'Nie uzupełniono');
+const FormFieldInput: React.FC<{
+  field: FormField;
+  value: any;
+  onChange: (value: any) => void;
+  form: FormData;
+}> = ({ field, value, onChange, form }) => {
+  const commonInput = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100';
+  if (field.type === 'static') return <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-600">{field.helpText || field.defaultValue || field.label}</div>;
+  if (field.type === 'checkbox-list') {
+    const selected = Array.isArray(value) ? value : [];
+    return <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{(field.options || []).map((option) => (
+      <label key={option} className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50">
+        <input type="checkbox" className="mt-0.5" checked={selected.includes(option)} onChange={(event) => onChange(event.target.checked ? [...selected, option] : selected.filter((x: string) => x !== option))}/>
+        <span>{option}</span>
+      </label>
+    ))}</div>;
+  }
+  if (field.type === 'quantity-toggle') {
+    const current = value && typeof value === 'object' ? value : { enabled: false, quantity: '1' };
+    return <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 p-3">
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={Boolean(current.enabled)} onChange={(event) => onChange({ ...current, enabled: event.target.checked })}/> Uwzględnij pozycję</label>
+      <label className="flex items-center gap-2 text-sm text-slate-600">Ilość <input type="number" min="1" value={current.quantity || '1'} onChange={(event) => onChange({ ...current, quantity: event.target.value })} disabled={!current.enabled} className="w-20 rounded-lg border px-2 py-1.5 disabled:bg-slate-100"/></label>
+    </div>;
+  }
+  if (field.type === 'repeatable') {
+    const rows: Row[] = Array.isArray(value) ? value : [];
+    return <div className="space-y-3">
+      <div className="flex justify-end"><button type="button" onClick={() => onChange([...rows, { id: uid('row'), type: '', quantity: '1', position: '' }])} className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold"><Plus size={14}/> Dodaj pozycję</button></div>
+      {!rows.length && <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-500">Brak pozycji. Użyj „Dodaj pozycję”, aby dodać przepust lub otwór.</p>}
+      {rows.map((row) => <div key={row.id} className="grid grid-cols-1 gap-2 rounded-xl border border-slate-200 p-3 md:grid-cols-[minmax(0,1.4fr)_80px_minmax(0,1fr)_34px]">
+        <label className="block space-y-1 text-xs font-semibold text-slate-600">Typ<select value={row.type} onChange={(event) => onChange(rows.map((candidate) => candidate.id === row.id ? { ...candidate, type: event.target.value } : candidate))} className={commonInput}><option value="">— wybierz —</option>{(field.options || []).map((option) => <option key={option} value={option}>{option}</option>)}{row.type && !(field.options || []).includes(row.type) && <option value={row.type}>{row.type}</option>}</select></label>
+        <label className="block space-y-1 text-xs font-semibold text-slate-600">Ilość<input type="number" min="1" value={row.quantity || '1'} onChange={(event) => onChange(rows.map((candidate) => candidate.id === row.id ? { ...candidate, quantity: event.target.value } : candidate))} className={commonInput}/></label>
+        <label className="block space-y-1 text-xs font-semibold text-slate-600">Położenie / opis<input value={row.position || ''} onChange={(event) => onChange(rows.map((candidate) => candidate.id === row.id ? { ...candidate, position: event.target.value } : candidate))} className={commonInput}/></label>
+        <button type="button" title="Usuń pozycję" onClick={() => onChange(rows.filter((candidate) => candidate.id !== row.id))} className="self-end rounded-lg border border-red-200 p-2 text-red-600"><Trash2 size={15}/></button>
+      </div>)}
+    </div>;
+  }
+  if (field.type === 'doors') {
+    const rows: Row[] = Array.isArray(value) ? value : [];
+    const update = (rowId: string, patch: Partial<Row>) => onChange(rows.map((row) => row.id === rowId ? { ...row, ...patch } : row));
+    const categories = ['Drzwi SN i NN', 'Drzwi SN', 'Drzwi NN', 'Drzwi Trafo'];
+    return <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2"><p className="text-xs text-slate-500">Konfiguracja każdej pozycji jest zapisywana tylko w tym dokumencie.</p><button type="button" onClick={() => onChange([...rows, rowDefaults(field.valueKey === 'slusarka' ? 'slusarka' : field.valueKey, form)])} className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold"><Plus size={14}/> Dodaj drzwi</button></div>
+      {!rows.length && <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-500">Nie dodano drzwi ani ślusarki.</p>}
+      {rows.map((row) => <div key={row.id} className="space-y-3 rounded-xl border border-slate-200 p-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <label className="block space-y-1 text-xs font-semibold text-slate-600">Kategoria<select value={row.category || row.type} onChange={(event) => { const category = event.target.value; const dims = doorDimensions(form.typObudowy, category); update(row.id, { category, type: category, width: dims.width, height: dims.height }); }} className={commonInput}>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
+          <label className="block space-y-1 text-xs font-semibold text-slate-600">Liczba skrzydeł<select value={row.wings || 'Jednoskrzydłowe'} onChange={(event) => update(row.id, { wings: event.target.value, openingSide: event.target.value === 'Jednoskrzydłowe' ? (row.openingSide || 'Lewe') : '' })} className={commonInput}><option>Jednoskrzydłowe</option><option>Dwuskrzydłowe</option></select></label>
+          {(!row.wings || row.wings === 'Jednoskrzydłowe') && <label className="block space-y-1 text-xs font-semibold text-slate-600">Otwieranie<select value={row.openingSide || 'Lewe'} onChange={(event) => update(row.id, { openingSide: event.target.value })} className={commonInput}><option>Lewe</option><option>Prawe</option></select></label>}
+          <div className="grid grid-cols-2 gap-2"><label className="block space-y-1 text-xs font-semibold text-slate-600">Szerokość (mm)<input value={row.width || ''} placeholder={form.typObudowy === 'NZ' ? 'wg wymiaru stacji' : '950'} onChange={(event) => update(row.id, { width: event.target.value })} className={commonInput}/></label><label className="block space-y-1 text-xs font-semibold text-slate-600">Wysokość (mm)<input value={row.height || ''} placeholder={form.typObudowy === 'NZ' ? 'wg wymiaru stacji' : '2100'} onChange={(event) => update(row.id, { height: event.target.value })} className={commonInput}/></label></div>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={Boolean(row.ventilationGrille)} onChange={(event) => update(row.id, { ventilationGrille: event.target.checked })}/> Krata wentylacyjna</label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={Boolean(row.intakeFan)} onChange={(event) => update(row.id, { intakeFan: event.target.checked })}/> Wentylator nawiewny</label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={Boolean(row.exhaustFan)} onChange={(event) => update(row.id, { exhaustFan: event.target.checked })}/> Wentylator wyciągowy</label>
+          <label className="block space-y-1 text-xs font-semibold text-slate-600">Ilość<input type="number" min="1" value={row.quantity || '1'} onChange={(event) => update(row.id, { quantity: event.target.value })} className={commonInput}/></label>
+        </div>
+        <div className="flex items-center justify-between gap-2 border-t pt-2"><p className="text-xs text-slate-500">{doorRowDescription(row)}</p><button type="button" onClick={() => onChange(rows.filter((candidate) => candidate.id !== row.id))} className="rounded-lg border border-red-200 p-2 text-red-600" title="Usuń drzwi"><Trash2 size={15}/></button></div>
+      </div>)}
+    </div>;
+  }
+  if (field.type === 'select') return <select required={field.required} value={value ?? ''} onChange={(event) => onChange(event.target.value)} className={commonInput}>
+    <option value="">— Nie uzupełniono —</option>
+    {(field.options || []).map((option) => <option key={option} value={option}>{option}</option>)}
+    {value && !(field.options || []).includes(String(value)) && <option value={String(value)}>{String(value)} (wartość zapisana)</option>}
+  </select>;
+  if (field.type === 'textarea') return <textarea required={field.required} rows={field.fullWidth ? 4 : 3} value={value ?? ''} onChange={(event) => onChange(event.target.value)} className={commonInput} />;
+  return <input required={field.required} type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'} value={value ?? ''} onChange={(event) => onChange(event.target.value)} className={commonInput}/>;
+};
 
- return <div className="min-h-screen bg-slate-50 p-3 sm:p-6 print:static print:bg-white print:p-0"><div className="mx-auto max-w-6xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm print:my-0 print:max-w-none print:overflow-visible print:rounded-none print:border-0 print:shadow-none">
-  <div className="flex items-center justify-between gap-3 bg-slate-900 px-5 py-4 text-white print:hidden"><div className="flex items-center gap-3"><FileText size={20}/><div><h2 className="font-bold">Formularze dokumentów — {order.orderNumber}</h2><p className="text-xs text-slate-300">{order.projectName} · Zlecenie obudowy</p></div></div><button type="button" onClick={onClose} aria-label="Zamknij"><X size={20}/></button></div>
-  <div className={review?'hidden print:block':'grid grid-cols-1 md:grid-cols-[210px_minmax(0,1fr)] print:hidden'}>
-   <aside className="border-b bg-slate-50 p-4 md:border-b-0 md:border-r"><p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Dokument</p><div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm font-bold text-blue-900">Zlecenie obudowy</div><p className="mt-4 text-xs leading-5 text-slate-500">Wypełnij formularz, sprawdź cały dokument, a dopiero potem zatwierdź zmiany w zleceniu. Sam wydruk niczego nie zapisuje.</p><button type="button" onClick={()=>setDictOpen(true)} className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border bg-white px-3 py-2 text-xs font-semibold"><Database size={14}/> Baza słowników</button></aside>
-   <main className="min-w-0 p-4 sm:p-6"><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-lg font-bold">{steps[step]}</h3><p className="text-xs text-slate-500">Krok {step+1} z {steps.length}</p></div><div className="flex gap-1">{steps.map((s,i)=><button key={s} type="button" title={s} onClick={()=>setStep(i)} className={`h-2.5 w-7 rounded-full ${step===i?'bg-blue-600':i<step?'bg-blue-200':'bg-slate-200'}`}/>)}</div></div>
-    {step===0&&<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"><Field label="Typ obudowy" value={form.typObudowy} onChange={v=>set('typObudowy',v)} options={dict.typObudowy} dictKey="typObudowy"/><Field label="Gabaryt / wariant" value={form.rozmiar} onChange={v=>set('rozmiar',v)} options={dict.rozmiary} dictKey="rozmiary"/><Field label="Konstrukcja budynku" value={form.konstrukcja} onChange={v=>set('konstrukcja',v)} options={dict.konstrukcja} dictKey="konstrukcja"/><Field label="Długość (m)" value={form.dlugosc} onChange={v=>set('dlugosc',v)}/><Field label="Szerokość (m)" value={form.szerokosc} onChange={v=>set('szerokosc',v)}/><Field label="Wysokość (m)" value={form.wysokosc} onChange={v=>set('wysokosc',v)}/></div>}
-    {step===1&&<div className="grid grid-cols-1 gap-4 sm:grid-cols-2"><Field label="Liczba ścian o odporności ogniowej" value={form.scianyIlosc} onChange={v=>set('scianyIlosc',v)} options={dict.scianyIlosc} dictKey="scianyIlosc"/><Field label="Klasa odporności ogniowej ścian" value={form.scianyKlasa} onChange={v=>set('scianyKlasa',v)} options={dict.scianyKlasa} dictKey="scianyKlasa"/><Field label="Typ dachu" value={form.dachTyp} onChange={v=>set('dachTyp',v)} options={dict.dachTyp} dictKey="dachTyp"/><Field label="Klasa REI dachu" value={form.dachKlasa} onChange={v=>set('dachKlasa',v)} options={dict.dachKlasa} dictKey="dachKlasa"/></div>}
-    {step===2&&<div className="space-y-4">{rows('przepusty','Przepusty kablowe',dict.przepusty)}{rows('otwory','Otwory i przejścia',dict.otwory)}{rows('slusarka','Ślusarka, drzwi i kraty',dict.slusarka)}</div>}
-    {step===3&&<div className="space-y-5"><div className="grid grid-cols-1 gap-4 sm:grid-cols-2"><Field label="Kolor obudowy (RAL)" value={form.kolorObudowy} onChange={v=>set('kolorObudowy',v)} options={dict.kolory} dictKey="kolory"/><Field label="Kolor ślusarki (RAL)" value={form.kolorSlusarki} onChange={v=>set('kolorSlusarki',v)} options={dict.kolory} dictKey="kolory"/><Field label="Kolor dachu (RAL)" value={form.kolorDachu} onChange={v=>set('kolorDachu',v)} options={dict.kolory} dictKey="kolory"/><Field label="Kolor drzwi i krat (RAL)" value={form.kolorDrzwiKraty} onChange={v=>set('kolorDrzwiKraty',v)} options={dict.kolory} dictKey="kolory"/><Field label="Tynk / wykończenie elewacji" value={form.tynk} onChange={v=>set('tynk',v)} options={dict.tynk} dictKey="tynk"/><Field label="Powłoka antygraffiti" value={form.antygraffiti} onChange={v=>set('antygraffiti',v)} options={['Tak','Nie']}/></div><section className="rounded-xl border p-4"><h4 className="mb-3 font-bold">Wyposażenie dodatkowe</h4><div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{dict.wyposazenie.map(v=><label key={v} className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={form.dodatkoweWyposazenie.includes(v)} onChange={e=>set('dodatkoweWyposazenie',e.target.checked?[...form.dodatkoweWyposazenie,v]:form.dodatkoweWyposazenie.filter(x=>x!==v))}/>{v}</label>)}</div><button type="button" onClick={()=>{setDictKey('wyposazenie');setDictOpen(true);}} className="mt-3 text-xs font-semibold text-blue-700">Edytuj słownik wyposażenia</button></section></div>}
-    {step===4&&<div className="space-y-4"><div className="grid grid-cols-1 gap-4 md:grid-cols-2"><label className="block space-y-1"><span className="text-xs font-semibold text-slate-600">Dostawa / uwagi — Pyskowice</span><textarea rows={4} value={form.dostawaPyskowice} onChange={e=>set('dostawaPyskowice',e.target.value)} className="w-full rounded-lg border px-3 py-2 text-sm"/></label><label className="block space-y-1"><span className="text-xs font-semibold text-slate-600">Dostawa / uwagi — Warszawa</span><textarea rows={4} value={form.dostawaWarszawa} onChange={e=>set('dostawaWarszawa',e.target.value)} className="w-full rounded-lg border px-3 py-2 text-sm"/></label></div><label className="block space-y-1"><span className="text-xs font-semibold text-slate-600">Uwagi i poprawki do dokumentu</span><textarea rows={4} value={form.uwagi} onChange={e=>set('uwagi',e.target.value)} className="w-full rounded-lg border px-3 py-2 text-sm"/></label></div>}
-    <div className="mt-7 flex items-center justify-between gap-2 border-t pt-4"><button type="button" onClick={()=>setStep(s=>Math.max(0,s-1))} disabled={step===0} className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm font-semibold disabled:opacity-40"><ChevronLeft size={16}/> Wstecz</button>{step<steps.length-1?<button type="button" onClick={()=>setStep(s=>Math.min(steps.length-1,s+1))} className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white">Dalej <ChevronRight size={16}/></button>:<button type="button" onClick={()=>setReview(true)} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white">Sprawdź dokument i zmiany</button>}</div>
-   </main>
-  </div>
-  <section className={review?'p-5 sm:p-8 print:p-0':'hidden print:block print:p-0'}>
-   {review&&<><div className="mb-6 rounded-xl border border-blue-200 bg-blue-50/50 p-4 print:hidden"><h2 className="font-bold text-slate-900">Podsumowanie zmian przed zatwierdzeniem</h2><p className="mt-1 text-xs text-slate-600">Porównanie formularza z danymi zapisanymi dotychczas w zleceniu.</p>{changedKeys.length?<div className="mt-3 space-y-2">{changedKeys.map(k=><div key={k} className="grid grid-cols-1 gap-1 border-t border-blue-100 pt-2 sm:grid-cols-[170px_1fr_1fr]"><strong className="text-xs">{CHANGE_LABELS[k]}</strong><div className="text-xs text-slate-600"><span className="font-semibold">Było:</span> {showValue(originalForm[k])}</div><div className="text-xs text-slate-900"><span className="font-semibold">Będzie:</span> {showValue(form[k])}</div></div>)}</div>:<p className="mt-3 text-sm text-slate-700">Nie wykryto różnic względem danych zapisanych w zleceniu.</p>}</div><div className="mx-auto max-w-4xl text-slate-900 print:max-w-none"><header className="flex justify-between gap-5 border-b-2 border-slate-900 pb-4"><div><p className="text-xs font-bold uppercase tracking-widest text-slate-500">ENCO · Zlecenie produkcyjne</p><h1 className="mt-2 text-2xl font-black">ZLECENIE OBUDOWY</h1><p className="mt-1 text-sm">{order.orderNumber} · {order.projectName}</p></div><div className="text-right text-sm"><p className="font-bold">{order.client}</p><p>Data: {printDate}</p></div></header>
-   <div className="mt-5 grid grid-cols-2 gap-3 border-b pb-4 text-sm"><p><strong>Typ:</strong> {form.typObudowy||'Nie uzupełniono'}</p><p><strong>Wariant:</strong> {form.rozmiar||'Nie uzupełniono'}</p><p><strong>Wymiary D × S × W:</strong> {[form.dlugosc,form.szerokosc,form.wysokosc].some(Boolean)?[form.dlugosc||'—',form.szerokosc||'—',form.wysokosc||'—'].join(' × ')+' m':'Nie uzupełniono'}</p><p><strong>Konstrukcja:</strong> {form.konstrukcja||'Nie uzupełniono'}</p></div>
-   <section className="mt-5"><h2 className="mb-2 border-b pb-1 text-sm font-black uppercase">Ściany i dach</h2><div className="grid grid-cols-2 gap-3 text-sm"><p><strong>Ściany REI:</strong> {form.scianyIlosc||'Nie uzupełniono'} · {form.scianyKlasa||'Nie uzupełniono'}</p><p><strong>Dach:</strong> {form.dachTyp||'Nie uzupełniono'} · {form.dachKlasa||'Nie uzupełniono'}</p></div></section>
-   {(['przepusty','otwory','slusarka'] as const).map(key=><section key={key} className="mt-5"><h2 className="mb-2 border-b pb-1 text-sm font-black uppercase">{key==='przepusty'?'Przepusty kablowe':key==='otwory'?'Otwory i przejścia':'Ślusarka, drzwi i kraty'}</h2>{form[key].length?<table className="w-full border-collapse text-sm"><thead><tr><th className="border p-2 text-left">Typ</th><th className="border p-2">Ilość</th><th className="border p-2 text-left">Położenie / opis</th></tr></thead><tbody>{form[key].map(r=><tr key={r.id}><td className="border p-2">{r.type||'Nie uzupełniono'}</td><td className="border p-2 text-center">{r.quantity||'—'}</td><td className="border p-2">{r.position||'Nie uzupełniono'}</td></tr>)}</tbody></table>:<p className="text-sm">Nie uzupełniono.</p>}</section>)}
-   <section className="mt-5"><h2 className="mb-2 border-b pb-1 text-sm font-black uppercase">Wykończenie i wyposażenie</h2><div className="grid grid-cols-2 gap-2 text-sm"><p><strong>Kolor obudowy:</strong> {form.kolorObudowy||'Nie uzupełniono'}</p><p><strong>Kolor ślusarki:</strong> {form.kolorSlusarki||'Nie uzupełniono'}</p><p><strong>Kolor dachu:</strong> {form.kolorDachu||'Nie uzupełniono'}</p><p><strong>Kolor drzwi i krat:</strong> {form.kolorDrzwiKraty||'Nie uzupełniono'}</p><p><strong>Tynk:</strong> {form.tynk||'Nie uzupełniono'}</p><p><strong>Antygraffiti:</strong> {form.antygraffiti||'Nie uzupełniono'}</p></div><p className="mt-2 text-sm"><strong>Wyposażenie:</strong> {form.dodatkoweWyposazenie.length?form.dodatkoweWyposazenie.join(', '):'Nie uzupełniono'}</p></section>
-   <section className="mt-5 grid grid-cols-2 gap-4"><div><h2 className="mb-2 border-b pb-1 text-sm font-black uppercase">Dostawa — Pyskowice</h2><p className="whitespace-pre-wrap text-sm">{form.dostawaPyskowice||'Nie uzupełniono'}</p></div><div><h2 className="mb-2 border-b pb-1 text-sm font-black uppercase">Dostawa — Warszawa</h2><p className="whitespace-pre-wrap text-sm">{form.dostawaWarszawa||'Nie uzupełniono'}</p></div></section><section className="mt-5"><h2 className="mb-2 border-b pb-1 text-sm font-black uppercase">Uwagi i poprawki</h2><p className="whitespace-pre-wrap text-sm">{form.uwagi||'Brak uwag'}</p></section></div></>}</section>
-  {review&&<div className="flex flex-wrap items-center justify-between gap-2 border-t bg-slate-50 px-5 py-4 print:hidden"><button type="button" onClick={()=>setReview(false)} className="rounded-lg border bg-white px-3 py-2 text-sm font-semibold">Wróć do formularza</button><div className="flex flex-wrap gap-2"><button type="button" onClick={()=>window.print()} disabled={!canDownload} className="inline-flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm font-semibold disabled:opacity-40"><Printer size={16}/> Drukuj / PDF</button><button type="button" onClick={apply} disabled={!canEdit||!item} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-40"><CheckCircle2 size={16}/> Zatwierdź zmiany w zleceniu</button></div></div>}
-  {dictOpen&&<div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 p-3 print:hidden"><div className="w-full max-w-3xl rounded-2xl bg-white p-5 shadow-2xl"><div className="flex items-center justify-between"><div><h3 className="text-lg font-bold">Baza słowników formularza</h3><p className="text-xs text-slate-500">Wspólne wartości zapisywane na serwerze.</p></div><button type="button" onClick={()=>setDictOpen(false)}><X size={18}/></button></div>{!canEdit&&<p className="mt-3 rounded bg-amber-50 p-3 text-sm text-amber-800">Brak uprawnień do edycji słowników.</p>}<div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-[220px_1fr]"><div className="space-y-1">{(Object.keys(LABEL) as Key[]).map(k=><button key={k} type="button" onClick={()=>{setDictKey(k);setDictMessage('');}} className={`block w-full rounded-lg px-3 py-2 text-left text-sm ${dictKey===k?'bg-blue-50 font-bold text-blue-900':'hover:bg-slate-50'}`}>{LABEL[k]}</button>)}</div><div><div className="mb-3 flex gap-2"><input value={newValue} onChange={e=>setNewValue(e.target.value)} disabled={!canEdit} placeholder="Nowa wartość" className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm"/><button type="button" disabled={!canEdit||!newValue.trim()} onClick={()=>{const v=newValue.trim();if(v&&!dict[dictKey].includes(v))setDict(d=>({...d,[dictKey]:[...d[dictKey],v]}));setNewValue('');}} className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-40"><Plus size={14}/> Dodaj</button></div><div className="max-h-72 space-y-2 overflow-y-auto">{dict[dictKey].map((v,i)=><div key={v+i} className="flex items-center gap-2 rounded-lg border p-2"><input value={v} disabled={!canEdit} onChange={e=>setDict(d=>({...d,[dictKey]:d[dictKey].map((x,j)=>j===i?e.target.value:x)}))} className="min-w-0 flex-1 rounded border border-transparent px-2 py-1 text-sm focus:border-slate-300"/><button type="button" disabled={!canEdit||i===0} onClick={()=>setDict(d=>{const a=[...d[dictKey]];[a[i-1],a[i]]=[a[i],a[i-1]];return {...d,[dictKey]:a};})} className="rounded border px-2 py-1 text-xs disabled:opacity-30" title="W górę">↑</button><button type="button" disabled={!canEdit||i===dict[dictKey].length-1} onClick={()=>setDict(d=>{const a=[...d[dictKey]];[a[i+1],a[i]]=[a[i],a[i+1]];return {...d,[dictKey]:a};})} className="rounded border px-2 py-1 text-xs disabled:opacity-30" title="W dół">↓</button><button type="button" disabled={!canEdit} onClick={()=>setDict(d=>({...d,[dictKey]:d[dictKey].filter((_,j)=>j!==i)}))} className="rounded border border-red-200 px-2 py-1 text-red-600 disabled:opacity-30" title="Usuń">×</button></div>)}</div><div className="mt-4 flex flex-wrap items-center justify-between gap-2"><span className="text-xs text-slate-500">{dictMessage}</span><button type="button" disabled={!canEdit} onClick={saveDict} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-40"><Save size={15}/> Zapisz słownik</button></div></div></div></div></div>}
- </div></div>;
+interface Props {
+  order: Order;
+  isOpen: boolean;
+  onClose: () => void;
+  onSaveOrderChanges: (order: Order) => void;
+  currentProfile?: UserRoleProfile;
+  canDownload?: boolean;
+}
+export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose, onSaveOrderChanges, currentProfile, canDownload = true }) => {
+  const profile = currentProfile || USER_PROFILES.admin;
+  const item = order.items.find((candidate) => candidate.type === 'OBUDOWA');
+  const canEdit = canEditItemType(profile, 'OBUDOWA');
+  const isAdmin = profile.id === 'admin';
+  const [form, setForm] = useState<FormData>(() => readForm(item, order));
+  const [originalForm, setOriginalForm] = useState<FormData>(() => readForm(item, order));
+  const [activeTemplate, setActiveTemplate] = useState<DocumentTemplate>(() => clone(DEFAULT_TEMPLATE));
+  const [globalTemplate, setGlobalTemplate] = useState<DocumentTemplate>(() => clone(DEFAULT_TEMPLATE));
+  const [customDraft, setCustomDraft] = useState<DocumentTemplate>(() => clone(DEFAULT_TEMPLATE));
+  const [adminDraft, setAdminDraft] = useState<DocumentTemplate>(() => clone(DEFAULT_TEMPLATE));
+  const [templateHistory, setTemplateHistory] = useState<Array<{ version: number; updatedAt?: string; updatedBy?: string }>>([]);
+  const [mode, setMode] = useState<Mode>('form');
+  const [designerTab, setDesignerTab] = useState<DesignerTab>('content');
+  const [selectedSectionId, setSelectedSectionId] = useState('naglowek');
+  const [selectedFieldId, setSelectedFieldId] = useState('typBudowli');
+  const [sourceHtmlMode, setSourceHtmlMode] = useState(false);
+  const [review, setReview] = useState(false);
+  const [templateLoading, setTemplateLoading] = useState(false);
+  const [templateSaving, setTemplateSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [ruleNotices, setRuleNotices] = useState<string[]>([]);
+  const editorRef = useRef<HTMLDivElement | null>(null);
+
+  const hasSavedDocument = Boolean(item?.details?.formularze?.zlecenieObudowy && typeof item.details.formularze.zlecenieObudowy === 'object');
+  useEffect(() => {
+    if (!isOpen) return;
+    const saved = item?.details?.formularze?.zlecenieObudowy;
+    const savedTemplate = saved && saved.__templateSnapshot ? saved.__templateSnapshot as DocumentTemplate : null;
+    const base = readForm(item, order);
+    setForm(base);
+    setOriginalForm(clone(base));
+    setReview(false);
+    setMode('form');
+    setDesignerTab('content');
+    setRuleNotices([]);
+    setMessage('');
+    const initialTemplate = savedTemplate ? clone(savedTemplate) : clone(DEFAULT_TEMPLATE);
+    setActiveTemplate(initialTemplate);
+    setGlobalTemplate(clone(DEFAULT_TEMPLATE));
+    setCustomDraft(clone(initialTemplate));
+    setAdminDraft(clone(DEFAULT_TEMPLATE));
+    let mounted = true;
+    setTemplateLoading(true);
+    fetch('/api/document-form-templates/zlecenie-obudowy', { credentials: 'same-origin' })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Nie udało się pobrać wzorca dokumentu.');
+        return response.json();
+      })
+      .then((result) => {
+        if (!mounted) return;
+        const serverTemplate = result?.template && typeof result.template === 'object' ? result.template as DocumentTemplate : clone(DEFAULT_TEMPLATE);
+        const safeTemplate = { ...clone(DEFAULT_TEMPLATE), ...serverTemplate, contentHtml: sanitizeHtml(String(serverTemplate.contentHtml || DEFAULT_TEMPLATE.contentHtml)) } as DocumentTemplate;
+        setGlobalTemplate(safeTemplate);
+        setAdminDraft(clone(safeTemplate));
+        setTemplateHistory(Array.isArray(result?.versions) ? result.versions : []);
+        if (!savedTemplate) {
+          setActiveTemplate(safeTemplate);
+          setCustomDraft(clone(safeTemplate));
+        }
+        const hydrated = hydrateFromBindings(base, savedTemplate || safeTemplate, order, item, Boolean(saved));
+        setForm(hydrated);
+        setOriginalForm(clone(hydrated));
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setMessage('Nie udało się wczytać wzorca z serwera. Użyto lokalnego wzorca domyślnego.');
+        const hydrated = hydrateFromBindings(base, savedTemplate || DEFAULT_TEMPLATE, order, item, Boolean(saved));
+        setForm(hydrated);
+        setOriginalForm(clone(hydrated));
+      })
+      .finally(() => { if (mounted) setTemplateLoading(false); });
+    return () => { mounted = false; };
+  }, [isOpen, order.id]);
+
+  const workingTemplate = mode === 'custom' ? customDraft : mode === 'admin' ? adminDraft : activeTemplate;
+  const setWorkingTemplate = (update: DocumentTemplate | ((previous: DocumentTemplate) => DocumentTemplate)) => {
+    if (mode === 'custom') setCustomDraft((previous) => typeof update === 'function' ? update(previous) : update);
+    else if (mode === 'admin') setAdminDraft((previous) => typeof update === 'function' ? update(previous) : update);
+  };
+  const selectedSection = workingTemplate.sections.find((section) => section.id === selectedSectionId) || workingTemplate.sections[0];
+  const selectedField = workingTemplate.fields.find((field) => field.id === selectedFieldId) || workingTemplate.fields[0];
+
+  const updateFormField = (field: FormField, value: any) => {
+    setForm((previous) => {
+      let next = setValueByKey(previous, field.valueKey, value);
+      if (field.valueKey === 'typObudowy' || field.valueKey === 'rozmiar') {
+        const oldExpected = 'Wykonanie obudowy ' + [previous.typObudowy, previous.rozmiar].filter(Boolean).join(' ') + ' wraz z fundamentem i przepustami kablowymi SN, nN i uziemiającymi, wraz z montażem ślusarki i rozdzielnicy SN i nN.';
+        const newExpected = 'Wykonanie obudowy ' + [next.typObudowy, next.rozmiar].filter(Boolean).join(' ') + ' wraz z fundamentem i przepustami kablowymi SN, nN i uziemiającymi, wraz z montażem ślusarki i rozdzielnicy SN i nN.';
+        if (!previous.opisObudowy || previous.opisObudowy === oldExpected) next = { ...next, opisObudowy: newExpected };
+        if (field.valueKey === 'typObudowy') {
+          next = { ...next, slusarka: next.slusarka.map((row) => {
+            const dims = doorDimensions(String(value || ''), row.category || row.type);
+            const knownSizes = ['950', '1170', '2100', ''];
+            const shouldUpdateWidth = !row.width || knownSizes.includes(row.width);
+            const shouldUpdateHeight = !row.height || knownSizes.includes(row.height);
+            return { ...row, width: shouldUpdateWidth ? dims.width : row.width, height: shouldUpdateHeight ? dims.height : row.height };
+          }) };
+        }
+      }
+      const evaluated = applyRuleChanges(next, mode === 'admin' ? adminDraft : activeTemplate, field.id, value);
+      setRuleNotices(evaluated.notices);
+      return evaluated.form;
+    });
+  };
+
+  const updateTemplateField = (fieldId: string, patch: Partial<FormField>) => {
+    setWorkingTemplate((template) => ({ ...template, fields: template.fields.map((field) => field.id === fieldId ? { ...field, ...patch } : field) }));
+  };
+  const updateSection = (sectionId: string, patch: Partial<FormSection>) => {
+    setWorkingTemplate((template) => ({ ...template, sections: template.sections.map((section) => section.id === sectionId ? { ...section, ...patch } : section) }));
+  };
+  const moveSection = (sectionId: string, direction: -1 | 1) => {
+    setWorkingTemplate((template) => {
+      const index = template.sections.findIndex((section) => section.id === sectionId);
+      const target = index + direction;
+      if (index < 0 || target < 0 || target >= template.sections.length) return template;
+      const sections = [...template.sections];
+      [sections[index], sections[target]] = [sections[target], sections[index]];
+      return { ...template, sections };
+    });
+  };
+  const moveField = (sectionId: string, fieldId: string, direction: -1 | 1) => {
+    setWorkingTemplate((template) => ({
+      ...template,
+      sections: template.sections.map((section) => {
+        if (section.id !== sectionId) return section;
+        const ids = [...section.fieldIds];
+        const index = ids.indexOf(fieldId);
+        const target = index + direction;
+        if (index < 0 || target < 0 || target >= ids.length) return section;
+        [ids[index], ids[target]] = [ids[target], ids[index]];
+        return { ...section, fieldIds: ids };
+      }),
+    }));
+  };
+  const addSection = () => {
+    const section: FormSection = { id: uid('section'), title: 'Nowa sekcja', fieldIds: [], columns: 2, visible: true };
+    setWorkingTemplate((template) => ({ ...template, sections: [...template.sections, section] }));
+    setSelectedSectionId(section.id);
+    setDesignerTab('structure');
+  };
+  const addField = () => {
+    const sectionId = selectedSection?.id || 'naglowek';
+    const id = uid('wlasne-pole').replace(/[^a-zA-Z0-9_-]/g, '-');
+    const field: FormField = { id, label: 'Nowe pole', valueKey: 'customFields.' + id, type: 'text', sourcePath: '', visible: true, required: false };
+    setWorkingTemplate((template) => ({
+      ...template,
+      fields: [...template.fields, field],
+      sections: template.sections.map((section) => section.id === sectionId ? { ...section, fieldIds: [...section.fieldIds, field.id] } : section),
+    }));
+    setSelectedFieldId(id);
+    setDesignerTab('structure');
+  };
+  const moveFieldToSection = (fieldId: string, targetSectionId: string) => {
+    setWorkingTemplate((template) => {
+      const sections = template.sections.map((section) => ({ ...section, fieldIds: section.fieldIds.filter((id) => id !== fieldId) }));
+      const target = sections.find((section) => section.id === targetSectionId);
+      if (target) target.fieldIds = [...target.fieldIds, fieldId];
+      return { ...template, sections };
+    });
+  };
+  const removeField = (fieldId: string) => {
+    setWorkingTemplate((template) => ({
+      ...template,
+      fields: template.fields.filter((field) => field.id !== fieldId),
+      sections: template.sections.map((section) => ({ ...section, fieldIds: section.fieldIds.filter((id) => id !== fieldId) })),
+      rules: template.rules.filter((rule) => rule.triggerFieldId !== fieldId && rule.targetFieldId !== fieldId),
+    }));
+    if (selectedFieldId === fieldId) setSelectedFieldId('');
+  };
+  const removeSection = (sectionId: string) => {
+    setWorkingTemplate((template) => ({
+      ...template,
+      sections: template.sections.filter((section) => section.id !== sectionId),
+      fields: template.fields,
+    }));
+    if (selectedSectionId === sectionId) setSelectedSectionId('');
+  };
+  const addRule = () => {
+    if (workingTemplate.fields.length < 2) return;
+    const source = workingTemplate.fields[0];
+    const target = workingTemplate.fields.find((field) => field.id !== source.id);
+    if (!target) return;
+    const rule: TemplateRule = { id: uid('rule'), triggerFieldId: source.id, triggerValue: '', targetFieldId: target.id, targetValue: '', action: 'automatic' };
+    setWorkingTemplate((template) => ({ ...template, rules: [...template.rules, rule] }));
+  };
+  const updateRule = (ruleId: string, patch: Partial<TemplateRule>) => {
+    setWorkingTemplate((template) => ({ ...template, rules: template.rules.map((rule) => rule.id === ruleId ? { ...rule, ...patch } : rule) }));
+  };
+  const removeRule = (ruleId: string) => setWorkingTemplate((template) => ({ ...template, rules: template.rules.filter((rule) => rule.id !== ruleId) }));
+
+  const openCustomEdit = () => {
+    if (!canEdit) return;
+    setCustomDraft(clone(activeTemplate));
+    setMode('custom');
+    setDesignerTab('content');
+    setSourceHtmlMode(false);
+    setMessage('');
+  };
+  const openAdminEdit = () => {
+    if (!isAdmin) return;
+    setAdminDraft(clone(globalTemplate));
+    setMode('admin');
+    setDesignerTab('content');
+    setSourceHtmlMode(false);
+    setMessage('');
+  };
+  const saveCustomEdit = () => {
+    const next = { ...clone(customDraft), contentHtml: sanitizeHtml(customDraft.contentHtml) };
+    setActiveTemplate(next);
+    setCustomDraft(clone(next));
+    setForm((current) => ({ ...current, __templateSnapshot: clone(next), __templateVersion: next.version }));
+    setMode('form');
+    setMessage('Zapisano zmiany tylko w tym dokumencie. Wzorzec współdzielony nie został zmieniony.');
+  };
+  const saveAdminTemplate = async () => {
+    if (!isAdmin) return;
+    const sanitized = { ...clone(adminDraft), contentHtml: sanitizeHtml(adminDraft.contentHtml) };
+    setTemplateSaving(true);
+    setMessage('');
+    try {
+      const response = await fetch('/api/document-form-templates/' + encodeURIComponent(sanitized.key), {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ template: sanitized }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result?.success || !result?.template) throw new Error(result?.error || 'Nie udało się zapisać wzorca.');
+      const published = { ...sanitized, ...result.template, contentHtml: sanitizeHtml(String(result.template.contentHtml || sanitized.contentHtml)) } as DocumentTemplate;
+      setGlobalTemplate(published);
+      setAdminDraft(clone(published));
+      setTemplateHistory(Array.isArray(result.versions) ? result.versions : templateHistory);
+      if (!hasSavedDocument) {
+        setActiveTemplate(clone(published));
+        setCustomDraft(clone(published));
+      }
+      setMessage('Opublikowano wersję wzorca ' + published.version + '. Zmiana dotyczy nowych formularzy; rozpoczęty dokument zachowuje własną kopię wzorca.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Błąd zapisu wzorca.');
+    } finally {
+      setTemplateSaving(false);
+    }
+  };
+
+  const formatEditor = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    if (editorRef.current) {
+      const html = editorRef.current.innerHTML;
+      setWorkingTemplate((template) => ({ ...template, contentHtml: html }));
+    }
+  };
+  const insertToken = (token: string) => {
+    if (editorRef.current) editorRef.current.focus();
+    document.execCommand('insertText', false, token);
+    if (editorRef.current) setWorkingTemplate((template) => ({ ...template, contentHtml: editorRef.current?.innerHTML || template.contentHtml }));
+  };
+
+  const changedLabels: Record<string, string> = {
+    typBudowli: 'Typ budowli', typObudowy: 'Typ obudowy', rozmiar: 'Rozmiar obudowy', nazwaObiektu: 'Nazwa obiektu',
+    numerZL: 'Numer ZL', dataWystawienia: 'Data wystawienia', terminRealizacji: 'Termin realizacji', dotExtra: 'Dodatkowa wzmianka DOT.',
+    opisObudowy: 'Opis obudowy', dlugosc: 'Długość', szerokosc: 'Szerokość', wysokosc: 'Wysokość', konstrukcja: 'Konstrukcja',
+    scianyIlosc: 'Liczba ścian REI', scianyKlasa: 'Klasa REI ścian', dachTyp: 'Typ dachu', dachKlasa: 'Klasa REI dachu',
+    kolorObudowy: 'Kolor obudowy', kolorSlusarki: 'Kolor ślusarki', kolorDachu: 'Kolor dachu', kolorDrzwiKraty: 'Kolor drzwi i krat',
+    antygraffiti: 'Antygraffiti', tynk: 'Tynk', dodatkoweWyposazenie: 'Dodatkowe wyposażenie', przepusty: 'Przepusty',
+    otwory: 'Otwory', slusarka: 'Drzwi i ślusarka', dostawaPyskowice: 'Dostawa — Pyskowice',
+    dostawaWarszawa: 'Dostawa — Warszawa', uwagi: 'Uwagi',
+  };
+  const changedKeys = Object.keys(changedLabels).filter((key) => JSON.stringify((form as any)[key]) !== JSON.stringify((originalForm as any)[key]));
+  if (JSON.stringify(form.customFields) !== JSON.stringify(originalForm.customFields)) changedKeys.push('customFields');
+  const showChangeValue = (key: string, value: any) => {
+    if (key === 'customFields') return Object.keys(value || {}).map((fieldKey) => fieldKey + ': ' + displayValue(value[fieldKey])).join('; ') || '—';
+    return displayValue(value);
+  };
+
+  const renderedHtml = renderTemplateHtml(mode === 'custom' ? customDraft : mode === 'admin' ? adminDraft : activeTemplate, form, order, item);
+  const templateForPreview = mode === 'custom' ? customDraft : mode === 'admin' ? adminDraft : activeTemplate;
+
+  if (!isOpen) return null;
+
+  const renderFormFields = () => (
+    <div className="space-y-4">
+      {templateLoading && <div className="flex items-center gap-2 rounded-lg bg-blue-50 p-3 text-sm text-blue-800"><Loader2 size={16} className="animate-spin"/> Wczytywanie wzorca formularza…</div>}
+      {ruleNotices.map((notice, index) => <div key={notice + index} className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{notice}</div>)}
+      {activeTemplate.sections.filter((section) => section.visible !== false).map((section) => (
+        <section key={section.id} className="rounded-xl border border-slate-200 bg-white p-4">
+          <h3 className="mb-3 text-sm font-bold text-slate-900">{section.title}</h3>
+          <div className={'grid grid-cols-1 gap-3 ' + (section.columns === 3 ? 'md:grid-cols-2 xl:grid-cols-3' : section.columns === 2 ? 'md:grid-cols-2' : '')}>
+            {section.fieldIds.map((id) => activeTemplate.fields.find((field) => field.id === id)).filter((field): field is FormField => Boolean(field && field.visible !== false)).map((field) => (
+              <label key={field.id} className={'block min-w-0 space-y-1 ' + (field.fullWidth || ['textarea', 'checkbox-list', 'repeatable', 'doors', 'static'].includes(field.type) ? 'col-span-full' : '')}>
+                <span className="block text-xs font-semibold text-slate-600">{field.label}{field.required ? ' *' : ''}</span>
+                <FormFieldInput field={field} value={getValueByKey(form, field.valueKey)} form={form} onChange={(value) => updateFormField(field, value)}/>
+                {field.helpText && <span className="block text-[11px] leading-4 text-slate-500">{field.helpText}</span>}
+              </label>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+
+  const renderDesigner = () => (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1">
+        {([{ id: 'content', label: 'Treść dokumentu', icon: <FileText size={14}/> }, { id: 'structure', label: 'Sekcje i pola', icon: <Settings2 size={14}/> }, { id: 'bindings', label: 'Powiązania i reguły', icon: <Code2 size={14}/> }] as Array<{ id: DesignerTab; label: string; icon: React.ReactNode }>).map((tab) => (
+          <button key={tab.id} type="button" onClick={() => setDesignerTab(tab.id)} className={'inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold ' + (designerTab === tab.id ? 'bg-white text-blue-800 shadow-sm' : 'text-slate-600 hover:bg-white/70')}>{tab.icon}{tab.label}</button>
+        ))}
+      </div>
+      {designerTab === 'content' && <section className="overflow-hidden rounded-xl border border-slate-200">
+        <div className="flex flex-wrap items-center gap-1 border-b bg-slate-50 p-2">
+          <button type="button" title="Pogrubienie" onMouseDown={(event) => event.preventDefault()} onClick={() => formatEditor('bold')} className="rounded border bg-white p-2"><Bold size={15}/></button>
+          <button type="button" title="Kursywa" onMouseDown={(event) => event.preventDefault()} onClick={() => formatEditor('italic')} className="rounded border bg-white p-2"><Italic size={15}/></button>
+          <button type="button" title="Podkreślenie" onMouseDown={(event) => event.preventDefault()} onClick={() => formatEditor('underline')} className="rounded border bg-white p-2"><Underline size={15}/></button>
+          <button type="button" title="Przekreślenie" onMouseDown={(event) => event.preventDefault()} onClick={() => formatEditor('strikeThrough')} className="rounded border bg-white p-2"><Strikethrough size={15}/></button>
+          <button type="button" title="Nagłówek 1" onMouseDown={(event) => event.preventDefault()} onClick={() => formatEditor('formatBlock', 'H1')} className="rounded border bg-white p-2"><Heading1 size={15}/></button>
+          <button type="button" title="Nagłówek 2" onMouseDown={(event) => event.preventDefault()} onClick={() => formatEditor('formatBlock', 'H2')} className="rounded border bg-white p-2"><Heading2 size={15}/></button>
+          <button type="button" title="Lista punktowana" onMouseDown={(event) => event.preventDefault()} onClick={() => formatEditor('insertUnorderedList')} className="rounded border bg-white p-2"><List size={15}/></button>
+          <button type="button" title="Lista numerowana" onMouseDown={(event) => event.preventDefault()} onClick={() => formatEditor('insertOrderedList')} className="rounded border bg-white p-2"><ListOrdered size={15}/></button>
+          <button type="button" title="Tabela" onMouseDown={(event) => event.preventDefault()} onClick={() => formatEditor('insertHTML', '<table style="width:100%;border-collapse:collapse;"><tbody><tr><td style="border:1px solid #cbd5e1;padding:6px;">Tekst</td><td style="border:1px solid #cbd5e1;padding:6px;">Wartość</td></tr></tbody></table>')} className="rounded border bg-white p-2"><Table2 size={15}/></button>
+          <button type="button" onClick={() => setSourceHtmlMode((shown) => !shown)} className={'ml-auto inline-flex items-center gap-1 rounded border px-2 py-2 text-xs font-semibold ' + (sourceHtmlMode ? 'bg-blue-50 text-blue-800' : 'bg-white')}><Code2 size={14}/>{sourceHtmlMode ? 'Edytor wizualny' : 'Kod HTML'}</button>
+        </div>
+        <div className="border-b bg-white px-3 py-3">
+          <p className="mb-2 text-xs font-semibold text-slate-600">Wstaw dynamiczne pole w miejscu kursora</p>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              ['Numer ZL', '{{form.numerZL}}'], ['Data', '{{form.dataWystawienia}}'], ['Termin', '{{form.terminRealizacji}}'],
+              ['Tytuł', '{{derived.title}}'], ['DOT.', '{{derived.dot}}'], ['Typ obudowy', '{{form.typObudowy}}'],
+              ['Rozmiar', '{{form.rozmiar}}'], ['Nazwa obiektu', '{{form.nazwaObiektu}}'], ['Opis obudowy', '{{form.opisObudowy}}'],
+              ['Drzwi', '{{form.slusarka}}'], ['Przepusty', '{{form.przepusty}}'], ['Otwory', '{{form.otwory}}'],
+              ['Kolory', '{{form.kolorObudowy}}'], ['SN', '{{form.customFields.rozdzielnicaSN}}'], ['NN', '{{form.customFields.rozdzielnicaNN}}'],
+              ['Telemechanika', '{{form.customFields.telemechanika}}'], ['Transformator', '{{form.customFields.transformator}}'],
+              ['Warszawa', '{{form.dostawaWarszawa}}'], ['Pyskowice', '{{form.dostawaPyskowice}}'],
+            ].map(([label, token]) => <button key={token} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => insertToken(token)} className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-800">{label}</button>)}
+          </div>
+        </div>
+        {sourceHtmlMode ? <textarea aria-label="Kod HTML wzorca dokumentu" value={workingTemplate.contentHtml} onChange={(event) => setWorkingTemplate((template) => ({ ...template, contentHtml: event.target.value }))} rows={24} className="w-full resize-y border-0 p-4 font-mono text-xs leading-5 outline-none"/> :
+          <div ref={editorRef} contentEditable suppressContentEditableWarning onInput={(event) => setWorkingTemplate((template) => ({ ...template, contentHtml: (event.currentTarget as HTMLDivElement).innerHTML }))} dangerouslySetInnerHTML={{ __html: sanitizeHtml(workingTemplate.contentHtml) }} className="min-h-[420px] w-full bg-white p-5 text-sm leading-6 outline-none [&_h1]:my-3 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:my-3 [&_h2]:text-lg [&_h2]:font-bold [&_p]:my-2 [&_table]:my-3 [&_td]:border [&_td]:border-slate-300 [&_td]:p-1.5"/>}
+        <p className="border-t bg-slate-50 px-3 py-2 text-[11px] text-slate-500">Możesz wpisywać treść jak w edytorze tekstu i wklejać sformatowany tekst z Worda. Pola w nawiasach klamrowych podstawiają dane na podglądzie i wydruku.</p>
+      </section>}
+      {designerTab === 'structure' && <div className="grid grid-cols-1 gap-4 2xl:grid-cols-[minmax(220px,0.85fr)_minmax(0,1.25fr)]">
+        <section className="rounded-xl border border-slate-200 p-3">
+          <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-bold">Sekcje</h3><button type="button" onClick={addSection} className="inline-flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs font-semibold"><Plus size={13}/> Dodaj</button></div>
+          <div className="space-y-1">
+            {workingTemplate.sections.map((section, index) => <div key={section.id} className={'rounded-lg border p-2 ' + (selectedSectionId === section.id ? 'border-blue-300 bg-blue-50' : 'border-slate-200')}>
+              <div className="flex items-center gap-1"><button type="button" onClick={() => { setSelectedSectionId(section.id); if (section.fieldIds[0]) setSelectedFieldId(section.fieldIds[0]); }} className="min-w-0 flex-1 text-left text-xs font-semibold">{section.title || 'Sekcja bez nazwy'}<span className="ml-1 text-slate-400">({section.fieldIds.length})</span></button><button type="button" title="Przesuń sekcję w górę" disabled={index === 0} onClick={() => moveSection(section.id, -1)} className="rounded p-1 disabled:opacity-30"><ArrowUp size={13}/></button><button type="button" title="Przesuń sekcję w dół" disabled={index === workingTemplate.sections.length - 1} onClick={() => moveSection(section.id, 1)} className="rounded p-1 disabled:opacity-30"><ArrowDown size={13}/></button><button type="button" title="Usuń sekcję" onClick={() => removeSection(section.id)} className="rounded p-1 text-red-600"><Trash2 size={13}/></button></div>
+              <div className="mt-2 flex items-center gap-2"><input value={section.title} onChange={(event) => updateSection(section.id, { title: event.target.value })} aria-label="Nazwa sekcji" className="min-w-0 flex-1 rounded border bg-white px-2 py-1 text-xs"/><select value={section.columns || 2} onChange={(event) => updateSection(section.id, { columns: Number(event.target.value) as 1 | 2 | 3 })} className="rounded border bg-white px-2 py-1 text-xs"><option value={1}>1 kolumna</option><option value={2}>2 kolumny</option><option value={3}>3 kolumny</option></select><button type="button" onClick={() => updateSection(section.id, { visible: section.visible === false })} title={section.visible === false ? 'Pokaż sekcję' : 'Ukryj sekcję'} className="rounded p-1">{section.visible === false ? <EyeOff size={13}/> : <Eye size={13}/>}</button></div>
+            </div>)}
+          </div>
+        </section>
+        <section className="min-w-0 rounded-xl border border-slate-200 p-3">
+          <div className="mb-3 flex items-center justify-between gap-2"><h3 className="text-sm font-bold">Pola w wybranej sekcji</h3><button type="button" onClick={addField} className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-bold text-white"><Plus size={13}/> Dodaj pole</button></div>
+          {selectedSection ? <div className="space-y-2">
+            {selectedSection.fieldIds.map((fieldId, index) => {
+              const field = workingTemplate.fields.find((candidate) => candidate.id === fieldId);
+              if (!field) return null;
+              return <div key={fieldId} className={'rounded-lg border p-2 ' + (selectedFieldId === fieldId ? 'border-blue-300 bg-blue-50/60' : 'border-slate-200')}>
+                <div className="flex flex-wrap items-center gap-1"><button type="button" onClick={() => setSelectedFieldId(fieldId)} className="min-w-0 flex-1 text-left text-xs font-semibold">{field.label} <span className="font-normal text-slate-400">({field.type})</span></button><button type="button" title="Przesuń w górę" disabled={index === 0} onClick={() => moveField(selectedSection.id, field.id, -1)} className="rounded p-1 disabled:opacity-30"><ArrowUp size={13}/></button><button type="button" title="Przesuń w dół" disabled={index === selectedSection.fieldIds.length - 1} onClick={() => moveField(selectedSection.id, field.id, 1)} className="rounded p-1 disabled:opacity-30"><ArrowDown size={13}/></button><button type="button" onClick={() => updateTemplateField(field.id, { visible: field.visible === false })} title={field.visible === false ? 'Pokaż pole' : 'Ukryj pole'} className="rounded p-1">{field.visible === false ? <EyeOff size={13}/> : <Eye size={13}/>}</button><button type="button" onClick={() => removeField(field.id)} title="Usuń z tego wzorca" className="rounded p-1 text-red-600"><Trash2 size={13}/></button></div>
+                <div className="mt-2"><label className="block space-y-1 text-[11px] text-slate-500">Sekcja<select value={selectedSection.id} onChange={(event) => moveFieldToSection(field.id, event.target.value)} className="w-full rounded border bg-white px-2 py-1.5 text-xs">{workingTemplate.sections.map((section) => <option key={section.id} value={section.id}>{section.title}</option>)}</select></label></div>
+              </div>;
+            })}
+            {!selectedSection.fieldIds.length && <p className="rounded bg-slate-50 p-3 text-sm text-slate-500">Ta sekcja nie zawiera pól.</p>}
+          </div> : <p className="text-sm text-slate-500">Wybierz sekcję z listy albo dodaj nową.</p>}
+          {selectedField && <div className="mt-4 space-y-3 border-t pt-4">
+            <h4 className="text-sm font-bold">Edycja pola</h4>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <label className="block space-y-1 text-xs font-semibold text-slate-600">Nazwa pola<input value={selectedField.label} onChange={(event) => updateTemplateField(selectedField.id, { label: event.target.value })} className="w-full rounded-lg border px-3 py-2 text-sm font-normal"/></label>
+              <label className="block space-y-1 text-xs font-semibold text-slate-600">Typ pola<select value={selectedField.type} onChange={(event) => updateTemplateField(selectedField.id, { type: event.target.value as FieldType })} className="w-full rounded-lg border px-3 py-2 text-sm font-normal"><option value="text">Tekst</option><option value="textarea">Długi tekst</option><option value="number">Liczba</option><option value="date">Data</option><option value="select">Lista wyboru</option><option value="checkbox-list">Lista checkboxów</option><option value="repeatable">Lista pozycji</option><option value="doors">Konfigurator drzwi</option><option value="quantity-toggle">Obecność + ilość</option><option value="static">Tekst stały</option></select></label>
+              <label className="block space-y-1 text-xs font-semibold text-slate-600">Klucz danych<input value={selectedField.valueKey} onChange={(event) => updateTemplateField(selectedField.id, { valueKey: event.target.value })} className="w-full rounded-lg border px-3 py-2 text-sm font-normal"/></label>
+              <label className="flex items-center gap-2 pt-6 text-xs font-semibold text-slate-600"><input type="checkbox" checked={Boolean(selectedField.required)} onChange={(event) => updateTemplateField(selectedField.id, { required: event.target.checked })}/> Pole wymagane</label>
+              <label className="block space-y-1 text-xs font-semibold text-slate-600 md:col-span-2">Opis / podpowiedź<input value={selectedField.helpText || ''} onChange={(event) => updateTemplateField(selectedField.id, { helpText: event.target.value })} className="w-full rounded-lg border px-3 py-2 text-sm font-normal"/></label>
+              <label className="block space-y-1 text-xs font-semibold text-slate-600 md:col-span-2">Opcje listy — każda w osobnej linii<textarea rows={3} value={(selectedField.options || []).join('\n')} onChange={(event) => updateTemplateField(selectedField.id, { options: event.target.value.split('\n').map((value) => value.trim()).filter(Boolean) })} className="w-full rounded-lg border px-3 py-2 text-sm font-normal"/></label>
+              <label className="block space-y-1 text-xs font-semibold text-slate-600 md:col-span-2">Wartość domyślna (JSON lub tekst)<input value={selectedField.defaultValue === undefined ? '' : typeof selectedField.defaultValue === 'string' ? selectedField.defaultValue : JSON.stringify(selectedField.defaultValue)} onChange={(event) => { let next: any = event.target.value; try { next = JSON.parse(event.target.value); } catch {} updateTemplateField(selectedField.id, { defaultValue: next }); }} className="w-full rounded-lg border px-3 py-2 text-sm font-normal"/></label>
+            </div>
+          </div>}
+        </section>
+      </div>}
+      {designerTab === 'bindings' && <div className="space-y-4">
+        <section className="rounded-xl border border-slate-200 p-3">
+          <h3 className="text-sm font-bold">Źródła danych pól</h3><p className="mt-1 text-xs text-slate-500">Wartość jest pobierana z podanej ścieżki tylko wtedy, gdy dokument nie ma jeszcze zapisanej własnej wartości. Późniejsza edycja dokumentu pozostaje niezależna od zlecenia, aż do osobnego zatwierdzenia.</p>
+          <div className="mt-3 space-y-3">
+            {workingTemplate.fields.map((field) => <div key={field.id} className="grid grid-cols-1 gap-2 rounded-lg border border-slate-200 p-3 md:grid-cols-[minmax(140px,0.7fr)_minmax(0,1.4fr)]">
+              <div><p className="text-sm font-semibold">{field.label}</p><p className="text-[11px] text-slate-400">{field.valueKey}</p></div>
+              <div><input list="document-source-examples" value={field.sourcePath || ''} onChange={(event) => updateTemplateField(field.id, { sourcePath: event.target.value })} placeholder="np. order.projectName" className="w-full rounded-lg border px-3 py-2 text-sm"/><p className="mt-1 text-[11px] text-slate-500">Obecna wartość: {displayValue(getPathValue(field.sourcePath, order, item, form))}</p></div>
+            </div>)}
+          </div>
+          <datalist id="document-source-examples">{sourceExamples.map((path) => <option key={path} value={path}/>)}</datalist>
+        </section>
+        <section className="rounded-xl border border-slate-200 p-3">
+          <div className="flex items-center justify-between gap-2"><div><h3 className="text-sm font-bold">Reguły między polami</h3><p className="text-xs text-slate-500">Automatyczne dodawanie, sugestie lub ostrzeżenia dla zależnych pozycji.</p></div><button type="button" onClick={addRule} className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-semibold"><Plus size={13}/> Dodaj regułę</button></div>
+          <div className="mt-3 space-y-3">
+            {workingTemplate.rules.map((rule) => <div key={rule.id} className="grid grid-cols-1 gap-2 rounded-lg border border-slate-200 p-3 xl:grid-cols-[1fr_1fr_1fr_1fr_auto]">
+              <label className="space-y-1 text-[11px] font-semibold text-slate-600">Gdy zmieni się pole<select value={rule.triggerFieldId} onChange={(event) => updateRule(rule.id, { triggerFieldId: event.target.value })} className="w-full rounded border px-2 py-2 text-xs font-normal">{workingTemplate.fields.map((field) => <option key={field.id} value={field.id}>{field.label}</option>)}</select></label>
+              <label className="space-y-1 text-[11px] font-semibold text-slate-600">Wybrana wartość<input value={rule.triggerValue} onChange={(event) => updateRule(rule.id, { triggerValue: event.target.value })} className="w-full rounded border px-2 py-2 text-xs font-normal"/></label>
+              <label className="space-y-1 text-[11px] font-semibold text-slate-600">Pole docelowe<select value={rule.targetFieldId} onChange={(event) => updateRule(rule.id, { targetFieldId: event.target.value })} className="w-full rounded border px-2 py-2 text-xs font-normal">{workingTemplate.fields.map((field) => <option key={field.id} value={field.id}>{field.label}</option>)}</select></label>
+              <label className="space-y-1 text-[11px] font-semibold text-slate-600">Wartość / pozycja<input value={rule.targetValue} onChange={(event) => updateRule(rule.id, { targetValue: event.target.value })} className="w-full rounded border px-2 py-2 text-xs font-normal"/></label>
+              <div className="flex items-end gap-1"><select value={rule.action} onChange={(event) => updateRule(rule.id, { action: event.target.value as TemplateRule['action'] })} className="min-w-0 rounded border px-2 py-2 text-xs"><option value="automatic">Automatycznie</option><option value="suggestion">Sugestia</option><option value="warning">Ostrzeżenie</option></select><button type="button" onClick={() => removeRule(rule.id)} className="rounded border border-red-200 p-2 text-red-600" title="Usuń regułę"><Trash2 size={14}/></button></div>
+            </div>)}
+            {!workingTemplate.rules.length && <p className="text-sm text-slate-500">Brak dodatkowych reguł.</p>}
+          </div>
+        </section>
+        {mode === 'admin' && <section className="rounded-xl border border-slate-200 p-3">
+          <h3 className="text-sm font-bold">Historia opublikowanych wzorców</h3>
+          <div className="mt-2 space-y-1">{templateHistory.length ? templateHistory.map((entry) => <div key={entry.version} className="flex flex-wrap justify-between gap-2 rounded border p-2 text-xs"><span>Wersja {entry.version}</span><span className="text-slate-500">{entry.updatedAt ? new Date(entry.updatedAt).toLocaleString('pl-PL') : ''} {entry.updatedBy ? '· ' + entry.updatedBy : ''}</span></div>) : <p className="text-xs text-slate-500">Brak wcześniejszych wersji.</p>}</div>
+        </section>}
+      </div>}
+    </div>
+  );
+
+  const renderFormPicker = () => (
+    <section className="border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
+      <div className="mb-2 flex items-center justify-between"><div><h2 className="text-sm font-bold text-slate-900">Wybierz typ formularza</h2><p className="text-xs text-slate-500">W tej wersji aktywna jest obsługa Zlecenia obudowy.</p></div><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">1 dostępny</span></div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-5">
+        {[
+          { key: 'zlecenie-obudowy', title: 'Zlecenie obudowy', hint: 'Dokument dotyczący obudowy stacji.', icon: '▣', active: true },
+          { key: 'zlecenie-produkcyjne-nn', title: 'Zlecenie produkcyjne NN', hint: 'Dokument produkcyjny dla rozdzielnicy NN.', icon: '▤', active: false },
+          { key: 'zapytanie-serwispol', title: 'Zapytanie Serwispol', hint: 'Zapytanie ofertowe do Serwispol.', icon: '✉', active: false },
+          { key: 'zlecenie-telemechanika', title: 'Zlecenie telemechanika', hint: 'Dokument dotyczący telemechaniki.', icon: '⌁', active: false },
+          { key: 'zlecenie-montazu', title: 'Zlecenie montażu', hint: 'Dokument dotyczący prac montażowych.', icon: '⇄', active: false },
+        ].map((choice) => <button key={choice.key} type="button" onClick={() => { if (!choice.active) setMessage('Typ „' + choice.title + '” został przewidziany w nowym systemie, ale jego formularz zostanie dodany później. Zlecenie obudowy działa już w nowym edytorze.'); else setMessage(''); }} className={'flex items-start gap-2 rounded-xl border p-3 text-left transition-colors ' + (choice.active ? 'border-blue-400 bg-blue-50/70 hover:border-blue-500' : 'border-slate-200 bg-slate-50/70 text-slate-500 hover:bg-white')}>
+          <span className={'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-lg ' + (choice.active ? 'bg-white text-blue-700' : 'bg-slate-100 text-slate-400')}>{choice.icon}</span>
+          <span className="min-w-0"><span className="block text-xs font-bold">{choice.title}</span><span className="mt-1 block text-[10px] leading-4">{choice.hint}</span><span className={'mt-1 block text-[9px] font-bold uppercase tracking-wide ' + (choice.active ? 'text-blue-700' : 'text-slate-400')}>{choice.active ? 'Dostępny' : 'W przygotowaniu'}</span></span>
+        </button>)}
+      </div>
+    </section>
+  );
+
+  const currentTemplateName = mode === 'custom' ? 'Custom Edit — tylko ten dokument' : mode === 'admin' ? 'Admin Edit — wzorzec wspólny' : 'Formularz dokumentu';
+  const previewEmpty = renderedHtml.trim().length === 0;
+  const titleText = [form.typBudowli, [form.typObudowy, form.rozmiar].filter(Boolean).join(' '), form.nazwaObiektu].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+
+  return <div className="fixed inset-0 z-[80] flex min-h-0 flex-col bg-slate-100 print:static print:block print:overflow-visible print:bg-white">
+    <header className="flex shrink-0 items-center justify-between gap-3 bg-slate-900 px-4 py-3 text-white print:hidden sm:px-6">
+      <div className="flex min-w-0 items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600"><FileText size={20}/></div><div className="min-w-0"><h1 className="truncate text-sm font-bold sm:text-base">Centrum formularzy · {order.orderNumber}</h1><p className="truncate text-xs text-slate-300">{order.projectName} · {currentTemplateName}</p></div></div>
+      <div className="flex shrink-0 items-center gap-2"><span className="hidden rounded-full border border-slate-600 px-2.5 py-1 text-[10px] font-semibold text-slate-300 sm:inline">{profile.name}</span><button type="button" onClick={onClose} aria-label="Zamknij formularz" className="rounded-lg p-2 hover:bg-slate-800"><X size={19}/></button></div>
+    </header>
+    {renderFormPicker()}
+    <div className="flex min-h-0 flex-1 flex-col xl:flex-row print:block">
+      <main className="min-h-0 min-w-0 flex-1 overflow-y-auto p-3 sm:p-5 xl:w-[48%] xl:flex-none print:hidden">
+        <div className="mx-auto max-w-3xl space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><h2 className="text-lg font-bold text-slate-900">{mode === 'form' ? 'Uzupełnij dokument' : mode === 'custom' ? 'Dopasuj bieżący dokument' : 'Edytuj wzorzec dokumentu'}</h2><p className="mt-1 text-xs text-slate-500">{mode === 'custom' ? 'Zmiany struktury i treści pozostają tylko w tym formularzu.' : mode === 'admin' ? 'Zmiany dotyczą nowych dokumentów korzystających z opublikowanego wzorca.' : 'Edytuj pola formularza; podgląd po prawej aktualizuje się na bieżąco.'}</p></div>
+            {mode === 'form' ? <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={!canEdit} onClick={openCustomEdit} className="inline-flex items-center gap-1.5 rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-bold text-blue-800 disabled:cursor-not-allowed disabled:opacity-40"><FileText size={14}/> Custom Edit</button>
+              {isAdmin && <button type="button" onClick={openAdminEdit} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700"><ShieldCheck size={14}/> Admin Edit</button>}
+            </div> : <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => { setMode('form'); setMessage(''); }} className="inline-flex items-center gap-1 rounded-lg border bg-white px-3 py-2 text-xs font-semibold"><X size={14}/> Anuluj</button>
+              {mode === 'custom' ? <button type="button" onClick={saveCustomEdit} className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white"><Save size={14}/> Zapisz w tym dokumencie</button> : <button type="button" disabled={templateSaving} onClick={saveAdminTemplate} className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{templateSaving ? <Loader2 size={14} className="animate-spin"/> : <ShieldCheck size={14}/>} Opublikuj wzorzec</button>}
+            </div>}
+          </div>
+          {!canEdit && <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Ten profil ma dostęp tylko do podglądu i nie może zatwierdzić zmian w obudowie.</div>}
+          {message && <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs leading-5 text-blue-900">{message}</div>}
+          {mode === 'form' ? renderFormFields() : renderDesigner()}
+          {mode === 'form' && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
+            <div className="text-[11px] leading-4 text-slate-500">{canEdit ? 'Zatwierdzenie danych następuje dopiero na ekranie podsumowania.' : 'Możesz obejrzeć i wydrukować dokument, ale nie zapisywać zmian.'}</div>
+            <button type="button" onClick={() => setReview(true)} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700"><CheckCircle2 size={16}/> Sprawdź zmiany i dokument</button>
+          </div>}
+          {mode !== 'form' && <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs leading-5 text-blue-900">{mode === 'custom' ? 'Custom Edit może zmienić tekst, sekcje, pola, kolejność i ich układ. Nic nie zmienia się we wzorcu dla innych dokumentów.' : 'Admin Edit zawiera edycję tekstu jak w Wordzie, ustawienia sekcji i pól, mapowanie źródeł oraz reguły zależności. Publikacja tworzy nową wersję wzorca.'}</div>}
+        </div>
+      </main>
+      <aside className="flex min-h-[45vh] min-w-0 flex-1 flex-col border-t border-slate-200 bg-slate-200/70 xl:w-[52%] xl:border-l xl:border-t-0 print:hidden">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-300 bg-white px-3 py-2.5 sm:px-5">
+          <div><h2 className="text-sm font-bold text-slate-900">Podgląd live</h2><p className="text-[10px] text-slate-500">Wzorzec v{templateForPreview.version} · {mode === 'admin' ? 'wersja robocza administratora' : 'dokument bieżący'}</p></div>
+          <div className="flex flex-wrap gap-2">{mode === 'form' && <button type="button" onClick={() => setReview(true)} className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold"><Eye size={14}/> Podsumowanie</button>}<button type="button" disabled={!canDownload} onClick={() => window.print()} className="inline-flex items-center gap-1.5 rounded-lg border bg-white px-3 py-2 text-xs font-semibold disabled:opacity-40"><Printer size={14}/> Drukuj / PDF</button></div>
+        </div>
+        <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-5">
+          <article className="mx-auto min-h-[700px] w-full max-w-[850px] bg-white p-6 text-slate-900 shadow-md sm:p-10 print:min-h-0 print:max-w-none print:p-0 print:shadow-none">
+            {previewEmpty ? <p className="text-sm text-slate-400">Treść dokumentu jest pusta.</p> : <div className="document-live-preview text-sm leading-6 [&_h1]:my-3 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:my-3 [&_h2]:text-lg [&_h2]:font-bold [&_p]:my-2 [&_table]:my-3 [&_table]:w-full [&_td]:border [&_td]:border-slate-300 [&_td]:p-1.5" dangerouslySetInnerHTML={{ __html: renderedHtml }}/>}
+          </article>
+          {mode === 'admin' && <div className="mx-auto mt-3 max-w-[850px] rounded-lg border border-blue-200 bg-white p-3 text-xs text-blue-900">Administrator widzi tu podgląd nowego wzorca razem z aktualnymi danymi przykładowego dokumentu. Nie oznacza to aktualizacji zlecenia.</div>}
+        </div>
+      </aside>
+    </div>
+
+    {review && <div className="fixed inset-0 z-[95] flex flex-col bg-slate-100 print:static print:block print:bg-white">
+      <header className="flex shrink-0 items-center justify-between gap-3 bg-slate-900 px-4 py-3 text-white print:hidden"><div><h2 className="font-bold">Podsumowanie zmian przed zatwierdzeniem</h2><p className="text-xs text-slate-300">{order.orderNumber} · {order.projectName}</p></div><button type="button" onClick={() => setReview(false)} className="rounded-lg p-2 hover:bg-slate-800"><X size={18}/></button></header>
+      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] print:block">
+        <section className="min-h-0 overflow-y-auto border-b border-slate-200 bg-white p-4 sm:p-6 xl:border-b-0 xl:border-r print:hidden">
+          <div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="font-bold">Zmiany w danych zlecenia</h3><p className="text-xs text-slate-500">Porównanie z wersją otwartą na początku edycji.</p></div><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold">{changedKeys.length}</span></div>
+          {changedKeys.length ? <div className="space-y-2">{changedKeys.map((key) => <div key={key} className="rounded-lg border border-slate-200 p-3"><h4 className="text-xs font-bold">{changedLabels[key] || 'Dodatkowe pola'}</h4><div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2"><div className="rounded bg-slate-50 p-2"><span className="block text-[10px] font-bold uppercase text-slate-500">Było</span><p className="mt-1 break-words text-xs">{showChangeValue(key, (originalForm as any)[key])}</p></div><div className="rounded bg-blue-50 p-2"><span className="block text-[10px] font-bold uppercase text-blue-700">Będzie</span><p className="mt-1 break-words text-xs">{showChangeValue(key, (form as any)[key])}</p></div></div></div>)}</div> : <div className="rounded-lg border border-slate-200 p-4 text-sm text-slate-600">Nie wykryto zmian względem danych zapisanych w zleceniu.</div>}
+          <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">Wydruk / PDF nie aktualizuje danych w zleceniu. Dopiero „Zatwierdź zmiany w zleceniu” zapisuje edytowane wartości. Zmiana wzorca przez Admin Edit jest osobną operacją.</p>
+        </section>
+        <section className="min-h-0 overflow-y-auto bg-slate-200/60 p-3 sm:p-5 print:bg-white print:p-0">
+          <div className="mb-2 flex items-center justify-between gap-2 print:hidden"><h3 className="text-xs font-bold text-slate-700">Końcowy podgląd dokumentu</h3><button type="button" disabled={!canDownload} onClick={() => window.print()} className="inline-flex items-center gap-1 rounded-lg border bg-white px-3 py-1.5 text-xs font-semibold disabled:opacity-40"><Printer size={13}/> Drukuj / PDF</button></div>
+          <article className="mx-auto min-h-[600px] w-full max-w-[850px] bg-white p-6 text-slate-900 shadow print:min-h-0 print:max-w-none print:p-0 print:shadow-none"><div className="document-live-preview text-sm leading-6 [&_h1]:my-3 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:my-3 [&_h2]:text-lg [&_h2]:font-bold [&_p]:my-2 [&_table]:my-3 [&_table]:w-full [&_td]:border [&_td]:border-slate-300 [&_td]:p-1.5" dangerouslySetInnerHTML={{ __html: renderedHtml }}/></article>
+        </section>
+      </div>
+      <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-3 print:hidden">
+        <button type="button" onClick={() => setReview(false)} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold"><ArrowLeft size={15}/> Wróć do edycji</button>
+        <div className="flex flex-wrap gap-2"><button type="button" disabled={!canDownload} onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm font-semibold disabled:opacity-40"><Printer size={15}/> Drukuj / PDF</button><button type="button" disabled={!canEdit || !item} onClick={() => {
+          if (!canEdit || !item) return;
+          const persistedForm = { ...form, __templateSnapshot: clone(activeTemplate), __templateVersion: activeTemplate.version };
+          const updatedOrder: Order = {
+            ...order,
+            items: order.items.map((candidate) => candidate.id !== item.id ? candidate : {
+              ...candidate,
+              plannedDate: form.terminRealizacji || candidate.plannedDate,
+              details: {
+                ...candidate.details,
+                typBudowli: form.typBudowli,
+                typObudowy: form.typObudowy,
+                rozmiar: form.rozmiar,
+                dlugoscObudowy: form.dlugosc,
+                szerokoscObudowy: form.szerokosc,
+                wysokoscObudowy: form.wysokosc,
+                konstrukcjaBudynku: form.konstrukcja,
+                scianyREIIlosc: form.scianyIlosc,
+                scianyREIKlasa: form.scianyKlasa,
+                typDachu: form.dachTyp,
+                dachREIKlasa: form.dachKlasa,
+                dachMaterial: form.customFields.dachMaterial,
+                kolorObudowy: form.kolorObudowy,
+                kolorSlusarki: form.kolorSlusarki,
+                kolorDachu: form.kolorDachu,
+                kolorDrzwiKraty: form.kolorDrzwiKraty,
+                antygraffiti: form.antygraffiti ? form.antygraffiti === 'Tak' : candidate.details?.antygraffiti,
+                antygraffitiStatus: form.antygraffiti,
+                tynk: form.tynk,
+                dodatkoweWyposazenie: form.dodatkoweWyposazenie,
+                przepusty: form.przepusty,
+                otwory: form.otwory,
+                slusarka: form.slusarka,
+                dostawaPyskowice: form.dostawaPyskowice,
+                dostawaWarszawa: form.dostawaWarszawa,
+                uwagiDoZleceniaObudowy: form.uwagi,
+                terminRealizacji: form.terminRealizacji,
+                dachMaterial: form.customFields.dachMaterial,
+                wyposazenieDachu: form.customFields.wyposazenieDachu,
+                opisy: form.customFields.opisy,
+                rozdzielnicaSN: form.customFields.rozdzielnicaSN,
+                rozdzielnicaNN: form.customFields.rozdzielnicaNN,
+                telemechanika: form.customFields.telemechanika,
+                transformator: form.customFields.transformator,
+                uziemienie: form.customFields.uziemienie,
+                instalacjaOswietleniowa: form.customFields.instalacjaOswietleniowa,
+                inneUrzadzenia: form.customFields.inneUrzadzenia,
+                formularze: { ...(candidate.details?.formularze || {}), zlecenieObudowy: persistedForm },
+              },
+              updatedAt: new Date().toISOString(),
+            }),
+            updatedAt: new Date().toISOString(),
+          };
+          onSaveOrderChanges(updatedOrder);
+          setReview(false);
+          setMode('form');
+          onClose();
+        }} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"><CheckCircle2 size={16}/> Zatwierdź zmiany w zleceniu</button></div>
+      </footer>
+    </div>}
+  </div>;
 };
