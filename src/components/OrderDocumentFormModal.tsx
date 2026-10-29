@@ -793,10 +793,19 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
     otwory: 'Otwory', slusarka: 'Drzwi i ślusarka', dostawaPyskowice: 'Dostawa — Pyskowice',
     dostawaWarszawa: 'Dostawa — Warszawa', uwagi: 'Uwagi',
   };
-  const changedKeys = Object.keys(changedLabels).filter((key) => JSON.stringify((form as any)[key]) !== JSON.stringify((originalForm as any)[key]));
+  const isFormFieldChanged = (key: string) => JSON.stringify((form as any)[key]) !== JSON.stringify((originalForm as any)[key]);
+  const isCustomFieldChanged = (key: string) => JSON.stringify(form.customFields?.[key]) !== JSON.stringify(originalForm.customFields?.[key]);
+  const templateSnapshotChanged = JSON.stringify(form.__templateSnapshot || null) !== JSON.stringify(originalForm.__templateSnapshot || null);
+  if (templateSnapshotChanged) changedLabels.__templateSnapshot = 'Własna struktura / tekst dokumentu';
+  const changedKeys = Object.keys(changedLabels).filter((key) => key === '__templateSnapshot' ? templateSnapshotChanged : isFormFieldChanged(key));
   if (JSON.stringify(form.customFields) !== JSON.stringify(originalForm.customFields)) changedKeys.push('customFields');
   const showChangeValue = (key: string, value: any) => {
     if (key === 'customFields') return Object.keys(value || {}).map((fieldKey) => fieldKey + ': ' + displayValue(value[fieldKey])).join('; ') || '—';
+    if (key === '__templateSnapshot') {
+      if (!value) return 'Brak indywidualnej kopii wzorca';
+      const template = value as DocumentTemplate;
+      return 'Wersja ' + String(template.version || 1) + '; sekcje: ' + String(template.sections?.length || 0) + '; pola: ' + String(template.fields?.length || 0) + '; treść: ' + String(template.contentHtml?.length || 0) + ' znaków';
+    }
     return displayValue(value);
   };
 
@@ -806,7 +815,8 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
   if (!isOpen) return null;
 
   const openReview = () => {
-    const requiredFields = activeTemplate.fields.filter((field) => field.visible !== false && field.required);
+    const visibleFieldIds = new Set(activeTemplate.sections.filter((section) => section.visible !== false).flatMap((section) => section.fieldIds));
+    const requiredFields = activeTemplate.fields.filter((field) => visibleFieldIds.has(field.id) && field.visible !== false && field.required);
     const missing = requiredFields.filter((field) => {
       const value = getValueByKey(form, field.valueKey);
       if (value === undefined || value === null) return true;
@@ -1040,53 +1050,73 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
         <div className="flex flex-wrap gap-2"><button type="button" disabled={!canDownload} onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm font-semibold disabled:opacity-40"><Printer size={15}/> Drukuj / PDF</button><button type="button" disabled={!canEdit || !item} onClick={() => {
           if (!canEdit || !item) return;
           const persistedForm = { ...form, __templateSnapshot: clone(activeTemplate), __templateVersion: activeTemplate.version };
+          const terminChanged = isFormFieldChanged('terminRealizacji');
+          const detailPatch: Record<string, any> = {};
+          const detailFieldMap: Array<[string, string]> = [
+            ['typBudowli', 'typBudowli'],
+            ['opisObudowy', 'opisObudowy'],
+            ['typObudowy', 'typObudowy'],
+            ['rozmiar', 'rozmiar'],
+            ['dlugosc', 'dlugoscObudowy'],
+            ['szerokosc', 'szerokoscObudowy'],
+            ['wysokosc', 'wysokoscObudowy'],
+            ['konstrukcja', 'konstrukcjaBudynku'],
+            ['scianyIlosc', 'scianyREIIlosc'],
+            ['scianyKlasa', 'scianyREIKlasa'],
+            ['dachTyp', 'typDachu'],
+            ['dachKlasa', 'dachREIKlasa'],
+            ['kolorObudowy', 'kolorObudowy'],
+            ['kolorSlusarki', 'kolorSlusarki'],
+            ['kolorDachu', 'kolorDachu'],
+            ['kolorDrzwiKraty', 'kolorDrzwiKraty'],
+            ['tynk', 'tynk'],
+            ['dodatkoweWyposazenie', 'dodatkoweWyposazenie'],
+            ['przepusty', 'przepusty'],
+            ['otwory', 'otwory'],
+            ['slusarka', 'slusarka'],
+            ['dostawaPyskowice', 'dostawaPyskowice'],
+            ['dostawaWarszawa', 'dostawaWarszawa'],
+            ['uwagi', 'uwagiDoZleceniaObudowy'],
+          ];
+          for (const [formKey, detailKey] of detailFieldMap) {
+            if (isFormFieldChanged(formKey)) detailPatch[detailKey] = (form as any)[formKey];
+          }
+          if (terminChanged) detailPatch.terminRealizacji = form.terminRealizacji;
+          if (isFormFieldChanged('antygraffiti')) {
+            detailPatch.antygraffiti = form.antygraffiti === 'Tak' ? true : form.antygraffiti === 'Nie' ? false : null;
+            detailPatch.antygraffitiStatus = form.antygraffiti;
+          }
+          const customFieldMap: Array<[string, string]> = [
+            ['dachMaterial', 'dachMaterial'],
+            ['wyposazenieDachu', 'wyposazenieDachu'],
+            ['siatkaDrzwi', 'siatkaDrzwi'],
+            ['siatkaDach', 'siatkaDach'],
+            ['opisy', 'opisy'],
+            ['rozdzielnicaSN', 'rozdzielnicaSN'],
+            ['rozdzielnicaNN', 'rozdzielnicaNN'],
+            ['telemechanika', 'telemechanika'],
+            ['transformator', 'transformator'],
+            ['uziemienie', 'uziemienie'],
+            ['instalacjaOswietleniowa', 'instalacjaOswietleniowa'],
+            ['inneUrzadzenia', 'inneUrzadzenia'],
+          ];
+          for (const [customKey, detailKey] of customFieldMap) {
+            if (isCustomFieldChanged(customKey)) detailPatch[detailKey] = form.customFields[customKey];
+          }
           const updatedOrder: Order = {
             ...order,
-            items: order.items.map((candidate) => candidate.id !== item.id ? candidate : {
-              ...candidate,
-              plannedDate: form.terminRealizacji || candidate.plannedDate,
-              details: {
-                ...candidate.details,
-                typBudowli: form.typBudowli,
-                opisObudowy: form.opisObudowy,
-                typObudowy: form.typObudowy,
-                rozmiar: form.rozmiar,
-                dlugoscObudowy: form.dlugosc,
-                szerokoscObudowy: form.szerokosc,
-                wysokoscObudowy: form.wysokosc,
-                konstrukcjaBudynku: form.konstrukcja,
-                scianyREIIlosc: form.scianyIlosc,
-                scianyREIKlasa: form.scianyKlasa,
-                typDachu: form.dachTyp,
-                dachREIKlasa: form.dachKlasa,
-                dachMaterial: form.customFields.dachMaterial,
-                kolorObudowy: form.kolorObudowy,
-                kolorSlusarki: form.kolorSlusarki,
-                kolorDachu: form.kolorDachu,
-                kolorDrzwiKraty: form.kolorDrzwiKraty,
-                antygraffiti: form.antygraffiti ? form.antygraffiti === 'Tak' : candidate.details?.antygraffiti,
-                antygraffitiStatus: form.antygraffiti,
-                tynk: form.tynk,
-                dodatkoweWyposazenie: form.dodatkoweWyposazenie,
-                przepusty: form.przepusty,
-                otwory: form.otwory,
-                slusarka: form.slusarka,
-                dostawaPyskowice: form.dostawaPyskowice,
-                dostawaWarszawa: form.dostawaWarszawa,
-                uwagiDoZleceniaObudowy: form.uwagi,
-                terminRealizacji: form.terminRealizacji,
-                wyposazenieDachu: form.customFields.wyposazenieDachu,
-                opisy: form.customFields.opisy,
-                rozdzielnicaSN: form.customFields.rozdzielnicaSN,
-                rozdzielnicaNN: form.customFields.rozdzielnicaNN,
-                telemechanika: form.customFields.telemechanika,
-                transformator: form.customFields.transformator,
-                uziemienie: form.customFields.uziemienie,
-                instalacjaOswietleniowa: form.customFields.instalacjaOswietleniowa,
-                inneUrzadzenia: form.customFields.inneUrzadzenia,
-                formularze: { ...(candidate.details?.formularze || {}), zlecenieObudowy: persistedForm },
-              },
-              updatedAt: new Date().toISOString(),
+            items: order.items.map((candidate) => {
+              if (candidate.id !== item.id) return candidate;
+              return {
+                ...candidate,
+                ...(terminChanged ? { plannedDate: form.terminRealizacji } : {}),
+                details: {
+                  ...candidate.details,
+                  ...detailPatch,
+                  formularze: { ...(candidate.details?.formularze || {}), zlecenieObudowy: persistedForm },
+                },
+                updatedAt: new Date().toISOString(),
+              };
             }),
             updatedAt: new Date().toISOString(),
           };
