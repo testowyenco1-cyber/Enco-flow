@@ -894,7 +894,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
           </div>
         </div>
         {sourceHtmlMode ? <textarea aria-label="Kod HTML wzorca dokumentu" value={workingTemplate.contentHtml} onChange={(event) => setWorkingTemplate((template) => ({ ...template, contentHtml: event.target.value }))} rows={24} className="w-full resize-y border-0 p-4 font-mono text-xs leading-5 outline-none"/> :
-          <div ref={editorRef} contentEditable suppressContentEditableWarning onInput={(event) => setWorkingTemplate((template) => ({ ...template, contentHtml: (event.currentTarget as HTMLDivElement).innerHTML }))} className="min-h-[420px] w-full bg-white p-5 text-sm leading-6 outline-none [&_h1]:my-3 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:my-3 [&_h2]:text-lg [&_h2]:font-bold [&_p]:my-2 [&_table]:my-3 [&_td]:border [&_td]:border-slate-300 [&_td]:p-1.5"/>}
+          <div ref={editorRef} contentEditable suppressContentEditableWarning onInput={(event) => { const contentHtml = event.currentTarget.innerHTML; setWorkingTemplate((template) => ({ ...template, contentHtml })); }} className="min-h-[420px] w-full bg-white p-5 text-sm leading-6 outline-none [&_h1]:my-3 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:my-3 [&_h2]:text-lg [&_h2]:font-bold [&_p]:my-2 [&_table]:my-3 [&_td]:border [&_td]:border-slate-300 [&_td]:p-1.5"/>}
         <p className="border-t bg-slate-50 px-3 py-2 text-[11px] text-slate-500">Możesz wpisywać treść jak w edytorze tekstu i wklejać sformatowany tekst z Worda. Pola w nawiasach klamrowych podstawiają dane na podglądzie i wydruku.</p>
       </section>}
       {designerTab === 'structure' && <div className="grid grid-cols-1 gap-4 2xl:grid-cols-[minmax(220px,0.85fr)_minmax(0,1.25fr)]">
