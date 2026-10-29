@@ -326,7 +326,7 @@ function getRelatedItemDocumentValue(order: Order, type: string, key: string): a
       : key === 'documentColorDoorsAndGrilles'
       ? firstSourceValue(colors.kolorDrzwiKraty, enclosureDetails.kolorDrzwiKraty, colors.kolorDrzwi, enclosureDetails.kolorDrzwi)
       : undefined;
-    return value === undefined ? '' : sourceText(value);
+    return value === undefined ? undefined : sourceText(value);
   }
 
   if (key === 'documentFinish' && type === 'OBUDOWA') {
@@ -355,12 +355,13 @@ function getRelatedItemDocumentValue(order: Order, type: string, key: string): a
   if (key !== 'documentSummary') return undefined;
   if (!related) {
     if (type === 'OPISY' && enclosure) {
-      return sourceSummary(
+      const summary = sourceSummary(
         labelledSource('Wymagane opisy', enclosureDetails.wymaganeOpisy),
         labelledSource('Sposób wykonania', enclosureDetails.sposobWykonania),
       );
+      return summary || undefined;
     }
-    if (type === 'DODATKOWE' && enclosure) return sourceText(enclosureDetails.inneUrzadzenia);
+    if (type === 'DODATKOWE' && enclosure) return sourceText(enclosureDetails.inneUrzadzenia) || undefined;
     return undefined;
   }
 
@@ -373,7 +374,7 @@ function getRelatedItemDocumentValue(order: Order, type: string, key: string): a
         count !== undefined ? `${sourceText(count)} pól` : '',
         labelledSource('Konfiguracja pól', details.konfiguracjaPol),
         details.parametryTechniczne,
-      ) || sourceText(related.notes);
+      ) || sourceText(related.notes) || undefined;
     }
     case 'ROZDZIELNICA_NN': {
       const count = firstSourceValue(details.iloscPol, details.liczbaPol);
@@ -381,13 +382,13 @@ function getRelatedItemDocumentValue(order: Order, type: string, key: string): a
         firstSourceValue(details.typRozdzielnicy, details.typ),
         count !== undefined ? `${sourceText(count)} pól` : '',
         firstSourceValue(details.wyposazenieDodatkowe, details.wyposazenie, details.konfiguracja),
-      ) || sourceText(related.notes);
+      ) || sourceText(related.notes) || undefined;
     }
     case 'OPISY':
       return sourceSummary(
         labelledSource('Wymagane opisy', firstSourceValue(details.wymaganeOpisy, enclosureDetails.wymaganeOpisy)),
         labelledSource('Sposób wykonania', firstSourceValue(details.sposobWykonania, enclosureDetails.sposobWykonania)),
-      ) || sourceText(related.notes);
+      ) || sourceText(related.notes) || undefined;
     case 'SZAFKA_TELEMECHANIKI':
       return sourceSummary(
         labelledSource('RTU', firstSourceValue(details.typ, details.typSterownika)),
@@ -395,19 +396,19 @@ function getRelatedItemDocumentValue(order: Order, type: string, key: string): a
         labelledSource('Zakres', details.zakres),
         labelledSource('Informacje techniczne', details.informacjeTechniczne),
         labelledSource('Sensory napięciowe', details.sensoryNapieciowe),
-      ) || sourceText(related.notes);
+      ) || sourceText(related.notes) || undefined;
     case 'TRANSFORMATOR_POTRZEB_WLASNYCH':
       return sourceSummary(
         labelledSource('Moc', details.va),
         labelledSource('Numer seryjny', details.numerSeryjny),
-      ) || sourceText(related.notes);
+      ) || sourceText(related.notes) || undefined;
     case 'DODATKOWE':
       return sourceSummary(
         labelledSource('Opis', firstSourceValue(details.opis, related.notes, enclosureDetails.inneUrzadzenia)),
         labelledSource('Specyfikacja', details.specyfikacja),
-      ) || sourceText(related.notes);
+      ) || sourceText(related.notes) || undefined;
     default:
-      return sourceText(related.notes);
+      return sourceText(related.notes) || undefined;
   }
 }
 function getPathValue(path: string | undefined, order: Order, item: OrderItem | undefined, form: FormData): any {
