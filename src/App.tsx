@@ -30,6 +30,8 @@ import { DashboardView } from './components/DashboardView';
 import { DashboardModuleView } from './components/DashboardModuleView';
 import { ActionDashboardView } from './components/ActionDashboardView';
 import { OrderDetailView } from './components/OrderDetailView';
+import { DocumentsModuleView } from './components/DocumentsModuleView';
+import { OrderDocumentFormModal } from './components/OrderDocumentFormModal';
 import { DoorOrdersView } from './components/DoorOrdersView';
 import { DoorOrderModal } from './components/DoorOrderModal';
 import { NewOrderModal } from './components/NewOrderModal';
@@ -113,12 +115,13 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
   }, [sidebarOpen]);
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
   const [archiveSearch, setArchiveSearch] = useState('');
-  const [activeModule, setActiveModule] = useState<'orders' | 'doors' | 'sn' | 'calendar' | 'actions' | 'dashboard'>(() => {
+  const [activeModule, setActiveModule] = useState<'orders' | 'doors' | 'sn' | 'calendar' | 'actions' | 'dashboard' | 'documents'>(() => {
     const path = window.location.pathname;
     if (path === '/dashboard') return 'dashboard';
     if (path === '/dzialania') return 'actions';
     if (path === '/kalendarz') return 'calendar';
     if (path === '/rozdzielnice-sn') return 'sn';
+    if (path === '/dokumenty') return 'documents';
     return path === '/drzwi' || path.startsWith('/drzwi/') ? 'doors' : 'orders';
   });
   const [orders, setOrders] = useState<Order[]>(() => loadOrders());
@@ -160,6 +163,11 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
       setSelectedOrderId(null);
       sessionStorage.setItem('enco_active_module', 'sn');
       sessionStorage.removeItem('enco_selected_order_id');
+    } else if (path === '/dokumenty') {
+      setActiveModule('documents');
+      setSelectedOrderId(null);
+      sessionStorage.setItem('enco_active_module', 'documents');
+      sessionStorage.removeItem('enco_selected_order_id');
     } else if (path === '/drzwi' || path.startsWith('/drzwi/')) {
       setActiveModule('doors');
       setSelectedOrderId(null);
@@ -192,6 +200,9 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
       } else if (path === '/rozdzielnice-sn') {
         setActiveModule('sn');
         setSelectedOrderId(null);
+      } else if (path === '/dokumenty') {
+        setActiveModule('documents');
+        setSelectedOrderId(null);
       } else if (path === '/drzwi' || path.startsWith('/drzwi/')) {
         setActiveModule('doors');
         setSelectedOrderId(null);
@@ -215,6 +226,8 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
   const [isCustomerDatabaseOpen, setIsCustomerDatabaseOpen] = useState(false);
   const [isDatabaseManagementOpen, setIsDatabaseManagementOpen] = useState(false);
   const [isEditOrderModalOpen, setIsEditOrderModalOpen] = useState(false);
+  const [documentOrderId, setDocumentOrderId] = useState<string | null>(null);
+  const [isDocumentFormOpen, setIsDocumentFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<OrderItem | null>(null);
 
   // Door order modal state
@@ -650,7 +663,7 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
         problemCount={problemOrdersCount}
         actionOrders={activeOrders}
         activeModule={activeModule}
-        onSelectModule={(mod) => navigate(mod === 'dashboard' ? '/dashboard' : mod === 'actions' ? '/dzialania' : mod === 'doors' ? '/drzwi' : mod === 'sn' ? '/rozdzielnice-sn' : mod === 'calendar' ? '/kalendarz' : '/zlecenia')}
+        onSelectModule={(mod) => navigate(mod === 'dashboard' ? '/dashboard' : mod === 'actions' ? '/dzialania' : mod === 'doors' ? '/drzwi' : mod === 'sn' ? '/rozdzielnice-sn' : mod === 'calendar' ? '/kalendarz' : mod === 'documents' ? '/dokumenty' : '/zlecenia')}
         doorOrdersCount={doorOrders.length}
         doorOverdueCount={doorOverdueCount}
         currentProfile={currentProfile}
@@ -684,6 +697,8 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
           />
         ) : activeModule === 'sn' ? (
           <SNOrdersView orders={orders} currentProfile={currentProfile} onNavigateToOrder={handleSelectOrder} />
+        ) : activeModule === 'documents' ? (
+          <DocumentsModuleView orders={activeOrders} currentProfile={currentProfile} onOpenDocument={(order) => { setDocumentOrderId(order.id); setIsDocumentFormOpen(true); }} />
         ) : activeModule === 'doors' ? (
           selectedDoorOrderId ? (
             (() => {
@@ -786,7 +801,8 @@ function AppWorkspace({ authUser, onLogout, onRefreshAuthUser }: AppWorkspacePro
       </footer>
 
       {/* Modals */}
-      <DatabaseManagementModal isOpen={isDatabaseManagementOpen} onClose={() => setIsDatabaseManagementOpen(false)} onOpenCustomers={() => setIsCustomerDatabaseOpen(true)} />
+      {(() => { const documentOrder = orders.find((order) => String(order.id) === String(documentOrderId)); return documentOrder ? <OrderDocumentFormModal order={documentOrder} isOpen={isDocumentFormOpen} onClose={() => setIsDocumentFormOpen(false)} onSaveOrderChanges={handleSaveOrderChanges} currentProfile={currentProfile} canDownload={currentProfile.canDownload} /> : null; })()}
+            <DatabaseManagementModal isOpen={isDatabaseManagementOpen} onClose={() => setIsDatabaseManagementOpen(false)} onOpenCustomers={() => setIsCustomerDatabaseOpen(true)} />
       <CustomerDatabaseModal isOpen={isCustomerDatabaseOpen} onClose={() => setIsCustomerDatabaseOpen(false)} />
 
       <NewOrderModal
