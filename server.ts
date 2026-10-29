@@ -225,7 +225,7 @@ async function startServer() {
       );
     }
 
-    // Ensure all 13 standard subfolders exist
+    // Ensure all standard subfolders exist.
     STANDARD_STATION_FOLDERS.forEach((folder) => {
       const folderPath = path.join(orderDir, folder.key);
       if (!fs.existsSync(folderPath)) {
