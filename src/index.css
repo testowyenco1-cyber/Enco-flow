@@ -27,3 +27,69 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 0.6);
 }
+
+
+/* Druk dokumentów: drukujemy wyłącznie obszar podglądu dokumentu. */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body,
+  #root {
+    width: 100% !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .document-print-target,
+  .document-print-target * {
+    visibility: visible !important;
+  }
+
+  .document-print-target {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    color: #111827 !important;
+    overflow: visible !important;
+    break-inside: auto;
+  }
+
+  .document-print-target table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .document-print-target h1,
+  .document-print-target h2,
+  .document-print-target h3 {
+    break-after: avoid;
+  }
+
+  .document-print-target tr,
+  .document-print-target img {
+    break-inside: avoid;
+  }
+
+  .document-print-target p,
+  .document-print-target li {
+    orphans: 3;
+    widows: 3;
+  }
+}
