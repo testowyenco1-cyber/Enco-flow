@@ -168,6 +168,17 @@ export const STATION_FOLDERS: StationFolderDefinition[] = [
     recommendedExtensions: ['pdf', 'jpg', 'png', 'zip'],
     iconType: 'archive',
   },
+  {
+    id: 'f_transformator',
+    folderKey: '14_Transformatory',
+    code: '14',
+    title: 'Transformator stacyjny',
+    fullTitle: '14 - Dokumentacja transformatora stacyjnego TRAFO',
+    description: 'Karty katalogowe, parametry mocy znamionowej, dokumentacja techniczna i protokoły transformatora stacyjnego.',
+    matchingItemTypes: ['TRANSFORMATOR'],
+    recommendedExtensions: ['pdf', 'doc', 'docx', 'xlsx'],
+    iconType: 'zap',
+  },
 ];
 
 /**
@@ -192,7 +203,7 @@ export function getFolderDefinitionForType(itemType?: string | null): StationFol
   }
 
   const found = STATION_FOLDERS.find((f) => f.matchingItemTypes.includes(itemType as any));
-  return found || STATION_FOLDERS[STATION_FOLDERS.length - 1]; // Fallback to 13_Inne_i_Dodatkowe
+  return found || STATION_FOLDERS.find((folder) => folder.folderKey === '13_Inne_i_Dodatkowe') || STATION_FOLDERS[0]; // Fallback to 13_Inne_i_Dodatkowe
 }
 
 /**
