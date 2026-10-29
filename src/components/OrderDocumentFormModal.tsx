@@ -1100,8 +1100,10 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
         throw new Error(result?.error || `Serwer nie opublikował wzorca (HTTP ${response.status} ${response.statusText}).`);
       }
       const published = { ...sanitized, ...result.template, contentHtml: sanitizeHtml(String(result.template.contentHtml || sanitized.contentHtml)) } as DocumentTemplate;
+      // Persist the baseline form values with the new layout. Unsaved edits to
+      // ordinary form fields remain in local state until the review confirmation.
       const formWithPublishedTemplate: FormData = {
-        ...form,
+        ...originalForm,
         __templateSnapshot: clone(published),
         __templateVersion: published.version,
       };
@@ -1109,7 +1111,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
       setAdminDraft(clone(published));
       setActiveTemplate(clone(published));
       setCustomDraft(clone(published));
-      setForm(formWithPublishedTemplate);
+      setForm((current) => ({ ...current, __templateSnapshot: clone(published), __templateVersion: published.version }));
       // The template snapshot is saved immediately to this document. Keep the
       // rest of the baseline intact so any ordinary form-field edits remain visible.
       setOriginalForm((current) => ({
@@ -1365,7 +1367,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
               {isAdmin && <button type="button" onClick={openAdminEdit} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700"><ShieldCheck size={14}/> Admin Edit</button>}
             </div> : <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => { setMode('form'); setMessage(''); }} className="inline-flex items-center gap-1 rounded-lg border bg-white px-3 py-2 text-xs font-semibold"><X size={14}/> Anuluj</button>
-              {mode === 'custom' ? <button type="button" onClick={saveCustomEdit} className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white"><Save size={14}/> Zapisz w tym dokumencie</button> : <button type="button" disabled={templateSaving} onClick={saveAdminTemplate} className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{templateSaving ? <Loader2 size={14} className="animate-spin"/> : <ShieldCheck size={14}/>} Opublikuj wzorzec</button>}
+              {mode === 'custom' ? <button type="button" onClick={saveCustomEdit} className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white"><Save size={14}/> Zapisz w tym dokumencie</button> : <button type="button" disabled={templateSaving} onClick={saveAdminTemplate} className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{templateSaving ? <Loader2 size={14} className="animate-spin"/> : <ShieldCheck size={14}/>} Opublikuj i zastosuj</button>}
             </div>}
           </div>
           {!canEdit && <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Ten profil ma dostęp tylko do podglądu i nie może zatwierdzić zmian w obudowie.</div>}
@@ -1387,7 +1389,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
           <article className="document-print-target mx-auto min-h-[700px] w-full max-w-[850px] bg-white p-6 text-slate-900 shadow-md sm:p-10 print:min-h-0 print:max-w-none print:p-0 print:shadow-none">
             {previewEmpty ? <p className="text-sm text-slate-400">Treść dokumentu jest pusta.</p> : <div className="document-live-preview text-[10px] leading-[1.2] [&_h1]:my-1 [&_h1]:text-[15px] [&_h1]:font-bold [&_h2]:my-1 [&_h2]:border-l-2 [&_h2]:border-blue-800 [&_h2]:bg-slate-100 [&_h2]:px-2 [&_h2]:py-0.5 [&_h2]:text-[11px] [&_h2]:font-bold [&_p]:my-0.5 [&_table]:my-1 [&_table]:w-full [&_td]:border [&_td]:border-slate-300 [&_td]:p-1 [&_th]:border [&_th]:border-slate-300 [&_th]:p-1" dangerouslySetInnerHTML={{ __html: renderedHtml }}/>}
           </article>
-          {mode === 'admin' && <div className="mx-auto mt-3 max-w-[850px] rounded-lg border border-blue-200 bg-white p-3 text-xs text-blue-900">Po kliknięciu „Opublikuj wzorzec” nowy układ zostanie zapisany również w aktualnie otwartym formularzu. Kopie formularzy w pozostałych zleceniach pozostaną bez zmian.</div>}
+          {mode === 'admin' && <div className="mx-auto mt-3 max-w-[850px] rounded-lg border border-blue-200 bg-white p-3 text-xs text-blue-900">Po kliknięciu „Opublikuj i zastosuj” nowy układ zostanie zapisany również w aktualnie otwartym formularzu. Kopie formularzy w pozostałych zleceniach pozostaną bez zmian.</div>}
         </div>
       </aside>
     </div>
