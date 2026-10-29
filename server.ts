@@ -98,6 +98,8 @@ async function startServer() {
   const DOOR_CATALOG_FILE = path.join(DATA_DIR, 'door_catalog.json');
   const TASKS_FILE = path.join(DATA_DIR, 'tasks.json');
   const ORDER_FORM_DICTIONARIES_FILE = path.join(DATA_DIR, 'order_form_dictionaries.json');
+  const DOCUMENT_FORM_TEMPLATES_FILE = path.join(DATA_DIR, 'document_form_templates.json');
+  if (!fs.existsSync(DOCUMENT_FORM_TEMPLATES_FILE)) writeJsonAtomically(DOCUMENT_FORM_TEMPLATES_FILE, {});
   if (!fs.existsSync(TASKS_FILE)) fs.writeFileSync(TASKS_FILE, '[]', 'utf-8');
 
   // Seed initial data if files do not exist
@@ -1399,6 +1401,123 @@ async function startServer() {
     } catch (err) {
       console.error('Error saving order form dictionaries:', err);
       return res.status(500).json({ success: false, error: 'Błąd zapisu słownika formularza' });
+    }
+  });
+
+
+  // Versioned document-form templates. Reading requires a valid session; publishing is administrator-only.
+  const ALLOWED_DOCUMENT_TEMPLATE_KEYS = new Set([
+    'zlecenie-obudowy',
+    'zlecenie-produkcyjne-nn',
+    'zapytanie-serwispol',
+    'zlecenie-telemechanika',
+    'zlecenie-montazu',
+  ]);
+
+  app.get('/api/document-form-templates/:templateKey', requireApiAuth, (req: any, res) => {
+    try {
+      const templateKey = String(req.params?.templateKey || '');
+      if (!ALLOWED_DOCUMENT_TEMPLATE_KEYS.has(templateKey)) {
+        return res.status(404).json({ success: false, error: 'Nieznany typ wzorca dokumentu.' });
+      }
+      const parsed = JSON.parse(fs.readFileSync(DOCUMENT_FORM_TEMPLATES_FILE, 'utf-8'));
+      const store = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+      const record = store[templateKey] && typeof store[templateKey] === 'object' ? store[templateKey] : null;
+      const template = record?.active && typeof record.active === 'object' ? record.active : null;
+      const versions = Array.isArray(record?.history)
+        ? record.history.map((entry: any) => ({
+            version: Number(entry?.version || 0),
+            updatedAt: typeof entry?.updatedAt === 'string' ? entry.updatedAt : '',
+            updatedBy: typeof entry?.updatedBy === 'string' ? entry.updatedBy : '',
+          }))
+        : [];
+      return res.json({ success: true, template, versions, timestamp: Date.now() });
+    } catch (err) {
+      console.error('Error reading document-form template:', err);
+      return res.status(500).json({ success: false, error: 'Błąd odczytu wzorca dokumentu.' });
+    }
+  });
+
+  app.post('/api/document-form-templates/:templateKey', requireApiAuth, requireAdmin, (req: any, res) => {
+    try {
+      const templateKey = String(req.params?.templateKey || '');
+      const incoming = req.body?.template;
+      if (!ALLOWED_DOCUMENT_TEMPLATE_KEYS.has(templateKey)) {
+        return res.status(404).json({ success: false, error: 'Nieznany typ wzorca dokumentu.' });
+      }
+      if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming) ||
+          incoming.key !== templateKey ||
+          typeof incoming.title !== 'string' || !incoming.title.trim() || incoming.title.length > 160 ||
+          typeof incoming.contentHtml !== 'string' || incoming.contentHtml.length > 500000 ||
+          !Array.isArray(incoming.sections) || incoming.sections.length > 100 ||
+          !Array.isArray(incoming.fields) || incoming.fields.length > 500 ||
+          !Array.isArray(incoming.rules) || incoming.rules.length > 500) {
+        return res.status(400).json({ success: false, error: 'Nieprawidłowa struktura wzorca dokumentu.' });
+      }
+      if (/<\s*(script|iframe|object|embed|svg|form)\b|\son[a-z]+\s*=|javascript\s*:/i.test(incoming.contentHtml)) {
+        return res.status(400).json({ success: false, error: 'Treść wzorca zawiera niedozwolony kod. Usuń skrypty i atrybuty zdarzeń.' });
+      }
+      const validFieldIds = new Set<string>();
+      for (const field of incoming.fields) {
+        if (!field || typeof field.id !== 'string' || !field.id.trim() ||
+            typeof field.label !== 'string' || typeof field.valueKey !== 'string' ||
+            !['text', 'textarea', 'number', 'date', 'select', 'checkbox-list', 'repeatable', 'doors', 'quantity-toggle', 'static'].includes(String(field.type))) {
+          return res.status(400).json({ success: false, error: 'Jedno z pól wzorca ma nieprawidłową definicję.' });
+        }
+        if (validFieldIds.has(field.id)) return res.status(400).json({ success: false, error: 'Identyfikatory pól muszą być unikalne.' });
+        validFieldIds.add(field.id);
+      }
+      const validSectionIds = new Set<string>();
+      for (const section of incoming.sections) {
+        if (!section || typeof section.id !== 'string' || !section.id.trim() ||
+            typeof section.title !== 'string' || !Array.isArray(section.fieldIds)) {
+          return res.status(400).json({ success: false, error: 'Jedna z sekcji wzorca ma nieprawidłową definicję.' });
+        }
+        if (validSectionIds.has(section.id)) return res.status(400).json({ success: false, error: 'Identyfikatory sekcji muszą być unikalne.' });
+        validSectionIds.add(section.id);
+        if (section.fieldIds.some((fieldId: unknown) => typeof fieldId !== 'string' || !validFieldIds.has(fieldId))) {
+          return res.status(400).json({ success: false, error: 'Sekcja wskazuje nieistniejące pole.' });
+        }
+      }
+      const parsed = JSON.parse(fs.readFileSync(DOCUMENT_FORM_TEMPLATES_FILE, 'utf-8'));
+      const store: Record<string, any> = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+      const current = store[templateKey] && typeof store[templateKey] === 'object' ? store[templateKey] : { active: null, history: [] };
+      const actor = req.authUser as AuthUser;
+      const now = new Date().toISOString();
+      const nextVersion = Number(current.active?.version || 0) + 1;
+      const published = {
+        ...incoming,
+        version: nextVersion,
+        updatedAt: now,
+        updatedBy: actor.displayName || actor.username,
+      };
+      const history = Array.isArray(current.history) ? [...current.history] : [];
+      if (current.active) history.unshift({
+        version: current.active.version,
+        updatedAt: current.active.updatedAt || '',
+        updatedBy: current.active.updatedBy || '',
+        template: current.active,
+      });
+      history.unshift({
+        version: published.version,
+        updatedAt: published.updatedAt,
+        updatedBy: published.updatedBy,
+      });
+      store[templateKey] = { active: published, history: history.slice(0, 30) };
+      writeJsonAtomically(DOCUMENT_FORM_TEMPLATES_FILE, store);
+      return res.json({
+        success: true,
+        template: published,
+        versions: store[templateKey].history.map((entry: any) => ({
+          version: Number(entry?.version || 0),
+          updatedAt: typeof entry?.updatedAt === 'string' ? entry.updatedAt : '',
+          updatedBy: typeof entry?.updatedBy === 'string' ? entry.updatedBy : '',
+        })),
+        timestamp: Date.now(),
+      });
+    } catch (err) {
+      console.error('Error saving document-form template:', err);
+      return res.status(500).json({ success: false, error: 'Błąd zapisu wzorca dokumentu.' });
     }
   });
 
