@@ -179,6 +179,10 @@ const ORDER_BOUND_FIELD_CONFIG: Record<string, { sourcePath: string; readOnly: b
   inneUrzadzenia: { sourcePath: 'order.itemByType.DODATKOWE.documentSummary', readOnly: true, helpText: 'Pobierane z pozycji DODATKOWE w bieżącym zleceniu.', legacyPaths: ['item.details.inneUrzadzenia'] },
 };
 function normalizeOrderBoundFields(template: DocumentTemplate): DocumentTemplate {
+  // Starsze wersje standardowego wzorca zapisane na serwerze nie powinny
+  // nadpisywać nowego, zwartego układu i tabeli dostaw.
+  const oldStandard = template.contentHtml?.includes('7. ELEMENTY DOSTARCZANE</h2><p><strong>Warszawa:</strong> {{form.dostawaWarszawa}}');
+  if (oldStandard) template = { ...template, contentHtml: DEFAULT_TEMPLATE.contentHtml };
   template = { ...template, fields: (template.fields || []).map((field) => ['dostawaWarszawa', 'dostawaPyskowice'].includes(field.id) ? { ...field, type: 'delivery-list' as FieldType } : field) };
   return {
     ...template,
@@ -560,6 +564,10 @@ function renderTemplateHtml(template: DocumentTemplate, form: FormData, order: O
     if (path === 'derived.title') return escapeHtml(title || '—');
     if (path === 'derived.dot') return escapeHtml(dot || '—');
     if (path === 'derived.deliveryTable') return deliveryTableHtml(form);
+    if (path === 'form.dostawaWarszawa' || path === 'form.dostawaPyskowice') {
+      const rows = normalizeDeliveryRows(path.endsWith('Warszawa') ? form.dostawaWarszawa : form.dostawaPyskowice);
+      return rows.map((row) => escapeHtml(row.type) + ' (' + escapeHtml(row.quantity || '1') + ')').join('<br>') || '—';
+    }
     const staticField = template.fields.find((field) => field.type === 'static' && path === 'form.' + field.valueKey);
     if (staticField) return escapeHtml(displayValue(staticField.defaultValue ?? staticField.helpText ?? staticField.label));
     let value: any;
