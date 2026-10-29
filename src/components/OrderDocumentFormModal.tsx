@@ -404,11 +404,16 @@ function getRelatedItemDocumentValue(order: Order, type: string, key: string): a
         labelledSource('Moc znamionowa', details.mocKVA !== undefined && details.mocKVA !== '' ? `${sourceText(details.mocKVA)} kVA` : ''),
         labelledSource('Numer seryjny', details.numerSeryjny),
       ) || sourceText(related.notes) || '';
-    case 'TRANSFORMATOR_POTRZEB_WLASNYCH':
+    case 'TRANSFORMATOR_POTRZEB_WLASNYCH': {
+      const power = sourceText(details.va);
+      const powerWithUnit = power
+        ? (/VA\s*$/i.test(power) ? power : `${power} VA`)
+        : '';
       return sourceSummary(
-        labelledSource('Moc', details.va),
+        labelledSource('Moc znamionowa transformatora potrzeb własnych', powerWithUnit),
         labelledSource('Numer seryjny', details.numerSeryjny),
       ) || sourceText(related.notes) || undefined;
+    }
     case 'DODATKOWE':
       return sourceSummary(
         labelledSource('Opis', firstSourceValue(details.opis, related.notes, enclosureDetails.inneUrzadzenia)),
