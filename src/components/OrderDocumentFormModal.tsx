@@ -348,7 +348,7 @@ function renderTemplateHtml(template: DocumentTemplate, form: FormData, order: O
     else value = undefined;
     if (path === 'form.przepusty' || path === 'form.otwory' || path === 'form.slusarka' || path.startsWith('form.customFields.')) value = getPathValue(path, order, item, form);
     if ((path === 'form.dataWystawienia' || path === 'form.terminRealizacji') && typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) value = value.slice(8, 10) + '.' + value.slice(5, 7) + '.' + value.slice(0, 4);
-    const toHtmlLines = (text: string) => escapeHtml(text).replace(/\\r\\n?|\\n/g, '<br>');
+    const toHtmlLines = (text: string) => escapeHtml(text).replace(/\r\n?|\n/g, '<br>');
     if (Array.isArray(value)) {
       const rows = value.map((entry) => displayValue(entry)).filter((entry) => entry !== '—');
       return rows.map(toHtmlLines).join('<br>') || '—';
