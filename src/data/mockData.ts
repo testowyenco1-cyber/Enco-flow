@@ -156,6 +156,17 @@ export function createDefaultItemsForOrder(orderId: string, stationSize = ''): O
           wPyskowicach: false,
         };
         break;
+      case 'TRANSFORMATOR':
+        details = {
+          producent: '',
+          typ: '',
+          mocKVA: '',
+          numerSeryjny: '',
+          dataDostawyPlan: '',
+          dataPlDostawyPyskowice: '',
+          wPyskowicach: false,
+        };
+        break;
       case 'TRANSFORMATOR_POTRZEB_WLASNYCH':
         details = {
           va: '',
