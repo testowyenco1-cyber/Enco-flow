@@ -1017,7 +1017,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
       <aside className={'flex min-h-[45vh] min-w-0 flex-1 flex-col border-t border-slate-200 bg-slate-200/70 xl:w-[52%] xl:border-l xl:border-t-0 ' + (review ? 'print:hidden' : 'print:block')}>
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-300 bg-white px-3 py-2.5 sm:px-5">
           <div><h2 className="text-sm font-bold text-slate-900">Podgląd live</h2><p className="text-[10px] text-slate-500">Wzorzec v{templateForPreview.version} · {mode === 'admin' ? 'wersja robocza administratora' : 'dokument bieżący'}</p></div>
-          <div className="flex flex-wrap gap-2">{mode === 'form' && <button type="button" onClick={openReview} className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold"><Eye size={14}/> Podsumowanie</button>}<button type="button" onClick={() => setReview(true)} className="inline-flex items-center gap-1.5 rounded-lg border bg-white px-3 py-2 text-xs font-semibold"><Eye size={14}/> Podsumowanie / wydruk</button></div>
+          <div className="flex flex-wrap gap-2"><button type="button" onClick={openReview} className="inline-flex items-center gap-1.5 rounded-lg border bg-white px-3 py-2 text-xs font-semibold"><Eye size={14}/> Sprawdź i drukuj</button></div>
         </div>
         <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-5">
           <article className="document-print-target mx-auto min-h-[700px] w-full max-w-[850px] bg-white p-6 text-slate-900 shadow-md sm:p-10 print:min-h-0 print:max-w-none print:p-0 print:shadow-none">
