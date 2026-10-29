@@ -670,19 +670,17 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
   const addField = () => {
     const id = uid('wlasne-pole').replace(/[^a-zA-Z0-9_-]/g, '-');
     const field: FormField = { id, label: 'Nowe pole', valueKey: 'customFields.' + id, type: 'text', sourcePath: '', visible: true, required: false };
+    const targetSectionId = selectedSection?.id || uid('section');
+    const needsSection = !selectedSection;
+    if (needsSection) setSelectedSectionId(targetSectionId);
     setWorkingTemplate((template) => {
-      let sections = [...template.sections];
-      let sectionId = selectedSection?.id;
-      if (!sectionId || !sections.some((section) => section.id === sectionId)) {
-        const newSection: FormSection = { id: uid('section'), title: 'Nowa sekcja', fieldIds: [], columns: 2, visible: true };
-        sections = [...sections, newSection];
-        sectionId = newSection.id;
-        setSelectedSectionId(sectionId);
-      }
+      const sections = needsSection
+        ? [...template.sections, { id: targetSectionId, title: 'Nowa sekcja', fieldIds: [], columns: 2 as const, visible: true }]
+        : template.sections;
       return {
         ...template,
         fields: [...template.fields, field],
-        sections: sections.map((section) => section.id === sectionId ? { ...section, fieldIds: [...section.fieldIds, field.id] } : section),
+        sections: sections.map((section) => section.id === targetSectionId ? { ...section, fieldIds: [...section.fieldIds, field.id] } : section),
       };
     });
     setSelectedFieldId(id);
