@@ -70,6 +70,11 @@ const FIELD_OWNERS: Record<string, Record<string, DepartmentOwnerKey>> = {
     akumulatorWPyskowicach: 'pyskowice', masztAntenaWPyskowicach: 'pyskowice',
     sensoryNapieciowe: 'sales', dataPlDostawySensorowPyskowice: 'logistics', sensoryNapiecioweWPyskowicach: 'pyskowice',
   },
+  TRANSFORMATOR: {
+    producent: 'sales', typ: 'sales', mocKVA: 'sales',
+    numerSeryjny: 'logistics', dataDostawyPlan: 'logistics',
+    dataPlDostawyPyskowice: 'logistics', wPyskowicach: 'pyskowice',
+  },
   TRANSFORMATOR_POTRZEB_WLASNYCH: {
     va: 'sales', dataDostawyPlan: 'logistics', numerSeryjny: 'logistics',
     dataPlDostawyPyskowice: 'logistics', wPyskowicach: 'pyskowice',
@@ -141,6 +146,11 @@ const SUMMARY_LABEL_KEYS: Record<string, Record<string, string>> = {
     'Szafka w Pyskowicach': 'szafkaWPyskowicach', 'Akumulator w Pyskowicach': 'akumulatorWPyskowicach',
     'Maszt i antena w Pyskowicach': 'masztAntenaWPyskowicach', 'Sensory napięciowe': 'sensoryNapieciowe',
     'Planowana dostawa sensorów': 'dataPlDostawySensorowPyskowice', 'Sensory napięciowe w Pyskowicach': 'sensoryNapiecioweWPyskowicach',
+  },
+  TRANSFORMATOR: {
+    'Producent': 'producent', 'Typ / model transformatora': 'typ', 'Moc znamionowa (kVA)': 'mocKVA',
+    'Numer seryjny': 'numerSeryjny', 'Planowana data dostawy': 'dataDostawyPlan',
+    'Data dostawy do Pyskowic': 'dataPlDostawyPyskowice', 'Transformator w Pyskowicach': 'wPyskowicach',
   },
   TRANSFORMATOR_POTRZEB_WLASNYCH: {
     'Moc / VA': 'va', 'Planowana data dostawy': 'dataDostawyPlan', 'Numer seryjny': 'numerSeryjny',
