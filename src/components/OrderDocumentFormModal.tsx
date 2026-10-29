@@ -182,8 +182,9 @@ const DEFAULT_TEMPLATE: DocumentTemplate = {
 
 const blankForm = (item?: OrderItem, order?: Order): FormData => {
   const d = item?.details || {};
-  const typObudowy = String(d.typObudowy || '');
-  const rozmiar = String(d.rozmiar || '');
+  const rozmiar = String(d.rozmiar || order?.stationSize || '');
+  const parsedStationType = (rozmiar.match(/^(BEK|NZ)\b/i) || [])[1] || '';
+  const typObudowy = String(d.typObudowy || parsedStationType);
   const savedDate = localDate();
   return {
     typBudowli: String(d.typBudowli || ''),
@@ -213,8 +214,8 @@ const blankForm = (item?: OrderItem, order?: Order): FormData => {
     przepusty: Array.isArray(d.przepusty) ? d.przepusty : [],
     otwory: Array.isArray(d.otwory) ? d.otwory : [],
     slusarka: Array.isArray(d.slusarka) && d.slusarka.length ? d.slusarka : [
-      { id: uid('door'), type: 'Drzwi SN i NN', category: 'Drzwi SN i NN', quantity: '1', position: 'Do rozdzielnic SN i NN', wings: 'Jednoskrzydłowe', openingSide: 'Lewe', width: typObudowy === 'BEK' ? '950' : '', height: typObudowy === 'BEK' ? '2100' : '', ventilationGrille: true, intakeFan: false, exhaustFan: false },
-      { id: uid('door'), type: 'Drzwi Trafo', category: 'Drzwi Trafo', quantity: '1', position: 'Do komory transformatora', wings: 'Jednoskrzydłowe', openingSide: 'Lewe', width: typObudowy === 'BEK' ? '1170' : '', height: typObudowy === 'BEK' ? '2100' : '', ventilationGrille: true, intakeFan: false, exhaustFan: false },
+      { id: uid('door'), type: 'Drzwi SN i NN', category: 'Drzwi SN i NN', quantity: '1', position: 'Do rozdzielnic SN i NN', wings: 'Jednoskrzydłowe', openingSide: 'Lewe', width: typObudowy.toUpperCase().startsWith('BEK') ? '950' : '', height: typObudowy.toUpperCase().startsWith('BEK') ? '2100' : '', ventilationGrille: true, intakeFan: false, exhaustFan: false },
+      { id: uid('door'), type: 'Drzwi Trafo', category: 'Drzwi Trafo', quantity: '1', position: 'Do komory transformatora', wings: 'Jednoskrzydłowe', openingSide: 'Lewe', width: typObudowy.toUpperCase().startsWith('BEK') ? '1170' : '', height: typObudowy.toUpperCase().startsWith('BEK') ? '2100' : '', ventilationGrille: true, intakeFan: false, exhaustFan: false },
     ],
     dostawaPyskowice: String(d.dostawaPyskowice || ''),
     dostawaWarszawa: String(d.dostawaWarszawa || ''),
@@ -356,7 +357,7 @@ const sourceExamples = [
   'item.details.typDachu', 'item.details.kolorObudowy', 'item.details.terminRealizacji', 'form.nazwaObiektu',
 ];
 function doorDimensions(stationType: string, category: string): { width: string; height: string } {
-  if (stationType !== 'BEK') return { width: '', height: '' };
+  if (!String(stationType || '').toUpperCase().startsWith('BEK')) return { width: '', height: '' };
   if (category === 'Drzwi Trafo') return { width: '1170', height: '2100' };
   if (['Drzwi SN i NN', 'Drzwi SN', 'Drzwi NN'].includes(category)) return { width: '950', height: '2100' };
   return { width: '', height: '' };
@@ -380,7 +381,7 @@ function hydrateFromBindings(form: FormData, template: DocumentTemplate, order: 
     const source = getPathValue(field.sourcePath, order, item, next);
     // A live binding (for example the Obudowa realisation deadline) always follows the current source.
     if (field.liveBinding) {
-      if (source !== undefined && source !== null && source !== '') next = setValueByKey(next, field.valueKey, source);
+      if (source !== undefined && source !== null) next = setValueByKey(next, field.valueKey, source);
       continue;
     }
     if (hasSaved && existing !== undefined) continue;
