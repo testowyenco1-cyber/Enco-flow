@@ -167,7 +167,7 @@ const DEFAULT_TEMPLATE: DocumentTemplate = {
     '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">1. TYP OBUDOWY</h2>' +
     '<p>{{form.opisObudowy}}</p>' +
     '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">2. DRZWI I ŚLUSARKA</h2><p>{{form.slusarka}}</p><p>{{form.customFields.siatkaDrzwi}}</p>' +
-    '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">3. DACH I WYPOSAŻENIE</h2><p><strong>Dach:</strong> {{form.dachMaterial}} {{form.dachTyp}}</p><p>{{form.customFields.wyposazenieDachu}}</p><p>{{form.dodatkoweWyposazenie}}</p><p>{{form.customFields.siatkaDach}}</p>' +
+    '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">3. DACH I WYPOSAŻENIE</h2><p><strong>Dach:</strong> {{form.customFields.dachMaterial}} {{form.dachTyp}}</p><p>{{form.customFields.wyposazenieDachu}}</p><p>{{form.dodatkoweWyposazenie}}</p><p>{{form.customFields.siatkaDach}}</p>' +
     '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">4. OTWORY I PRZEPUSTY KABLOWE</h2><p><strong>Przepusty:</strong> {{form.przepusty}}</p><p><strong>Pozostałe otwory:</strong> {{form.otwory}}</p>' +
     '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">5. KOLORY I OPISY</h2><p>Obudowa: {{form.kolorObudowy}}; ślusarka: {{form.kolorSlusarki}}; dach: {{form.kolorDachu}}; drzwi i kraty: {{form.kolorDrzwiKraty}}.</p><p>Wykończenie: {{form.tynk}}; antygraffiti: {{form.antygraffiti}}</p><p>{{form.customFields.opisy}}</p>' +
     '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">6. OGÓLNE URZĄDZENIA W STACJI</h2><p><strong>Rozdzielnica SN:</strong> {{form.customFields.rozdzielnicaSN}}</p><p><strong>Rozdzielnica NN:</strong> {{form.customFields.rozdzielnicaNN}}</p><p><strong>Telemechanika:</strong> {{form.customFields.telemechanika}}</p><p><strong>Transformator:</strong> {{form.customFields.transformator}}</p><p><strong>Uziemienie:</strong> {{form.customFields.uziemienie}}</p><p><strong>Instalacja oświetleniowa:</strong> {{form.customFields.instalacjaOswietleniowa}}</p><p><strong>Inne:</strong> {{form.customFields.inneUrzadzenia}}</p>' +
@@ -183,7 +183,7 @@ const blankForm = (item?: OrderItem, order?: Order): FormData => {
   const d = item?.details || {};
   const typObudowy = String(d.typObudowy || '');
   const rozmiar = String(d.rozmiar || '');
-  const savedDate = item?.createdAt ? String(item.createdAt).slice(0, 10) : '';
+  const savedDate = localDate();
   return {
     typBudowli: String(d.typBudowli || ''),
     typObudowy,
@@ -216,8 +216,8 @@ const blankForm = (item?: OrderItem, order?: Order): FormData => {
     dostawaWarszawa: String(d.dostawaWarszawa || ''),
     uwagi: String(d.uwagiDoZleceniaObudowy || ''),
     customFields: {
-      dachMaterial: String(d.dachMaterial || 'Betonowy'),
-      wyposazenieDachu: ['Chłodnica gazów', 'Siatka wygradzająca', 'Otwory do lampek wskaźnika zwarć', 'Otwór do wyprowadzenia kabla do anteny', '1 x kieszenie na schemat'],
+      dachMaterial: String(d.dachMaterial || ''),
+      wyposazenieDachu: Array.isArray(d.wyposazenieDachu) ? d.wyposazenieDachu : ['Chłodnica gazów', 'Siatka wygradzająca', 'Otwory do lampek wskaźnika zwarć', 'Otwór do wyprowadzenia kabla do anteny', '1 x kieszenie na schemat'],
       siatkaDrzwi: { enabled: true, quantity: '1' },
       siatkaDach: { enabled: true, quantity: '1' },
       opisy: String(d.opisy || ''),
@@ -375,7 +375,7 @@ function hydrateFromBindings(form: FormData, template: DocumentTemplate, order: 
     if (existing !== undefined && existing !== null && existing !== '' && !(Array.isArray(existing) && existing.length === 0)) continue;
     const source = getPathValue(field.sourcePath, order, item, next);
     if (source !== undefined && source !== null && source !== '') next = setValueByKey(next, field.valueKey, source);
-    else if (!hasSaved && field.defaultValue !== undefined && existing === undefined) next = setValueByKey(next, field.valueKey, clone(field.defaultValue));
+    else if (!hasSaved && field.defaultValue !== undefined && (existing === undefined || existing === '' || (Array.isArray(existing) && existing.length === 0))) next = setValueByKey(next, field.valueKey, clone(field.defaultValue));
   }
   return next;
 }
