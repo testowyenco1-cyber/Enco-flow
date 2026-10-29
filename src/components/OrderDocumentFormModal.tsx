@@ -551,8 +551,12 @@ const sourceExamples = [
   'order.itemByType.ROZDZIELNICA_SN.documentSummary',
   'order.itemByType.ROZDZIELNICA_SN.details.model', 'order.itemByType.ROZDZIELNICA_SN.details.liczbaPol',
   'order.itemByType.ROZDZIELNICA_NN.documentSummary', 'order.itemByType.ROZDZIELNICA_NN.details.iloscPol',
-  'order.itemByType.KOLORY.details.kolorObudowy', 'order.itemByType.OPISY.documentSummary',
-  'order.itemByType.SZAFKA_TELEMECHANIKI.documentSummary', 'order.itemByType.TRANSFORMATOR_POTRZEB_WLASNYCH.documentSummary',
+  'order.itemByType.KOLORY.documentColorShell', 'order.itemByType.KOLORY.documentColorMetalwork',
+  'order.itemByType.KOLORY.documentColorRoof', 'order.itemByType.KOLORY.documentColorDoorsAndGrilles',
+  'order.itemByType.OPISY.documentSummary', 'order.itemByType.SZAFKA_TELEMECHANIKI.documentSummary',
+  'order.itemByType.TRANSFORMATOR_POTRZEB_WLASNYCH.documentSummary', 'order.itemByType.DODATKOWE.documentSummary',
+  'order.itemByType.OBUDOWA.documentFinish', 'order.itemByType.OBUDOWA.documentAntigraffiti',
+  'order.itemByType.OBUDOWA.documentGrounding', 'order.itemByType.OBUDOWA.documentLighting',
 ];
 function doorDimensions(stationType: string, category: string): { width: string; height: string } {
   if (!String(stationType || '').toUpperCase().startsWith('BEK')) return { width: '', height: '' };
