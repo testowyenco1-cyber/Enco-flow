@@ -855,7 +855,6 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
   const [ruleNotices, setRuleNotices] = useState<string[]>([]);
   const editorRef = useRef<HTMLDivElement | null>(null);
 
-  const hasSavedDocument = Boolean(item?.details?.formularze?.zlecenieObudowy && typeof item.details.formularze.zlecenieObudowy === 'object');
   useEffect(() => {
     if (!isOpen) return;
     const saved = item?.details?.formularze?.zlecenieObudowy;
@@ -1101,14 +1100,48 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
         throw new Error(result?.error || `Serwer nie opublikował wzorca (HTTP ${response.status} ${response.statusText}).`);
       }
       const published = { ...sanitized, ...result.template, contentHtml: sanitizeHtml(String(result.template.contentHtml || sanitized.contentHtml)) } as DocumentTemplate;
+      const formWithPublishedTemplate: FormData = {
+        ...form,
+        __templateSnapshot: clone(published),
+        __templateVersion: published.version,
+      };
       setGlobalTemplate(published);
       setAdminDraft(clone(published));
+      setActiveTemplate(clone(published));
+      setCustomDraft(clone(published));
+      setForm(formWithPublishedTemplate);
+      // The template snapshot is saved immediately to this document. Keep the
+      // rest of the baseline intact so any ordinary form-field edits remain visible.
+      setOriginalForm((current) => ({
+        ...current,
+        __templateSnapshot: clone(published),
+        __templateVersion: published.version,
+      }));
       setTemplateHistory(Array.isArray(result.versions) ? result.versions : templateHistory);
-      if (!hasSavedDocument) {
-        setActiveTemplate(clone(published));
-        setCustomDraft(clone(published));
+
+      if (item) {
+        const savedAt = new Date().toISOString();
+        const updatedOrder: Order = {
+          ...order,
+          items: order.items.map((candidate) => candidate.id !== item.id ? candidate : {
+            ...candidate,
+            details: {
+              ...candidate.details,
+              formularze: {
+                ...(candidate.details?.formularze || {}),
+                zlecenieObudowy: formWithPublishedTemplate,
+              },
+            },
+            updatedAt: savedAt,
+          }),
+          updatedAt: savedAt,
+        };
+        // Save only this order's snapshot; saved forms in other orders are not touched.
+        void onSaveOrderChanges(updatedOrder);
+        setMessage('Opublikowano wersję wzorca ' + published.version + ' i od razu zastosowano ją do bieżącego formularza. Wcześniej zapisane formularze w innych zleceniach pozostają bez zmian.');
+      } else {
+        setMessage('Opublikowano wersję wzorca ' + published.version + '. Brak pozycji Obudowa — nie zapisano kopii wzorca w bieżącym zleceniu.');
       }
-      setMessage('Opublikowano wersję wzorca ' + published.version + '. Zmiana dotyczy nowych formularzy; rozpoczęty dokument zachowuje własną kopię wzorca.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Błąd zapisu wzorca.');
     } finally {
@@ -1326,7 +1359,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
       <main className="min-h-0 min-w-0 flex-1 overflow-y-auto p-3 sm:p-5 xl:w-[48%] xl:flex-none print:hidden">
         <div className="mx-auto max-w-3xl space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div><h2 className="text-lg font-bold text-slate-900">{mode === 'form' ? 'Uzupełnij dokument' : mode === 'custom' ? 'Dopasuj bieżący dokument' : 'Edytuj wzorzec dokumentu'}</h2><p className="mt-1 text-xs text-slate-500">{mode === 'custom' ? 'Zmiany struktury i treści pozostają tylko w tym formularzu.' : mode === 'admin' ? 'Zmiany dotyczą nowych dokumentów korzystających z opublikowanego wzorca.' : 'Edytuj pola formularza; podgląd po prawej aktualizuje się na bieżąco.'}</p></div>
+            <div><h2 className="text-lg font-bold text-slate-900">{mode === 'form' ? 'Uzupełnij dokument' : mode === 'custom' ? 'Dopasuj bieżący dokument' : 'Edytuj wzorzec dokumentu'}</h2><p className="mt-1 text-xs text-slate-500">{mode === 'custom' ? 'Zmiany struktury i treści pozostają tylko w tym formularzu.' : mode === 'admin' ? 'Publikacja zastosuje wzorzec także do bieżącego formularza. Wcześniej zapisane formularze w innych zleceniach pozostaną bez zmian.' : 'Edytuj pola formularza; podgląd po prawej aktualizuje się na bieżąco.'}</p></div>
             {mode === 'form' ? <div className="flex flex-wrap gap-2">
               <button type="button" disabled={!canEdit} onClick={openCustomEdit} className="inline-flex items-center gap-1.5 rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-bold text-blue-800 disabled:cursor-not-allowed disabled:opacity-40"><FileText size={14}/> Custom Edit</button>
               {isAdmin && <button type="button" onClick={openAdminEdit} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700"><ShieldCheck size={14}/> Admin Edit</button>}
@@ -1342,7 +1375,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
             <div className="text-[11px] leading-4 text-slate-500">{canEdit ? 'Zatwierdzenie danych następuje dopiero na ekranie podsumowania.' : 'Możesz obejrzeć i wydrukować dokument, ale nie zapisywać zmian.'}</div>
             <button type="button" onClick={openReview} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700"><CheckCircle2 size={16}/> Sprawdź zmiany i dokument</button>
           </div>}
-          {mode !== 'form' && <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs leading-5 text-blue-900">{mode === 'custom' ? 'Custom Edit może zmienić tekst, sekcje, pola, kolejność i ich układ. Nic nie zmienia się we wzorcu dla innych dokumentów.' : 'Admin Edit zawiera edycję tekstu jak w Wordzie, ustawienia sekcji i pól, mapowanie źródeł oraz reguły zależności. Publikacja tworzy nową wersję wzorca.'}</div>}
+          {mode !== 'form' && <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs leading-5 text-blue-900">{mode === 'custom' ? 'Custom Edit może zmienić tekst, sekcje, pola, kolejność i ich układ. Nic nie zmienia się we wzorcu dla innych dokumentów.' : 'Admin Edit pozwala zmieniać treść, sekcje, pola, źródła i reguły. Publikacja zapisuje nowy wzorzec oraz stosuje go do bieżącego formularza; wcześniejsze formularze w innych zleceniach pozostają bez zmian.'}</div>}
         </div>
       </main>
       <aside className={'flex min-h-[45vh] min-w-0 flex-1 flex-col border-t border-slate-200 bg-slate-200/70 xl:w-[52%] xl:border-l xl:border-t-0 ' + (review ? 'print:hidden' : 'print:block')}>
@@ -1354,7 +1387,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
           <article className="document-print-target mx-auto min-h-[700px] w-full max-w-[850px] bg-white p-6 text-slate-900 shadow-md sm:p-10 print:min-h-0 print:max-w-none print:p-0 print:shadow-none">
             {previewEmpty ? <p className="text-sm text-slate-400">Treść dokumentu jest pusta.</p> : <div className="document-live-preview text-[10px] leading-[1.2] [&_h1]:my-1 [&_h1]:text-[15px] [&_h1]:font-bold [&_h2]:my-1 [&_h2]:border-l-2 [&_h2]:border-blue-800 [&_h2]:bg-slate-100 [&_h2]:px-2 [&_h2]:py-0.5 [&_h2]:text-[11px] [&_h2]:font-bold [&_p]:my-0.5 [&_table]:my-1 [&_table]:w-full [&_td]:border [&_td]:border-slate-300 [&_td]:p-1 [&_th]:border [&_th]:border-slate-300 [&_th]:p-1" dangerouslySetInnerHTML={{ __html: renderedHtml }}/>}
           </article>
-          {mode === 'admin' && <div className="mx-auto mt-3 max-w-[850px] rounded-lg border border-blue-200 bg-white p-3 text-xs text-blue-900">Administrator widzi tu podgląd nowego wzorca razem z aktualnymi danymi przykładowego dokumentu. Nie oznacza to aktualizacji zlecenia.</div>}
+          {mode === 'admin' && <div className="mx-auto mt-3 max-w-[850px] rounded-lg border border-blue-200 bg-white p-3 text-xs text-blue-900">Po kliknięciu „Opublikuj wzorzec” nowy układ zostanie zapisany również w aktualnie otwartym formularzu. Kopie formularzy w pozostałych zleceniach pozostaną bez zmian.</div>}
         </div>
       </aside>
     </div>
