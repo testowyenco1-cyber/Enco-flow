@@ -181,13 +181,23 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
           { key: 'dataPlDostawyPyskowice', label: 'Planowana dostawa do Pyskowic', type: 'date' },
           { key: 'wPyskowicach', label: 'Element jest w Pyskowicach', type: 'checkbox' },
         ];
+      case 'TRANSFORMATOR':
+        return [
+          { key: 'producent', label: 'Producent transformatora', type: 'text' },
+          { key: 'typ', label: 'Typ / model transformatora', type: 'text' },
+          { key: 'mocKVA', label: 'Moc znamionowa (kVA)', type: 'number', placeholder: 'np. 630' },
+          { key: 'numerSeryjny', label: 'Numer seryjny', type: 'text' },
+          { key: 'dataDostawyPlan', label: 'Planowana data dostawy', type: 'date' },
+          { key: 'dataPlDostawyPyskowice', label: 'Data dostawy do Pyskowic', type: 'date' },
+          { key: 'wPyskowicach', label: 'Transformator jest w Pyskowicach', type: 'checkbox' },
+        ];
       case 'TRANSFORMATOR_POTRZEB_WLASNYCH':
         return [
           { key: 'va', label: 'Moc / VA', type: 'text', placeholder: 'np. 5000 VA' },
           { key: 'dataDostawyPlan', label: 'Planowana data dostawy', type: 'date' },
           { key: 'numerSeryjny', label: 'Numer seryjny', type: 'text' },
           { key: 'dataPlDostawyPyskowice', label: 'Planowana dostawa do Pyskowic', type: 'date' },
-          { key: 'wPyskowicach', label: 'Transformator jest w Pyskowicach', type: 'checkbox' },
+          { key: 'wPyskowicach', label: 'Transformator potrzeb własnych jest w Pyskowicach', type: 'checkbox' },
         ];
       case 'WSKAZNIKI_ZWARC':
         return [
