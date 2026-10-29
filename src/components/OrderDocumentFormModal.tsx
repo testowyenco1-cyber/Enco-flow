@@ -104,7 +104,7 @@ const uid = (prefix = 'field') => prefix + '-' + Date.now().toString(36) + '-' +
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 const TEMPLATE_FIELDS: FormField[] = [
-  { id: 'typBudowli', label: 'Typ budowli', valueKey: 'typBudowli', type: 'text', sourcePath: 'order.stationType', helpText: 'Pobierany ze zlecenia, jeśli jest określony.' },
+  { id: 'typBudowli', label: 'Typ budowli', valueKey: 'typBudowli', type: 'text', sourcePath: 'order.stationType', required: true, helpText: 'Pobierany ze zlecenia, jeśli jest określony.' },
   { id: 'typObudowy', label: 'Typ obudowy', valueKey: 'typObudowy', type: 'select', options: ['BEK', 'NZ'], sourcePath: 'item.details.typObudowy', required: true },
   { id: 'rozmiar', label: 'Rozmiar obudowy', valueKey: 'rozmiar', type: 'text', sourcePath: 'item.details.rozmiar', required: true },
   { id: 'nazwaObiektu', label: 'Nazwa obiektu', valueKey: 'nazwaObiektu', type: 'text', sourcePath: 'order.projectName', required: true },
@@ -805,6 +805,29 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
 
   if (!isOpen) return null;
 
+  const openReview = () => {
+    const requiredFields = activeTemplate.fields.filter((field) => field.visible !== false && field.required);
+    const missing = requiredFields.filter((field) => {
+      const value = getValueByKey(form, field.valueKey);
+      if (value === undefined || value === null) return true;
+      if (typeof value === 'string') return value.trim().length === 0;
+      if (Array.isArray(value)) {
+        if (value.length === 0) return true;
+        if (field.type === 'repeatable' || field.type === 'doors') return value.some((row: any) => !row.type);
+        return false;
+      }
+      if (field.type === 'quantity-toggle' && typeof value === 'object') return !value.enabled;
+      return false;
+    });
+    if (missing.length) {
+      setMessage('Uzupełnij wymagane pola: ' + missing.map((field) => field.label).join(', ') + '.');
+      setReview(false);
+      return;
+    }
+    setMessage('');
+    setReview(true);
+  };
+
   const renderFormFields = () => (
     <div className="space-y-4">
       {templateLoading && <div className="flex items-center gap-2 rounded-lg bg-blue-50 p-3 text-sm text-blue-800"><Loader2 size={16} className="animate-spin"/> Wczytywanie wzorca formularza…</div>}
@@ -850,14 +873,13 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
           <p className="mb-2 text-xs font-semibold text-slate-600">Wstaw dynamiczne pole w miejscu kursora</p>
           <div className="flex flex-wrap gap-1.5">
             {[
-              ['Numer ZL', '{{form.numerZL}}'], ['Data', '{{form.dataWystawienia}}'], ['Termin', '{{form.terminRealizacji}}'],
-              ['Tytuł', '{{derived.title}}'], ['DOT.', '{{derived.dot}}'], ['Typ obudowy', '{{form.typObudowy}}'],
-              ['Rozmiar', '{{form.rozmiar}}'], ['Nazwa obiektu', '{{form.nazwaObiektu}}'], ['Opis obudowy', '{{form.opisObudowy}}'],
-              ['Drzwi', '{{form.slusarka}}'], ['Przepusty', '{{form.przepusty}}'], ['Otwory', '{{form.otwory}}'],
-              ['Kolory', '{{form.kolorObudowy}}'], ['SN', '{{form.customFields.rozdzielnicaSN}}'], ['NN', '{{form.customFields.rozdzielnicaNN}}'],
-              ['Telemechanika', '{{form.customFields.telemechanika}}'], ['Transformator', '{{form.customFields.transformator}}'],
-              ['Warszawa', '{{form.dostawaWarszawa}}'], ['Pyskowice', '{{form.dostawaPyskowice}}'],
-            ].map(([label, token]) => <button key={token} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => insertToken(token)} className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-800">{label}</button>)}
+              ['Tytuł', '{{derived.title}}'],
+              ['DOT.', '{{derived.dot}}'],
+            ].map(([label, token]) => <button key={token} type="button" disabled={sourceHtmlMode} onMouseDown={(event) => event.preventDefault()} onClick={() => insertToken(token)} className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-800 disabled:cursor-not-allowed disabled:opacity-40">{label}</button>)}
+            {workingTemplate.fields.map((field) => {
+              const token = '{{form.' + field.valueKey + '}}';
+              return <button key={field.id} type="button" disabled={sourceHtmlMode} title={token} onMouseDown={(event) => event.preventDefault()} onClick={() => insertToken(token)} className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">{field.label}</button>;
+            })}
           </div>
         </div>
         {sourceHtmlMode ? <textarea aria-label="Kod HTML wzorca dokumentu" value={workingTemplate.contentHtml} onChange={(event) => setWorkingTemplate((template) => ({ ...template, contentHtml: event.target.value }))} rows={24} className="w-full resize-y border-0 p-4 font-mono text-xs leading-5 outline-none"/> :
@@ -981,7 +1003,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
           {mode === 'form' ? renderFormFields() : renderDesigner()}
           {mode === 'form' && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
             <div className="text-[11px] leading-4 text-slate-500">{canEdit ? 'Zatwierdzenie danych następuje dopiero na ekranie podsumowania.' : 'Możesz obejrzeć i wydrukować dokument, ale nie zapisywać zmian.'}</div>
-            <button type="button" onClick={() => setReview(true)} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700"><CheckCircle2 size={16}/> Sprawdź zmiany i dokument</button>
+            <button type="button" onClick={openReview} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700"><CheckCircle2 size={16}/> Sprawdź zmiany i dokument</button>
           </div>}
           {mode !== 'form' && <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs leading-5 text-blue-900">{mode === 'custom' ? 'Custom Edit może zmienić tekst, sekcje, pola, kolejność i ich układ. Nic nie zmienia się we wzorcu dla innych dokumentów.' : 'Admin Edit zawiera edycję tekstu jak w Wordzie, ustawienia sekcji i pól, mapowanie źródeł oraz reguły zależności. Publikacja tworzy nową wersję wzorca.'}</div>}
         </div>
@@ -989,7 +1011,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
       <aside className={'flex min-h-[45vh] min-w-0 flex-1 flex-col border-t border-slate-200 bg-slate-200/70 xl:w-[52%] xl:border-l xl:border-t-0 ' + (review ? 'print:hidden' : 'print:block')}>
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-300 bg-white px-3 py-2.5 sm:px-5">
           <div><h2 className="text-sm font-bold text-slate-900">Podgląd live</h2><p className="text-[10px] text-slate-500">Wzorzec v{templateForPreview.version} · {mode === 'admin' ? 'wersja robocza administratora' : 'dokument bieżący'}</p></div>
-          <div className="flex flex-wrap gap-2">{mode === 'form' && <button type="button" onClick={() => setReview(true)} className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold"><Eye size={14}/> Podsumowanie</button>}<button type="button" onClick={() => setReview(true)} className="inline-flex items-center gap-1.5 rounded-lg border bg-white px-3 py-2 text-xs font-semibold"><Eye size={14}/> Podsumowanie / wydruk</button></div>
+          <div className="flex flex-wrap gap-2">{mode === 'form' && <button type="button" onClick={openReview} className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold"><Eye size={14}/> Podsumowanie</button>}<button type="button" onClick={() => setReview(true)} className="inline-flex items-center gap-1.5 rounded-lg border bg-white px-3 py-2 text-xs font-semibold"><Eye size={14}/> Podsumowanie / wydruk</button></div>
         </div>
         <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-5">
           <article className="document-print-target mx-auto min-h-[700px] w-full max-w-[850px] bg-white p-6 text-slate-900 shadow-md sm:p-10 print:min-h-0 print:max-w-none print:p-0 print:shadow-none">
@@ -1026,6 +1048,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
               details: {
                 ...candidate.details,
                 typBudowli: form.typBudowli,
+                opisObudowy: form.opisObudowy,
                 typObudowy: form.typObudowy,
                 rozmiar: form.rozmiar,
                 dlugoscObudowy: form.dlugosc,
