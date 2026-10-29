@@ -30,6 +30,7 @@ type FormField = {
   type: FieldType;
   options?: string[];
   sourcePath?: string;
+  liveBinding?: boolean;
   defaultValue?: any;
   helpText?: string;
   required?: boolean;
@@ -109,7 +110,7 @@ const TEMPLATE_FIELDS: FormField[] = [
   { id: 'nazwaObiektu', label: 'Nazwa obiektu', valueKey: 'nazwaObiektu', type: 'text', sourcePath: 'order.projectName', required: true },
   { id: 'numerZL', label: 'Numer ZL', valueKey: 'numerZL', type: 'text', sourcePath: 'order.orderNumber', required: true },
   { id: 'dataWystawienia', label: 'Data wystawienia dokumentu', valueKey: 'dataWystawienia', type: 'date', sourcePath: 'system.today', required: true },
-  { id: 'terminRealizacji', label: 'Termin realizacji', valueKey: 'terminRealizacji', type: 'date', sourcePath: 'item.plannedDate' },
+  { id: 'terminRealizacji', label: 'Termin realizacji', valueKey: 'terminRealizacji', type: 'date', sourcePath: 'item.plannedDate', liveBinding: true },
   { id: 'dotExtra', label: 'Dodatkowa wzmianka DOT.', valueKey: 'dotExtra', type: 'text', helpText: 'Treść podstawowa DOT. jest składana z tytułu; to pole dodaje osobną wzmiankę.' },
   { id: 'opisObudowy', label: 'Opis obudowy — pełne zdanie', valueKey: 'opisObudowy', type: 'textarea', required: true, fullWidth: true },
   { id: 'slusarka', label: 'Drzwi i ślusarka', valueKey: 'slusarka', type: 'doors', fullWidth: true },
@@ -211,7 +212,10 @@ const blankForm = (item?: OrderItem, order?: Order): FormData => {
     dodatkoweWyposazenie: Array.isArray(d.dodatkoweWyposazenie) ? d.dodatkoweWyposazenie : [],
     przepusty: Array.isArray(d.przepusty) ? d.przepusty : [],
     otwory: Array.isArray(d.otwory) ? d.otwory : [],
-    slusarka: Array.isArray(d.slusarka) ? d.slusarka : [],
+    slusarka: Array.isArray(d.slusarka) ? d.slusarka : [
+      { id: uid('door'), type: 'Drzwi SN i NN', category: 'Drzwi SN i NN', quantity: '1', position: 'Do rozdzielnic SN i NN', wings: 'Jednoskrzydłowe', openingSide: 'Lewe', width: typObudowy === 'BEK' ? '950' : '', height: typObudowy === 'BEK' ? '2100' : '', ventilationGrille: true, intakeFan: false, exhaustFan: false },
+      { id: uid('door'), type: 'Drzwi Trafo', category: 'Drzwi Trafo', quantity: '1', position: 'Do komory transformatora', wings: 'Jednoskrzydłowe', openingSide: 'Lewe', width: typObudowy === 'BEK' ? '1170' : '', height: typObudowy === 'BEK' ? '2100' : '', ventilationGrille: true, intakeFan: false, exhaustFan: false },
+    ],
     dostawaPyskowice: String(d.dostawaPyskowice || ''),
     dostawaWarszawa: String(d.dostawaWarszawa || ''),
     uwagi: String(d.uwagiDoZleceniaObudowy || ''),
@@ -372,11 +376,25 @@ function hydrateFromBindings(form: FormData, template: DocumentTemplate, order: 
   for (const field of template.fields) {
     if (!field.sourcePath || !field.valueKey || field.type === 'static') continue;
     const existing = getValueByKey(next, field.valueKey);
+    const source = getPathValue(field.sourcePath, order, item, next);
+    // A live binding (for example the Obudowa realisation deadline) always follows the current source.
+    if (field.liveBinding) {
+      if (source !== undefined && source !== null && source !== '') next = setValueByKey(next, field.valueKey, source);
+      continue;
+    }
     if (hasSaved && existing !== undefined) continue;
     if (existing !== undefined && existing !== null && existing !== '' && !(Array.isArray(existing) && existing.length === 0)) continue;
-    const source = getPathValue(field.sourcePath, order, item, next);
     if (source !== undefined && source !== null && source !== '') next = setValueByKey(next, field.valueKey, source);
     else if (!hasSaved && field.defaultValue !== undefined && (existing === undefined || existing === '' || (Array.isArray(existing) && existing.length === 0))) next = setValueByKey(next, field.valueKey, clone(field.defaultValue));
+  }
+  if (!hasSaved) {
+    const variant = next.rozmiar && next.typObudowy && next.rozmiar.toUpperCase().startsWith(next.typObudowy.toUpperCase())
+      ? next.rozmiar
+      : [next.typObudowy, next.rozmiar].filter(Boolean).join(' ');
+    next = {
+      ...next,
+      opisObudowy: 'Wykonanie obudowy ' + variant + ' wraz z fundamentem i przepustami kablowymi SN, nN i uziemiającymi, wraz z montażem ślusarki i rozdzielnicy SN i nN.',
+    };
   }
   return next;
 }
