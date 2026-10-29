@@ -835,8 +835,8 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
   if (!isOpen) return null;
 
   const openReview = () => {
-    const visibleFieldIds = new Set(activeTemplate.sections.filter((section) => section.visible !== false).flatMap((section) => section.fieldIds));
-    const requiredFields = activeTemplate.fields.filter((field) => visibleFieldIds.has(field.id) && field.visible !== false && field.required);
+    const visibleFieldIds = new Set(templateForPreview.sections.filter((section) => section.visible !== false).flatMap((section) => section.fieldIds));
+    const requiredFields = templateForPreview.fields.filter((field) => visibleFieldIds.has(field.id) && field.visible !== false && field.required);
     const missing = requiredFields.filter((field) => {
       const value = getValueByKey(form, field.valueKey);
       if (value === undefined || value === null) return true;
@@ -1048,7 +1048,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
       </div>
       <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-3 print:hidden">
         <button type="button" onClick={() => setReview(false)} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold"><ArrowLeft size={15}/> Wróć do edycji</button>
-        <div className="flex flex-wrap gap-2"><button type="button" disabled={!canDownload} onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm font-semibold disabled:opacity-40"><Printer size={15}/> Drukuj / PDF</button><button type="button" disabled={!canEdit || !item} onClick={() => {
+        <div className="flex flex-wrap gap-2"><button type="button" disabled={!canDownload} onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm font-semibold disabled:opacity-40"><Printer size={15}/> Drukuj / PDF</button>{mode === 'form' ? <button type="button" disabled={!canEdit || !item} onClick={() => {
           if (!canEdit || !item) return;
           const persistedForm = { ...form, __templateSnapshot: clone(activeTemplate), __templateVersion: activeTemplate.version };
           const terminChanged = isFormFieldChanged('terminRealizacji');
@@ -1125,7 +1125,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
           setReview(false);
           setMode('form');
           onClose();
-        }} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"><CheckCircle2 size={16}/> Zatwierdź zmiany w zleceniu</button></div>
+        }} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"><CheckCircle2 size={16}/> Zatwierdź zmiany w zleceniu</button> : <p className="self-center max-w-md text-xs text-slate-500">To podgląd roboczy edytora. Nie zapisuje zmian w zleceniu; wróć do edytora i zapisz zmiany Custom Edit lub opublikuj wzorzec Admin Edit.</p>}</div>
       </footer>
     </div>}
   </div>;
