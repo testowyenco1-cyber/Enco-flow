@@ -413,6 +413,16 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         entries.push({ label: item.type === 'RPW' ? 'RPW w Pyskowicach' : 'Tablica pomiarowa w Pyskowicach', value: item.status === 'NOT_APPLICABLE' ? 'Nie dotyczy' : d.wPyskowicach ? 'Tak' : 'Nie' });
         break;
 
+      case 'TRANSFORMATOR':
+        entries.push({ label: 'Producent', value: d.producent ? String(d.producent) : '—' });
+        entries.push({ label: 'Typ / model transformatora', value: d.typ ? String(d.typ) : '—' });
+        entries.push({ label: 'Moc znamionowa (kVA)', value: d.mocKVA !== undefined && d.mocKVA !== '' ? `${d.mocKVA} kVA` : '—' });
+        entries.push({ label: 'Numer seryjny', value: d.numerSeryjny ? String(d.numerSeryjny) : '—' });
+        entries.push({ label: 'Planowana data dostawy', value: d.dataDostawyPlan ? formatDatePL(String(d.dataDostawyPlan)) : '—' });
+        entries.push({ label: 'Data dostawy do Pyskowic', value: d.dataPlDostawyPyskowice ? formatDatePL(String(d.dataPlDostawyPyskowice)) : '—' });
+        entries.push({ label: 'Transformator w Pyskowicach', value: d.wPyskowicach ? 'Tak' : 'Nie' });
+        break;
+
       case 'TRANSFORMATOR_POTRZEB_WLASNYCH':
         entries.push({ label: 'Moc / VA', value: d.va ? String(d.va) : '—' });
         
@@ -757,6 +767,10 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         RPW: [
           { key: 'kategoria', label: 'Kategoria RPW' },
         ],
+        TRANSFORMATOR: [
+          { key: 'typ', label: 'Typ / model transformatora' },
+          { key: 'mocKVA', label: 'Moc znamionowa transformatora (kVA)' },
+        ],
         TRANSFORMATOR_POTRZEB_WLASNYCH: [
           { key: 'va', label: 'Moc transformatora potrzeb własnych (VA)' },
         ],
@@ -820,6 +834,7 @@ export const ItemDetailsCard: React.FC<ItemDetailsCardProps> = ({
         ],
         DRZWI: [{ key: 'ilosc', label: 'Liczba drzwi' }],
         WSKAZNIKI_ZWARC: [{ key: 'ilosc', label: 'Liczba wskaźników zwarć' }],
+        TRANSFORMATOR: [{ key: 'mocKVA', label: 'Moc znamionowa transformatora (kVA)' }],
         TRANSFORMATOR_POTRZEB_WLASNYCH: [{ key: 'va', label: 'Moc transformatora potrzeb własnych (VA)' }],
         OBUDOWA: [
           { key: 'szerokosc', label: 'Szerokość obudowy' },
