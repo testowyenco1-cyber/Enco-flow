@@ -31,6 +31,7 @@ type FormField = {
   options?: string[];
   sourcePath?: string;
   liveBinding?: boolean;
+  readOnly?: boolean;
   defaultValue?: any;
   helpText?: string;
   required?: boolean;
@@ -122,24 +123,58 @@ const TEMPLATE_FIELDS: FormField[] = [
   { id: 'dodatkoweWyposazenie', label: 'Dodatkowe wyposażenie', valueKey: 'dodatkoweWyposazenie', type: 'checkbox-list', fullWidth: true, options: ['Oświetlenie wewnętrzne i zewnętrzne', 'Antena', 'Lampki ostrzegawcze'] },
   { id: 'przepusty', label: 'Przepusty kablowe', valueKey: 'przepusty', type: 'repeatable', fullWidth: true, options: ['Przepust HEA', 'BWS 100', 'BWS 150', 'HSI 90', 'HSI 150', 'Ø100', 'Inny przepust'] },
   { id: 'otwory', label: 'Otwory i przepusty — pozostałe', valueKey: 'otwory', type: 'repeatable', fullWidth: true, options: ['Przepust HEA', 'Otwór Ø100', 'Otwór kablowy', 'Otwór wentylacyjny', 'Otwór drzwiowy', 'Inny'] },
-  { id: 'kolorObudowy', label: 'Kolor obudowy (RAL)', valueKey: 'kolorObudowy', type: 'text', sourcePath: 'item.details.kolorObudowy' },
-  { id: 'kolorSlusarki', label: 'Kolor ślusarki (RAL)', valueKey: 'kolorSlusarki', type: 'text', sourcePath: 'item.details.kolorSlusarki' },
-  { id: 'kolorDachu', label: 'Kolor dachu (RAL)', valueKey: 'kolorDachu', type: 'text', sourcePath: 'item.details.kolorDachu' },
-  { id: 'kolorDrzwiKraty', label: 'Kolor drzwi i krat (RAL)', valueKey: 'kolorDrzwiKraty', type: 'text', sourcePath: 'item.details.kolorDrzwiKraty' },
-  { id: 'tynk', label: 'Tynk / wykończenie', valueKey: 'tynk', type: 'text', sourcePath: 'item.details.tynk' },
-  { id: 'antygraffiti', label: 'Powłoka antygraffiti', valueKey: 'antygraffiti', type: 'select', options: ['Tak', 'Nie'], sourcePath: 'item.details.antygraffitiStatus' },
-  { id: 'opisy', label: 'Kolory i opisy — dodatkowe uwagi', valueKey: 'customFields.opisy', type: 'textarea', fullWidth: true, sourcePath: 'item.details.opisy' },
-  { id: 'rozdzielnicaSN', label: 'Rozdzielnica SN', valueKey: 'customFields.rozdzielnicaSN', type: 'textarea', fullWidth: true, sourcePath: 'item.details.rozdzielnicaSN' },
-  { id: 'rozdzielnicaNN', label: 'Rozdzielnica NN', valueKey: 'customFields.rozdzielnicaNN', type: 'textarea', fullWidth: true, sourcePath: 'item.details.rozdzielnicaNN' },
-  { id: 'telemechanika', label: 'Telemechanika', valueKey: 'customFields.telemechanika', type: 'textarea', fullWidth: true, sourcePath: 'item.details.telemechanika' },
-  { id: 'transformator', label: 'Transformator', valueKey: 'customFields.transformator', type: 'textarea', fullWidth: true, sourcePath: 'item.details.transformator' },
-  { id: 'uziemienie', label: 'Rodzaj instalacji uziemiającej', valueKey: 'customFields.uziemienie', type: 'text', sourcePath: 'item.details.uziemienie' },
-  { id: 'instalacjaOswietleniowa', label: 'Informacja o instalacji oświetleniowej', valueKey: 'customFields.instalacjaOswietleniowa', type: 'text', sourcePath: 'item.details.instalacjaOswietleniowa' },
-  { id: 'inneUrzadzenia', label: 'Inne urządzenia / uwagi', valueKey: 'customFields.inneUrzadzenia', type: 'textarea', fullWidth: true, sourcePath: 'item.details.inneUrzadzenia' },
+  { id: 'kolorObudowy', label: 'Kolor obudowy (RAL)', valueKey: 'kolorObudowy', type: 'text', sourcePath: 'order.itemByType.KOLORY.documentColorShell', liveBinding: true, readOnly: true, helpText: 'Pobierane z pozycji KOLORY w bieżącym zleceniu.' },
+  { id: 'kolorSlusarki', label: 'Kolor ślusarki (RAL)', valueKey: 'kolorSlusarki', type: 'text', sourcePath: 'order.itemByType.KOLORY.documentColorMetalwork', liveBinding: true, readOnly: true, helpText: 'Pobierane z pozycji KOLORY; osobny kolor ślusarki jest używany, jeśli został zapisany.' },
+  { id: 'kolorDachu', label: 'Kolor dachu (RAL)', valueKey: 'kolorDachu', type: 'text', sourcePath: 'order.itemByType.KOLORY.documentColorRoof', liveBinding: true, readOnly: true, helpText: 'Pobierane z pozycji KOLORY — kolor dachu lub kolory dodatkowe.' },
+  { id: 'kolorDrzwiKraty', label: 'Kolor drzwi i krat (RAL)', valueKey: 'kolorDrzwiKraty', type: 'text', sourcePath: 'order.itemByType.KOLORY.documentColorDoorsAndGrilles', liveBinding: true, readOnly: true, helpText: 'Pobierane z pozycji KOLORY.' },
+  { id: 'tynk', label: 'Tynk / wykończenie', valueKey: 'tynk', type: 'text', sourcePath: 'order.itemByType.OBUDOWA.documentFinish', liveBinding: true, helpText: 'Pobierane z danych pozycji Obudowa, jeśli zostało zapisane.' },
+  { id: 'antygraffiti', label: 'Powłoka antygraffiti', valueKey: 'antygraffiti', type: 'select', options: ['Tak', 'Nie'], sourcePath: 'order.itemByType.OBUDOWA.documentAntigraffiti', liveBinding: true, helpText: 'Pobierane z danych pozycji Obudowa, jeśli zostało zapisane.' },
+  { id: 'opisy', label: 'Kolory i opisy — dodatkowe uwagi', valueKey: 'customFields.opisy', type: 'textarea', fullWidth: true, sourcePath: 'order.itemByType.OPISY.documentSummary', liveBinding: true, readOnly: true, helpText: 'Pobierane z pozycji OPISY w bieżącym zleceniu.' },
+  { id: 'rozdzielnicaSN', label: 'Rozdzielnica SN', valueKey: 'customFields.rozdzielnicaSN', type: 'textarea', fullWidth: true, sourcePath: 'order.itemByType.ROZDZIELNICA_SN.documentSummary', liveBinding: true, readOnly: true, helpText: 'Producent, rodzaj/model, liczba i konfiguracja pól są pobierane z pozycji ROZDZIELNICA SN.' },
+  { id: 'rozdzielnicaNN', label: 'Rozdzielnica NN', valueKey: 'customFields.rozdzielnicaNN', type: 'textarea', fullWidth: true, sourcePath: 'order.itemByType.ROZDZIELNICA_NN.documentSummary', liveBinding: true, readOnly: true, helpText: 'Typ, liczba pól i wyposażenie są pobierane z pozycji ROZDZIELNICA NN.' },
+  { id: 'telemechanika', label: 'Telemechanika', valueKey: 'customFields.telemechanika', type: 'textarea', fullWidth: true, sourcePath: 'order.itemByType.SZAFKA_TELEMECHANIKI.documentSummary', liveBinding: true, readOnly: true, helpText: 'Pobierane z pozycji SZAFKA TELEMECHANIKI.' },
+  { id: 'transformator', label: 'Transformator', valueKey: 'customFields.transformator', type: 'textarea', fullWidth: true, sourcePath: 'order.itemByType.TRANSFORMATOR_POTRZEB_WLASNYCH.documentSummary', liveBinding: true, readOnly: true, helpText: 'Moc i numer seryjny są pobierane z pozycji transformatora potrzeb własnych.' },
+  { id: 'uziemienie', label: 'Rodzaj instalacji uziemiającej', valueKey: 'customFields.uziemienie', type: 'text', sourcePath: 'order.itemByType.OBUDOWA.documentGrounding', liveBinding: true, helpText: 'Pobierane z danych pozycji Obudowa, jeśli zostało zapisane.' },
+  { id: 'instalacjaOswietleniowa', label: 'Informacja o instalacji oświetleniowej', valueKey: 'customFields.instalacjaOswietleniowa', type: 'text', sourcePath: 'order.itemByType.OBUDOWA.documentLighting', liveBinding: true, helpText: 'Pobierane z danych pozycji Obudowa, jeśli zostało zapisane.' },
+  { id: 'inneUrzadzenia', label: 'Inne urządzenia / uwagi', valueKey: 'customFields.inneUrzadzenia', type: 'textarea', fullWidth: true, sourcePath: 'order.itemByType.DODATKOWE.documentSummary', liveBinding: true, readOnly: true, helpText: 'Pobierane z pozycji DODATKOWE w bieżącym zleceniu.' },
   { id: 'dostawaWarszawa', label: 'Elementy dostarczane przez Warszawę', valueKey: 'dostawaWarszawa', type: 'textarea', fullWidth: true },
   { id: 'dostawaPyskowice', label: 'Elementy dostarczane przez Pyskowice', valueKey: 'dostawaPyskowice', type: 'textarea', fullWidth: true },
   { id: 'uwagi', label: 'Uwagi i poprawki do dokumentu', valueKey: 'uwagi', type: 'textarea', fullWidth: true },
 ];
+
+const ORDER_BOUND_FIELD_CONFIG: Record<string, { sourcePath: string; readOnly: boolean; helpText: string; legacyPaths: string[] }> = {
+  kolorObudowy: { sourcePath: 'order.itemByType.KOLORY.documentColorShell', readOnly: true, helpText: 'Pobierane z pozycji KOLORY w bieżącym zleceniu.', legacyPaths: ['item.details.kolorObudowy'] },
+  kolorSlusarki: { sourcePath: 'order.itemByType.KOLORY.documentColorMetalwork', readOnly: true, helpText: 'Pobierane z pozycji KOLORY; używany jest osobny kolor ślusarki, jeśli został zapisany.', legacyPaths: ['item.details.kolorSlusarki'] },
+  kolorDachu: { sourcePath: 'order.itemByType.KOLORY.documentColorRoof', readOnly: true, helpText: 'Pobierane z pozycji KOLORY — kolor dachu lub kolory dodatkowe.', legacyPaths: ['item.details.kolorDachu'] },
+  kolorDrzwiKraty: { sourcePath: 'order.itemByType.KOLORY.documentColorDoorsAndGrilles', readOnly: true, helpText: 'Pobierane z pozycji KOLORY.', legacyPaths: ['item.details.kolorDrzwiKraty'] },
+  tynk: { sourcePath: 'order.itemByType.OBUDOWA.documentFinish', readOnly: false, helpText: 'Pobierane z danych pozycji Obudowa, jeśli zostało zapisane.', legacyPaths: ['item.details.tynk'] },
+  antygraffiti: { sourcePath: 'order.itemByType.OBUDOWA.documentAntigraffiti', readOnly: false, helpText: 'Pobierane z danych pozycji Obudowa, jeśli zostało zapisane.', legacyPaths: ['item.details.antygraffitiStatus'] },
+  opisy: { sourcePath: 'order.itemByType.OPISY.documentSummary', readOnly: true, helpText: 'Pobierane z pozycji OPISY w bieżącym zleceniu.', legacyPaths: ['item.details.opisy'] },
+  rozdzielnicaSN: { sourcePath: 'order.itemByType.ROZDZIELNICA_SN.documentSummary', readOnly: true, helpText: 'Producent, rodzaj/model, liczba i konfiguracja pól są pobierane z pozycji ROZDZIELNICA SN.', legacyPaths: ['item.details.rozdzielnicaSN'] },
+  rozdzielnicaNN: { sourcePath: 'order.itemByType.ROZDZIELNICA_NN.documentSummary', readOnly: true, helpText: 'Typ, liczba pól i wyposażenie są pobierane z pozycji ROZDZIELNICA NN.', legacyPaths: ['item.details.rozdzielnicaNN'] },
+  telemechanika: { sourcePath: 'order.itemByType.SZAFKA_TELEMECHANIKI.documentSummary', readOnly: true, helpText: 'Pobierane z pozycji SZAFKA TELEMECHANIKI.', legacyPaths: ['item.details.telemechanika'] },
+  transformator: { sourcePath: 'order.itemByType.TRANSFORMATOR_POTRZEB_WLASNYCH.documentSummary', readOnly: true, helpText: 'Moc i numer seryjny są pobierane z pozycji transformatora potrzeb własnych.', legacyPaths: ['item.details.transformator'] },
+  uziemienie: { sourcePath: 'order.itemByType.OBUDOWA.documentGrounding', readOnly: false, helpText: 'Pobierane z danych pozycji Obudowa, jeśli zostało zapisane.', legacyPaths: ['item.details.uziemienie'] },
+  instalacjaOswietleniowa: { sourcePath: 'order.itemByType.OBUDOWA.documentLighting', readOnly: false, helpText: 'Pobierane z danych pozycji Obudowa, jeśli zostało zapisane.', legacyPaths: ['item.details.instalacjaOswietleniowa'] },
+  inneUrzadzenia: { sourcePath: 'order.itemByType.DODATKOWE.documentSummary', readOnly: true, helpText: 'Pobierane z pozycji DODATKOWE w bieżącym zleceniu.', legacyPaths: ['item.details.inneUrzadzenia'] },
+};
+function normalizeOrderBoundFields(template: DocumentTemplate): DocumentTemplate {
+  return {
+    ...template,
+    fields: (template.fields || []).map((field) => {
+      const binding = ORDER_BOUND_FIELD_CONFIG[field.id];
+      if (!binding) return field;
+      const migrateBinding = !field.sourcePath || binding.legacyPaths.includes(field.sourcePath);
+      return {
+        ...field,
+        sourcePath: migrateBinding ? binding.sourcePath : field.sourcePath,
+        liveBinding: migrateBinding ? true : field.liveBinding,
+        readOnly: field.readOnly ?? binding.readOnly,
+        helpText: field.helpText || binding.helpText,
+      };
+    }),
+  };
+}
 
 const DEFAULT_TEMPLATE: DocumentTemplate = {
   key: 'zlecenie-obudowy',
@@ -248,12 +283,148 @@ function readForm(item?: OrderItem, order?: Order): FormData {
   return base;
 }
 
+function firstSourceValue(...values: any[]): any {
+  return values.find((value) =>
+    value !== undefined &&
+    value !== null &&
+    !(typeof value === 'string' && value.trim() === '') &&
+    !(Array.isArray(value) && value.length === 0)
+  );
+}
+function sourceText(value: any): string {
+  if (value === undefined || value === null || value === '') return '';
+  if (typeof value === 'boolean') return value ? 'Tak' : 'Nie';
+  if (Array.isArray(value)) return value.map(sourceText).filter(Boolean).join(', ');
+  if (typeof value === 'object') {
+    const text = displayValue(value);
+    return text === '—' ? '' : text;
+  }
+  return String(value).trim();
+}
+function sourceSummary(...parts: any[]): string {
+  return parts.map(sourceText).filter(Boolean).join(' · ');
+}
+function labelledSource(label: string, value: any): string {
+  const text = sourceText(value);
+  return text ? `${label}: ${text}` : '';
+}
+function getRelatedItemDocumentValue(order: Order, type: string, key: string): any {
+  const related = order.items?.find((candidate) => candidate.type === type);
+  const details = related?.details || {};
+  const enclosure = order.items?.find((candidate) => candidate.type === 'OBUDOWA');
+  const enclosureDetails = enclosure?.details || {};
+  const colors = order.items?.find((candidate) => candidate.type === 'KOLORY')?.details || {};
+
+  if (type === 'KOLORY' && key.startsWith('documentColor')) {
+    if (!related && !enclosure) return undefined;
+    const value = key === 'documentColorShell'
+      ? firstSourceValue(colors.kolorObudowy, enclosureDetails.kolorObudowy)
+      : key === 'documentColorMetalwork'
+      ? firstSourceValue(colors.kolorSlusarki, enclosureDetails.kolorSlusarki, colors.kolorDrzwi, enclosureDetails.kolorDrzwi)
+      : key === 'documentColorRoof'
+      ? firstSourceValue(colors.kolorDachu, enclosureDetails.kolorDachu, colors.koloryDodatkowe, enclosureDetails.koloryDodatkowe)
+      : key === 'documentColorDoorsAndGrilles'
+      ? firstSourceValue(colors.kolorDrzwiKraty, enclosureDetails.kolorDrzwiKraty, colors.kolorDrzwi, enclosureDetails.kolorDrzwi)
+      : undefined;
+    return value === undefined ? '' : sourceText(value);
+  }
+
+  if (key === 'documentFinish' && type === 'OBUDOWA') {
+    if (!related) return undefined;
+    return sourceText(firstSourceValue(details.tynk, details.wykonczenie, details['wykończenie'], details.materialWykonczenia));
+  }
+  if (key === 'documentAntigraffiti' && type === 'OBUDOWA') {
+    if (!related) return undefined;
+    const value = firstSourceValue(details.antygraffitiStatus, typeof details.antygraffiti === 'boolean' ? details.antygraffiti : undefined);
+    return value === undefined ? '' : typeof value === 'boolean' ? (value ? 'Tak' : 'Nie') : sourceText(value);
+  }
+  if (key === 'documentGrounding' && type === 'OBUDOWA') {
+    if (!related) return undefined;
+    return sourceText(firstSourceValue(details.uziemienie, details.typUziemienia, details.instalacjaUziemiajaca, details.opisUziemienia, details.sposobUziemienia));
+  }
+  if (key === 'documentLighting' && type === 'OBUDOWA') {
+    if (!related) return undefined;
+    const direct = firstSourceValue(details.instalacjaOswietleniowa, details.instalacjaOswietlenia, details.oswietlenie, details.oswietlenieWewnetrzneZewnetrzne, details.oswietlenieOpis);
+    if (direct !== undefined) return sourceText(direct);
+    const equipment = sourceText(firstSourceValue(details.dodatkoweWyposazenie, details.wyposazenieDodatkowe, details.wyposazenie));
+    return /oświetlen|oswietlen/i.test(equipment) ? equipment : '';
+  }
+
+  if (key !== 'documentSummary') return undefined;
+  if (!related) {
+    if (type === 'OPISY' && enclosure) {
+      return sourceSummary(
+        labelledSource('Wymagane opisy', enclosureDetails.wymaganeOpisy),
+        labelledSource('Sposób wykonania', enclosureDetails.sposobWykonania),
+      );
+    }
+    if (type === 'DODATKOWE' && enclosure) return sourceText(enclosureDetails.inneUrzadzenia);
+    return undefined;
+  }
+
+  switch (type) {
+    case 'ROZDZIELNICA_SN': {
+      const count = firstSourceValue(details.liczbaPol, details.iloscPol);
+      return sourceSummary(
+        details.producent,
+        firstSourceValue(details.model, details.typRozdzielnicy),
+        count !== undefined ? `${sourceText(count)} pól` : '',
+        labelledSource('Konfiguracja pól', details.konfiguracjaPol),
+        details.parametryTechniczne,
+      ) || sourceText(related.notes);
+    }
+    case 'ROZDZIELNICA_NN': {
+      const count = firstSourceValue(details.iloscPol, details.liczbaPol);
+      return sourceSummary(
+        firstSourceValue(details.typRozdzielnicy, details.typ),
+        count !== undefined ? `${sourceText(count)} pól` : '',
+        firstSourceValue(details.wyposazenieDodatkowe, details.wyposazenie, details.konfiguracja),
+      ) || sourceText(related.notes);
+    }
+    case 'OPISY':
+      return sourceSummary(
+        labelledSource('Wymagane opisy', firstSourceValue(details.wymaganeOpisy, enclosureDetails.wymaganeOpisy)),
+        labelledSource('Sposób wykonania', firstSourceValue(details.sposobWykonania, enclosureDetails.sposobWykonania)),
+      ) || sourceText(related.notes);
+    case 'SZAFKA_TELEMECHANIKI':
+      return sourceSummary(
+        labelledSource('RTU', firstSourceValue(details.typ, details.typSterownika)),
+        labelledSource('Wyposażenie', details.wyposazenie),
+        labelledSource('Zakres', details.zakres),
+        labelledSource('Informacje techniczne', details.informacjeTechniczne),
+        labelledSource('Sensory napięciowe', details.sensoryNapieciowe),
+      ) || sourceText(related.notes);
+    case 'TRANSFORMATOR_POTRZEB_WLASNYCH':
+      return sourceSummary(
+        labelledSource('Moc', details.va),
+        labelledSource('Numer seryjny', details.numerSeryjny),
+      ) || sourceText(related.notes);
+    case 'DODATKOWE':
+      return sourceSummary(
+        labelledSource('Opis', firstSourceValue(details.opis, related.notes, enclosureDetails.inneUrzadzenia)),
+        labelledSource('Specyfikacja', details.specyfikacja),
+      ) || sourceText(related.notes);
+    default:
+      return sourceText(related.notes);
+  }
+}
 function getPathValue(path: string | undefined, order: Order, item: OrderItem | undefined, form: FormData): any {
   if (!path) return undefined;
   if (path === 'system.today') return localDate();
-  const bits = path.split('.');
+  let bits = path.split('.');
   const root = bits.shift();
-  let value: any = root === 'order' ? order : root === 'item' ? item : root === 'form' ? form : undefined;
+  let value: any;
+  if (root === 'order' && bits[0] === 'itemByType' && bits[1]) {
+    const type = bits[1];
+    const tail = bits.slice(2);
+    if (tail.length === 1 && tail[0].startsWith('document')) {
+      return getRelatedItemDocumentValue(order, type, tail[0]);
+    }
+    value = order.items?.find((candidate) => candidate.type === type);
+    bits = tail;
+  } else {
+    value = root === 'order' ? order : root === 'item' ? item : root === 'form' ? form : undefined;
+  }
   for (const bit of bits) {
     if (value == null) return undefined;
     value = value[bit];
@@ -375,6 +546,11 @@ const sourceExamples = [
   'order.orderNumber', 'order.projectName', 'order.client', 'order.stationSize', 'order.departureDate', 'order.createdAt',
   'item.details.typBudowli', 'item.plannedDate', 'item.orderDate', 'item.details.typObudowy', 'item.details.rozmiar',
   'item.details.typDachu', 'item.details.kolorObudowy', 'item.details.terminRealizacji', 'form.nazwaObiektu',
+  'order.itemByType.ROZDZIELNICA_SN.documentSummary',
+  'order.itemByType.ROZDZIELNICA_SN.details.model', 'order.itemByType.ROZDZIELNICA_SN.details.liczbaPol',
+  'order.itemByType.ROZDZIELNICA_NN.documentSummary', 'order.itemByType.ROZDZIELNICA_NN.details.iloscPol',
+  'order.itemByType.KOLORY.details.kolorObudowy', 'order.itemByType.OPISY.documentSummary',
+  'order.itemByType.SZAFKA_TELEMECHANIKI.documentSummary', 'order.itemByType.TRANSFORMATOR_POTRZEB_WLASNYCH.documentSummary',
 ];
 function doorDimensions(stationType: string, category: string): { width: string; height: string } {
   if (!String(stationType || '').toUpperCase().startsWith('BEK')) return { width: '', height: '' };
@@ -467,6 +643,7 @@ const FormFieldInput: React.FC<{
 }> = ({ field, value, onChange, form }) => {
   const commonInput = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100';
   if (field.type === 'static') return <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-600">{field.helpText || field.defaultValue || field.label}</div>;
+  if (field.readOnly) return <div aria-readonly="true" className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 whitespace-pre-wrap">{displayValue(value)}</div>;
   if (field.type === 'checkbox-list') {
     const selected = Array.isArray(value) ? value : [];
     return <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{(field.options || []).map((option) => (
@@ -563,7 +740,9 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
   useEffect(() => {
     if (!isOpen) return;
     const saved = item?.details?.formularze?.zlecenieObudowy;
-    const savedTemplate = saved && saved.__templateSnapshot ? saved.__templateSnapshot as DocumentTemplate : null;
+    const savedTemplate = saved && saved.__templateSnapshot
+      ? normalizeOrderBoundFields(saved.__templateSnapshot as DocumentTemplate)
+      : null;
     const base = readForm(item, order);
     setForm(base);
     setOriginalForm(clone(base));
@@ -572,7 +751,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
     setDesignerTab('content');
     setRuleNotices([]);
     setMessage('');
-    const initialTemplate = savedTemplate ? clone(savedTemplate) : clone(DEFAULT_TEMPLATE);
+    const initialTemplate = savedTemplate ? clone(savedTemplate) : normalizeOrderBoundFields(clone(DEFAULT_TEMPLATE));
     setActiveTemplate(initialTemplate);
     setGlobalTemplate(clone(DEFAULT_TEMPLATE));
     setCustomDraft(clone(initialTemplate));
@@ -590,7 +769,11 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
       .then((result) => {
         if (!mounted) return;
         const serverTemplate = result?.template && typeof result.template === 'object' ? result.template as DocumentTemplate : clone(DEFAULT_TEMPLATE);
-        const safeTemplate = { ...clone(DEFAULT_TEMPLATE), ...serverTemplate, contentHtml: sanitizeHtml(String(serverTemplate.contentHtml || DEFAULT_TEMPLATE.contentHtml)) } as DocumentTemplate;
+        const safeTemplate = normalizeOrderBoundFields({
+          ...clone(DEFAULT_TEMPLATE),
+          ...serverTemplate,
+          contentHtml: sanitizeHtml(String(serverTemplate.contentHtml || DEFAULT_TEMPLATE.contentHtml)),
+        } as DocumentTemplate);
         setGlobalTemplate(safeTemplate);
         setAdminDraft(clone(safeTemplate));
         setTemplateHistory(Array.isArray(result?.versions) ? result.versions : []);
@@ -629,6 +812,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
   }, [mode, designerTab, sourceHtmlMode]);
 
   const updateFormField = (field: FormField, value: any) => {
+    if (field.readOnly) return;
     const previous = form;
     let next = setValueByKey(previous, field.valueKey, value);
     if (field.valueKey === 'typObudowy' || field.valueKey === 'rozmiar') {
@@ -855,7 +1039,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
 
   const openReview = () => {
     const visibleFieldIds = new Set(templateForPreview.sections.filter((section) => section.visible !== false).flatMap((section) => section.fieldIds));
-    const requiredFields = templateForPreview.fields.filter((field) => visibleFieldIds.has(field.id) && field.visible !== false && field.required && field.type !== 'static');
+    const requiredFields = templateForPreview.fields.filter((field) => visibleFieldIds.has(field.id) && field.visible !== false && field.required && field.type !== 'static' && !field.readOnly);
     const missing = requiredFields.filter((field) => {
       const value = getValueByKey(form, field.valueKey);
       if (value === undefined || value === null) return true;
