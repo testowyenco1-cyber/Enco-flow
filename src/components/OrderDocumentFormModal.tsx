@@ -105,6 +105,18 @@ const localDate = () => {
 const uid = (prefix = 'field') => prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
+function sanitizeTemplateOptions(template: DocumentTemplate): DocumentTemplate {
+  return {
+    ...template,
+    fields: (template.fields || []).map((field) => ({
+      ...field,
+      options: Array.isArray(field.options)
+        ? field.options.map((option) => String(option).trim()).filter(Boolean)
+        : field.options,
+    })),
+  };
+}
+
 const DELIVERY_ITEM_OPTIONS = [
   'Obudowa / fundament',
   'Dach',
@@ -1076,7 +1088,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
     setMessage('');
   };
   const saveCustomEdit = () => {
-    const next = { ...clone(customDraft), contentHtml: sanitizeHtml(customDraft.contentHtml) };
+    const next = sanitizeTemplateOptions({ ...clone(customDraft), contentHtml: sanitizeHtml(customDraft.contentHtml) });
     setActiveTemplate(next);
     setCustomDraft(clone(next));
     setForm((current) => ({ ...current, __templateSnapshot: clone(next), __templateVersion: next.version }));
@@ -1085,7 +1097,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
   };
   const saveAdminTemplate = async () => {
     if (!isAdmin) return;
-    const sanitized = { ...clone(adminDraft), contentHtml: sanitizeHtml(adminDraft.contentHtml) };
+    const sanitized = sanitizeTemplateOptions({ ...clone(adminDraft), contentHtml: sanitizeHtml(adminDraft.contentHtml) });
     setTemplateSaving(true);
     setMessage('');
     try {
@@ -1309,7 +1321,8 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
               <label className="flex items-center gap-2 pt-6 text-xs font-semibold text-slate-600"><input type="checkbox" checked={Boolean(selectedField.required)} onChange={(event) => updateTemplateField(selectedField.id, { required: event.target.checked })}/> Pole wymagane</label>
               <label className="flex items-center gap-2 pt-6 text-xs font-semibold text-slate-600"><input type="checkbox" checked={Boolean(selectedField.fullWidth)} onChange={(event) => updateTemplateField(selectedField.id, { fullWidth: event.target.checked })}/> Pole na całą szerokość</label>
               <label className="block space-y-1 text-xs font-semibold text-slate-600 md:col-span-2">Opis / podpowiedź<input value={selectedField.helpText || ''} onChange={(event) => updateTemplateField(selectedField.id, { helpText: event.target.value })} className="w-full rounded-lg border px-3 py-2 text-sm font-normal"/></label>
-              <label className="block space-y-1 text-xs font-semibold text-slate-600 md:col-span-2">Opcje listy — każda w osobnej linii<textarea rows={3} value={(selectedField.options || []).join('\n')} onChange={(event) => updateTemplateField(selectedField.id, { options: event.target.value.split('\n').map((value) => value.trim()).filter(Boolean) })} className="w-full rounded-lg border px-3 py-2 text-sm font-normal"/></label>
+              <label className="block space-y-1 text-xs font-semibold text-slate-600 md:col-span-2">Opcje listy — każda w osobnej linii<textarea rows={3} value={(selectedField.options || []).join('\n')} onChange={(event) => updateTemplateField(selectedField.id, { options: event.target.value.split('\n') })} className="w-full rounded-lg border px-3 py-2 text-sm font-normal font-mono" spellCheck={false}/></label>
+              <p className="md:col-span-2 -mt-2 text-[11px] leading-4 text-slate-500">Wpisuj kolejne opcje w osobnych wierszach — Enter tworzy nową pozycję. Spacje i puste wiersze są zachowywane podczas pisania; przy zapisie puste opcje zostaną pominięte.</p>
               <label className="block space-y-1 text-xs font-semibold text-slate-600 md:col-span-2">Wartość domyślna (JSON lub tekst)<input value={selectedField.defaultValue === undefined ? '' : typeof selectedField.defaultValue === 'string' ? selectedField.defaultValue : JSON.stringify(selectedField.defaultValue)} onChange={(event) => { let next: any = event.target.value; try { next = JSON.parse(event.target.value); } catch {} updateTemplateField(selectedField.id, { defaultValue: next }); }} className="w-full rounded-lg border px-3 py-2 text-sm font-normal"/></label>
             </div>
           </div>}
@@ -1319,7 +1332,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
             const previewValue = hasCurrentValue ? currentValue : selectedField.defaultValue;
             const previewText = previewValue === undefined || previewValue === null || previewValue === '' ? '' : typeof previewValue === 'string' ? previewValue : displayValue(previewValue);
             const previewInputValue = typeof previewValue === 'string' || typeof previewValue === 'number' ? String(previewValue) : '';
-            const options = selectedField.options || [];
+            const options = (selectedField.options || []).filter((option) => option.trim().length > 0);
             const selectedOptions = Array.isArray(previewValue) ? previewValue.map(String) : [];
             const currentSelectValue = previewInputValue;
             const token = '{{form.' + selectedField.valueKey + '}}';
