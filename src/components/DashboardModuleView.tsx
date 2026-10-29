@@ -71,7 +71,7 @@ export const DashboardModuleView: React.FC<DashboardModuleViewProps> = ({ orders
                   <th key={column.type} scope="col" title={column.description} className="relative h-[172px] overflow-visible bg-transparent p-0 align-bottom" style={{ zIndex: columns.length - index + 50 }}>
                     <div className="relative h-[172px] w-full overflow-visible">
                       <span className="absolute bottom-4 left-1/2 z-50 block overflow-visible whitespace-nowrap text-[11px] font-semibold tracking-wide text-slate-700" style={{ transform: "rotate(-55deg)", transformOrigin: "left center" }}>
-                        {column.type === "RPW" ? "RPW" : column.type === "TRANSFORMATOR_POTRZEB_WLASNYCH" ? "TPW" : column.name}
+                        {column.type === "RPW" ? "RPW" : column.type === "TRANSFORMATOR" ? "TRAFO" : column.type === "TRANSFORMATOR_POTRZEB_WLASNYCH" ? "TPW" : column.name}
                       </span>
                     </div>
                   </th>
