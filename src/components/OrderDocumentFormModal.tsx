@@ -344,6 +344,7 @@ function renderTemplateHtml(template: DocumentTemplate, form: FormData, order: O
     else if (path.startsWith('order.') || path.startsWith('item.')) value = getPathValue(path, order, item, form);
     else value = undefined;
     if (path === 'form.przepusty' || path === 'form.otwory' || path === 'form.slusarka' || path.startsWith('form.customFields.')) value = getPathValue(path, order, item, form);
+    if ((path === 'form.dataWystawienia' || path === 'form.terminRealizacji') && typeof value === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(value)) value = value.slice(8, 10) + '.' + value.slice(5, 7) + '.' + value.slice(0, 4);
     return escapeHtml(displayValue(value));
   });
   return sanitizeHtml(html);
@@ -597,28 +598,30 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
   const selectedField = workingTemplate.fields.find((field) => field.id === selectedFieldId) || workingTemplate.fields[0];
 
   const updateFormField = (field: FormField, value: any) => {
-    setForm((previous) => {
-      let next = setValueByKey(previous, field.valueKey, value);
-      if (field.valueKey === 'typObudowy' || field.valueKey === 'rozmiar') {
-        const oldVariant = previous.rozmiar && previous.typObudowy && previous.rozmiar.toUpperCase().startsWith(previous.typObudowy.toUpperCase()) ? previous.rozmiar : [previous.typObudowy, previous.rozmiar].filter(Boolean).join(' ');
-        const newVariant = next.rozmiar && next.typObudowy && next.rozmiar.toUpperCase().startsWith(next.typObudowy.toUpperCase()) ? next.rozmiar : [next.typObudowy, next.rozmiar].filter(Boolean).join(' ');
-        const oldExpected = 'Wykonanie obudowy ' + oldVariant + ' wraz z fundamentem i przepustami kablowymi SN, nN i uziemiającymi, wraz z montażem ślusarki i rozdzielnicy SN i nN.';
-        const newExpected = 'Wykonanie obudowy ' + newVariant + ' wraz z fundamentem i przepustami kablowymi SN, nN i uziemiającymi, wraz z montażem ślusarki i rozdzielnicy SN i nN.';
-        if (!previous.opisObudowy || previous.opisObudowy === oldExpected) next = { ...next, opisObudowy: newExpected };
-        if (field.valueKey === 'typObudowy') {
-          next = { ...next, slusarka: next.slusarka.map((row) => {
+    const previous = form;
+    let next = setValueByKey(previous, field.valueKey, value);
+    if (field.valueKey === 'typObudowy' || field.valueKey === 'rozmiar') {
+      const oldVariant = previous.rozmiar && previous.typObudowy && previous.rozmiar.toUpperCase().startsWith(previous.typObudowy.toUpperCase()) ? previous.rozmiar : [previous.typObudowy, previous.rozmiar].filter(Boolean).join(' ');
+      const newVariant = next.rozmiar && next.typObudowy && next.rozmiar.toUpperCase().startsWith(next.typObudowy.toUpperCase()) ? next.rozmiar : [next.typObudowy, next.rozmiar].filter(Boolean).join(' ');
+      const oldExpected = 'Wykonanie obudowy ' + oldVariant + ' wraz z fundamentem i przepustami kablowymi SN, nN i uziemiającymi, wraz z montażem ślusarki i rozdzielnicy SN i nN.';
+      const newExpected = 'Wykonanie obudowy ' + newVariant + ' wraz z fundamentem i przepustami kablowymi SN, nN i uziemiającymi, wraz z montażem ślusarki i rozdzielnicy SN i nN.';
+      if (!previous.opisObudowy || previous.opisObudowy === oldExpected) next = { ...next, opisObudowy: newExpected };
+      if (field.valueKey === 'typObudowy') {
+        next = {
+          ...next,
+          slusarka: next.slusarka.map((row) => {
             const dims = doorDimensions(String(value || ''), row.category || row.type);
             const knownSizes = ['950', '1170', '2100', ''];
             const shouldUpdateWidth = !row.width || knownSizes.includes(row.width);
             const shouldUpdateHeight = !row.height || knownSizes.includes(row.height);
             return { ...row, width: shouldUpdateWidth ? dims.width : row.width, height: shouldUpdateHeight ? dims.height : row.height };
-          }) };
-        }
+          }),
+        };
       }
-      const evaluated = applyRuleChanges(next, mode === 'admin' ? adminDraft : activeTemplate, field.id, value);
-      setRuleNotices(evaluated.notices);
-      return evaluated.form;
-    });
+    }
+    const evaluated = applyRuleChanges(next, activeTemplate, field.id, value);
+    setRuleNotices(evaluated.notices);
+    setForm(evaluated.form);
   };
 
   const updateTemplateField = (fieldId: string, patch: Partial<FormField>) => {
@@ -885,6 +888,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
               <label className="block space-y-1 text-xs font-semibold text-slate-600">Typ pola<select value={selectedField.type} onChange={(event) => updateTemplateField(selectedField.id, { type: event.target.value as FieldType })} className="w-full rounded-lg border px-3 py-2 text-sm font-normal"><option value="text">Tekst</option><option value="textarea">Długi tekst</option><option value="number">Liczba</option><option value="date">Data</option><option value="select">Lista wyboru</option><option value="checkbox-list">Lista checkboxów</option><option value="repeatable">Lista pozycji</option><option value="doors">Konfigurator drzwi</option><option value="quantity-toggle">Obecność + ilość</option><option value="static">Tekst stały</option></select></label>
               <label className="block space-y-1 text-xs font-semibold text-slate-600">Klucz danych<input value={selectedField.valueKey} onChange={(event) => updateTemplateField(selectedField.id, { valueKey: event.target.value })} className="w-full rounded-lg border px-3 py-2 text-sm font-normal"/></label>
               <label className="flex items-center gap-2 pt-6 text-xs font-semibold text-slate-600"><input type="checkbox" checked={Boolean(selectedField.required)} onChange={(event) => updateTemplateField(selectedField.id, { required: event.target.checked })}/> Pole wymagane</label>
+              <label className="flex items-center gap-2 pt-6 text-xs font-semibold text-slate-600"><input type="checkbox" checked={Boolean(selectedField.fullWidth)} onChange={(event) => updateTemplateField(selectedField.id, { fullWidth: event.target.checked })}/> Pole na całą szerokość</label>
               <label className="block space-y-1 text-xs font-semibold text-slate-600 md:col-span-2">Opis / podpowiedź<input value={selectedField.helpText || ''} onChange={(event) => updateTemplateField(selectedField.id, { helpText: event.target.value })} className="w-full rounded-lg border px-3 py-2 text-sm font-normal"/></label>
               <label className="block space-y-1 text-xs font-semibold text-slate-600 md:col-span-2">Opcje listy — każda w osobnej linii<textarea rows={3} value={(selectedField.options || []).join('\n')} onChange={(event) => updateTemplateField(selectedField.id, { options: event.target.value.split('\n').map((value) => value.trim()).filter(Boolean) })} className="w-full rounded-lg border px-3 py-2 text-sm font-normal"/></label>
               <label className="block space-y-1 text-xs font-semibold text-slate-600 md:col-span-2">Wartość domyślna (JSON lub tekst)<input value={selectedField.defaultValue === undefined ? '' : typeof selectedField.defaultValue === 'string' ? selectedField.defaultValue : JSON.stringify(selectedField.defaultValue)} onChange={(event) => { let next: any = event.target.value; try { next = JSON.parse(event.target.value); } catch {} updateTemplateField(selectedField.id, { defaultValue: next }); }} className="w-full rounded-lg border px-3 py-2 text-sm font-normal"/></label>
@@ -898,7 +902,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
           <div className="mt-3 space-y-3">
             {workingTemplate.fields.map((field) => <div key={field.id} className="grid grid-cols-1 gap-2 rounded-lg border border-slate-200 p-3 md:grid-cols-[minmax(140px,0.7fr)_minmax(0,1.4fr)]">
               <div><p className="text-sm font-semibold">{field.label}</p><p className="text-[11px] text-slate-400">{field.valueKey}</p></div>
-              <div><input list="document-source-examples" value={field.sourcePath || ''} onChange={(event) => updateTemplateField(field.id, { sourcePath: event.target.value })} placeholder="np. order.projectName" className="w-full rounded-lg border px-3 py-2 text-sm"/><p className="mt-1 text-[11px] text-slate-500">Obecna wartość: {displayValue(getPathValue(field.sourcePath, order, item, form))}</p></div>
+              <div><input list="document-source-examples" value={field.sourcePath || ''} onChange={(event) => updateTemplateField(field.id, { sourcePath: event.target.value })} placeholder="np. order.projectName" className="w-full rounded-lg border px-3 py-2 text-sm"/><p className="mt-1 text-[11px] text-slate-500">Obecna wartość: {displayValue(getPathValue(field.sourcePath, order, item, form))}</p><label className="mt-2 flex items-start gap-2 text-[11px] font-normal text-slate-600"><input type="checkbox" checked={Boolean(field.liveBinding)} onChange={(event) => updateTemplateField(field.id, { liveBinding: event.target.checked })} className="mt-0.5"/> Odświeżaj przy każdym otwarciu z aktualnego źródła (nie zachowuj lokalnego nadpisania)</label></div>
             </div>)}
           </div>
           <datalist id="document-source-examples">{sourceExamples.map((path) => <option key={path} value={path}/>)}</datalist>
