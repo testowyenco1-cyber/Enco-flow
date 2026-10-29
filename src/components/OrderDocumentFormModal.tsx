@@ -113,15 +113,15 @@ const TEMPLATE_FIELDS: FormField[] = [
   { id: 'terminRealizacji', label: 'Termin realizacji', valueKey: 'terminRealizacji', type: 'date', sourcePath: 'item.plannedDate', liveBinding: true },
   { id: 'dotExtra', label: 'Dodatkowa wzmianka DOT.', valueKey: 'dotExtra', type: 'text', helpText: 'Treść podstawowa DOT. jest składana z tytułu; to pole dodaje osobną wzmiankę.' },
   { id: 'opisObudowy', label: 'Opis obudowy — pełne zdanie', valueKey: 'opisObudowy', type: 'textarea', required: true, fullWidth: true },
-  { id: 'slusarka', label: 'Drzwi i ślusarka', valueKey: 'slusarka', type: 'doors', fullWidth: true },
+  { id: 'slusarka', label: 'Drzwi i ślusarka', valueKey: 'slusarka', type: 'doors', fullWidth: true, options: ['Drzwi SN i NN', 'Drzwi SN', 'Drzwi NN', 'Drzwi Trafo'] },
   { id: 'siatkaDrzwi', label: 'Siatka wygradzająca — drzwi i ślusarka', valueKey: 'customFields.siatkaDrzwi', type: 'quantity-toggle', defaultValue: { enabled: true, quantity: '1' } },
   { id: 'dachTyp', label: 'Rodzaj dachu', valueKey: 'dachTyp', type: 'select', options: ['Kopertowy', 'Dwuspadowy', 'Wannowy'], sourcePath: 'item.details.typDachu' },
   { id: 'dachMaterial', label: 'Materiał dachu', valueKey: 'customFields.dachMaterial', type: 'select', options: ['Betonowy', 'Stalowy', 'Inny'], sourcePath: 'item.details.dachMaterial', defaultValue: 'Betonowy' },
-  { id: 'roofEquipment', label: 'Dach i wyposażenie — pozycje domyślne', valueKey: 'customFields.wyposazenieDachu', type: 'checkbox-list', fullWidth: true, options: ['Chłodnica gazów', 'Siatka wygradzająca', 'Otwory do lampek wskaźnika zwarć', 'Otwór do wyprowadzenia kabla do anteny', '1 x kieszenie na schemat'], defaultValue: ['Chłodnica gazów', 'Siatka wygradzająca', 'Otwory do lampek wskaźnika zwarć', 'Otwór do wyprowadzenia kabla do anteny', '1 x kieszenie na schemat'] },
+  { id: 'roofEquipment', label: 'Dach i wyposażenie — pozycje domyślne', valueKey: 'customFields.wyposazenieDachu', type: 'checkbox-list', fullWidth: true, options: ['Chłodnica gazów', 'Otwory do lampek wskaźnika zwarć', 'Otwór do wyprowadzenia kabla do anteny', '1 x kieszenie na schemat'], defaultValue: ['Chłodnica gazów', 'Otwory do lampek wskaźnika zwarć', 'Otwór do wyprowadzenia kabla do anteny', '1 x kieszenie na schemat'] },
   { id: 'siatkaDach', label: 'Siatka wygradzająca — dach i wyposażenie', valueKey: 'customFields.siatkaDach', type: 'quantity-toggle', defaultValue: { enabled: true, quantity: '1' } },
   { id: 'dodatkoweWyposazenie', label: 'Dodatkowe wyposażenie', valueKey: 'dodatkoweWyposazenie', type: 'checkbox-list', fullWidth: true, options: ['Oświetlenie wewnętrzne i zewnętrzne', 'Antena', 'Lampki ostrzegawcze'] },
   { id: 'przepusty', label: 'Przepusty kablowe', valueKey: 'przepusty', type: 'repeatable', fullWidth: true, options: ['Przepust HEA', 'BWS 100', 'BWS 150', 'HSI 90', 'HSI 150', 'Ø100', 'Inny przepust'] },
-  { id: 'otwory', label: 'Otwory i przepusty — pozostałe', valueKey: 'otwory', type: 'repeatable', fullWidth: true, options: ['Przepust HEA', 'Otwór Ø100', 'Otwór kablowy', 'Otwór wentylacyjny', 'Otwór drzwiowy', 'Otwór do lampek wskaźnika zwarć', 'Otwór do wyprowadzenia kabla do anteny', 'Inny'] },
+  { id: 'otwory', label: 'Otwory i przepusty — pozostałe', valueKey: 'otwory', type: 'repeatable', fullWidth: true, options: ['Przepust HEA', 'Otwór Ø100', 'Otwór kablowy', 'Otwór wentylacyjny', 'Otwór drzwiowy', 'Inny'] },
   { id: 'kolorObudowy', label: 'Kolor obudowy (RAL)', valueKey: 'kolorObudowy', type: 'text', sourcePath: 'item.details.kolorObudowy' },
   { id: 'kolorSlusarki', label: 'Kolor ślusarki (RAL)', valueKey: 'kolorSlusarki', type: 'text', sourcePath: 'item.details.kolorSlusarki' },
   { id: 'kolorDachu', label: 'Kolor dachu (RAL)', valueKey: 'kolorDachu', type: 'text', sourcePath: 'item.details.kolorDachu' },
@@ -167,16 +167,16 @@ const DEFAULT_TEMPLATE: DocumentTemplate = {
     '</tbody></table>' +
     '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">1. TYP OBUDOWY</h2>' +
     '<p>{{form.opisObudowy}}</p>' +
-    '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">2. DRZWI I ŚLUSARKA</h2><p>{{form.slusarka}}</p><p>{{form.customFields.siatkaDrzwi}}</p>' +
-    '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">3. DACH I WYPOSAŻENIE</h2><p><strong>Dach:</strong> {{form.customFields.dachMaterial}} {{form.dachTyp}}</p><p>{{form.customFields.wyposazenieDachu}}</p><p>{{form.dodatkoweWyposazenie}}</p><p>{{form.customFields.siatkaDach}}</p>' +
+    '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">2. DRZWI I ŚLUSARKA</h2><p>{{form.slusarka}}</p><p><strong>Siatka wygradzająca:</strong> {{form.customFields.siatkaDrzwi}}</p>' +
+    '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">3. DACH I WYPOSAŻENIE</h2><p><strong>Dach:</strong> {{form.customFields.dachMaterial}} {{form.dachTyp}}</p><p>{{form.customFields.wyposazenieDachu}}</p><p>{{form.dodatkoweWyposazenie}}</p><p><strong>Siatka wygradzająca:</strong> {{form.customFields.siatkaDach}}</p>' +
     '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">4. OTWORY I PRZEPUSTY KABLOWE</h2><p><strong>Przepusty:</strong> {{form.przepusty}}</p><p><strong>Pozostałe otwory:</strong> {{form.otwory}}</p>' +
     '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">5. KOLORY I OPISY</h2><p>Obudowa: {{form.kolorObudowy}}; ślusarka: {{form.kolorSlusarki}}; dach: {{form.kolorDachu}}; drzwi i kraty: {{form.kolorDrzwiKraty}}.</p><p>Wykończenie: {{form.tynk}}; antygraffiti: {{form.antygraffiti}}</p><p>{{form.customFields.opisy}}</p>' +
     '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">6. OGÓLNE URZĄDZENIA W STACJI</h2><p><strong>Rozdzielnica SN:</strong> {{form.customFields.rozdzielnicaSN}}</p><p><strong>Rozdzielnica NN:</strong> {{form.customFields.rozdzielnicaNN}}</p><p><strong>Telemechanika:</strong> {{form.customFields.telemechanika}}</p><p><strong>Transformator:</strong> {{form.customFields.transformator}}</p><p><strong>Uziemienie:</strong> {{form.customFields.uziemienie}}</p><p><strong>Instalacja oświetleniowa:</strong> {{form.customFields.instalacjaOswietleniowa}}</p><p><strong>Inne:</strong> {{form.customFields.inneUrzadzenia}}</p>' +
     '<h2 style="font-size:13pt;border-bottom:1px solid #111827;">7. ELEMENTY DOSTARCZANE</h2><p><strong>Warszawa:</strong> {{form.dostawaWarszawa}}</p><p><strong>Pyskowice:</strong> {{form.dostawaPyskowice}}</p><p><strong>Uwagi:</strong> {{form.uwagi}}</p>' +
     '<p style="margin-top:28px;font-size:9pt;color:#64748b;">Dokument przygotowany w Enco-flow. Wydruk nie aktualizuje danych zlecenia.</p></div>',
   rules: [
-    { id: 'antena-otwor', triggerFieldId: 'dodatkoweWyposazenie', triggerValue: 'Antena', targetFieldId: 'otwory', targetValue: 'Otwór do wyprowadzenia kabla do anteny', action: 'automatic' },
-    { id: 'lampki-otwor', triggerFieldId: 'dodatkoweWyposazenie', triggerValue: 'Lampki ostrzegawcze', targetFieldId: 'otwory', targetValue: 'Otwór do lampek wskaźnika zwarć', action: 'suggestion' },
+    { id: 'antena-otwor', triggerFieldId: 'dodatkoweWyposazenie', triggerValue: 'Antena', targetFieldId: 'roofEquipment', targetValue: 'Otwór do wyprowadzenia kabla do anteny', action: 'automatic' },
+    { id: 'lampki-otwor', triggerFieldId: 'dodatkoweWyposazenie', triggerValue: 'Lampki ostrzegawcze', targetFieldId: 'roofEquipment', targetValue: 'Otwory do lampek wskaźnika zwarć', action: 'automatic' },
   ],
 };
 
@@ -477,7 +477,7 @@ const FormFieldInput: React.FC<{
   if (field.type === 'doors') {
     const rows: Row[] = Array.isArray(value) ? value : [];
     const update = (rowId: string, patch: Partial<Row>) => onChange(rows.map((row) => row.id === rowId ? { ...row, ...patch } : row));
-    const categories = ['Drzwi SN i NN', 'Drzwi SN', 'Drzwi NN', 'Drzwi Trafo'];
+    const categories = field.options?.length ? field.options : ['Drzwi SN i NN', 'Drzwi SN', 'Drzwi NN', 'Drzwi Trafo'];
     return <div className="space-y-3">
       <div className="flex items-center justify-between gap-2"><p className="text-xs text-slate-500">Konfiguracja każdej pozycji jest zapisywana tylko w tym dokumencie.</p><button type="button" onClick={() => onChange([...rows, rowDefaults(field.valueKey === 'slusarka' ? 'slusarka' : field.valueKey, form)])} className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold"><Plus size={14}/> Dodaj drzwi</button></div>
       {!rows.length && <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-500">Nie dodano drzwi ani ślusarki.</p>}
