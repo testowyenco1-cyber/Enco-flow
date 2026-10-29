@@ -38,6 +38,7 @@ export type StandardItemType =
   | 'SZAFKA_TELEMECHANIKI'
   | 'TABLICA_POMIAROWA'
   | 'RPW'
+  | 'TRANSFORMATOR'
   | 'TRANSFORMATOR_POTRZEB_WLASNYCH'
   | 'WSKAZNIKI_ZWARC'
   | 'POWYKONAWCZA'
@@ -421,11 +422,18 @@ export const ITEM_DEFINITIONS: ItemTypeDefinition[] = [
     description: 'Szafka telemechaniki, sterownik RTU, modem GSM/światłowód, zasilacz buforowy',
   },
   {
+    type: 'TRANSFORMATOR',
+    name: 'TRANSFORMATOR',
+    shortName: 'TRAFO',
+    category: 'element',
+    description: 'Transformator stacyjny — producent, typ/model, moc znamionowa w kVA, numer seryjny i dostawa',
+  },
+  {
     type: 'TRANSFORMATOR_POTRZEB_WLASNYCH',
     name: 'TRANSFORMATOR POTRZEB WŁASNYCH',
     shortName: 'TRAFO POTRZ. WŁ.',
     category: 'element',
-    description: 'Parametry VA, numer seryjny, termin dostawy i przyjęcie w Pyskowicach',
+    description: 'Transformator potrzeb własnych — moc w VA, numer seryjny, termin dostawy i przyjęcie w Pyskowicach',
   },
   {
     type: 'WSKAZNIKI_ZWARC',
