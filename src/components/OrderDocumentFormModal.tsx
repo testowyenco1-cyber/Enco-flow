@@ -836,7 +836,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
 
   const openReview = () => {
     const visibleFieldIds = new Set(templateForPreview.sections.filter((section) => section.visible !== false).flatMap((section) => section.fieldIds));
-    const requiredFields = templateForPreview.fields.filter((field) => visibleFieldIds.has(field.id) && field.visible !== false && field.required);
+    const requiredFields = templateForPreview.fields.filter((field) => visibleFieldIds.has(field.id) && field.visible !== false && field.required && field.type !== 'static');
     const missing = requiredFields.filter((field) => {
       const value = getValueByKey(form, field.valueKey);
       if (value === undefined || value === null) return true;
