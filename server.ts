@@ -3,7 +3,7 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { INITIAL_ORDERS } from './src/data/mockData';
+import { createDefaultItemsForOrder, INITIAL_ORDERS } from './src/data/mockData';
 import { INITIAL_DOOR_ORDERS } from './src/data/mockDoorOrders';
 import { calculateOrderStatus } from './src/types/enco';
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
@@ -39,6 +39,7 @@ const STANDARD_STATION_FOLDERS = [
   { key: '11_Telemechanika_i_Lacznosc', label: '11 - Szafki Telemechaniki i Łączność' },
   { key: '12_Dokumentacja_Powykonawcza', label: '12 - Dokumentacja Powykonawcza i Certyfikaty' },
   { key: '13_Inne_i_Dodatkowe', label: '13 - Inne Załączniki' },
+  { key: '14_Transformatory', label: '14 - Dokumentacja transformatora stacyjnego TRAFO' },
 ];
 
 function sanitizePath(segment: string): string {
@@ -257,6 +258,7 @@ async function startServer() {
             if (item.type === 'OBUDOWA') targetFolder = '02_Obudowa_Betonowa';
             else if (item.type === 'ROZDZIELNICA_SN') targetFolder = '03_Rozdzielnica_SN';
             else if (item.type === 'ROZDZIELNICA_NN') targetFolder = '04_Rozdzielnica_NN';
+            else if (item.type === 'TRANSFORMATOR') targetFolder = '14_Transformatory';
             else if (item.type === 'MOST') targetFolder = '05_Mosty_i_Szynoprzewody';
             else if (item.type === 'RYS_AKCEPTACJA') targetFolder = '06_Rysunki_i_Akceptacje';
             else if (item.type === 'KOLORY') targetFolder = '07_Kolory_i_Elewacja';
@@ -1028,7 +1030,33 @@ async function startServer() {
     try {
       if (fs.existsSync(ORDERS_FILE)) {
         const raw = fs.readFileSync(ORDERS_FILE, 'utf-8');
-        const orders = JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        const storedOrders: any[] = Array.isArray(parsed) ? parsed : [];
+        let migrated = false;
+        const orders = storedOrders.map((order: any) => {
+          if (!order || !order.id || !Array.isArray(order.items) ||
+              order.items.some((item: any) => item?.type === 'TRANSFORMATOR')) {
+            return order;
+          }
+          const transformer = createDefaultItemsForOrder(
+            String(order.id),
+            String(order.stationSize || ''),
+          ).find((item) => item.type === 'TRANSFORMATOR');
+          if (!transformer) return order;
+          migrated = true;
+          const nextItems = [...order.items, transformer];
+          return {
+            ...order,
+            items: nextItems,
+            status: calculateOrderStatus(nextItems),
+            updatedAt: new Date().toISOString(),
+          };
+        });
+        if (migrated) {
+          writeJsonAtomically(ORDERS_FILE, orders);
+          currentOrders = orders;
+          console.log('Added missing TRANSFORMATOR item to existing orders.');
+        }
         return res.json({ success: true, orders, timestamp: Date.now() });
       }
       return res.json({ success: true, orders: INITIAL_ORDERS, timestamp: Date.now() });
