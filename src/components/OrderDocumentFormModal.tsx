@@ -340,6 +340,8 @@ function renderTemplateHtml(template: DocumentTemplate, form: FormData, order: O
   const html = template.contentHtml.replace(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g, (_match, path: string) => {
     if (path === 'derived.title') return escapeHtml(title || '—');
     if (path === 'derived.dot') return escapeHtml(dot || '—');
+    const staticField = template.fields.find((field) => field.type === 'static' && path === 'form.' + field.valueKey);
+    if (staticField) return escapeHtml(displayValue(staticField.defaultValue ?? staticField.helpText ?? staticField.label));
     let value: any;
     if (path.startsWith('form.')) value = getPathValue(path, order, item, form);
     else if (path.startsWith('order.') || path.startsWith('item.')) value = getPathValue(path, order, item, form);
