@@ -1313,6 +1313,93 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
               <label className="block space-y-1 text-xs font-semibold text-slate-600 md:col-span-2">Wartość domyślna (JSON lub tekst)<input value={selectedField.defaultValue === undefined ? '' : typeof selectedField.defaultValue === 'string' ? selectedField.defaultValue : JSON.stringify(selectedField.defaultValue)} onChange={(event) => { let next: any = event.target.value; try { next = JSON.parse(event.target.value); } catch {} updateTemplateField(selectedField.id, { defaultValue: next }); }} className="w-full rounded-lg border px-3 py-2 text-sm font-normal"/></label>
             </div>
           </div>}
+          {mode === 'admin' && selectedField && (() => {
+            const currentValue = getValueByKey(form, selectedField.valueKey);
+            const hasCurrentValue = currentValue !== undefined && currentValue !== null && currentValue !== '' && !(Array.isArray(currentValue) && currentValue.length === 0);
+            const previewValue = hasCurrentValue ? currentValue : selectedField.defaultValue;
+            const previewText = previewValue === undefined || previewValue === null || previewValue === '' ? '' : typeof previewValue === 'string' ? previewValue : displayValue(previewValue);
+            const previewInputValue = typeof previewValue === 'string' || typeof previewValue === 'number' ? String(previewValue) : '';
+            const options = selectedField.options || [];
+            const selectedOptions = Array.isArray(previewValue) ? previewValue.map(String) : [];
+            const currentSelectValue = previewInputValue;
+            const token = '{{form.' + selectedField.valueKey + '}}';
+            const isReferenced = workingTemplate.contentHtml.includes(token) || (selectedField.type === 'delivery-list' && workingTemplate.contentHtml.includes('{{derived.deliveryTable}}'));
+            const typeLabels: Record<FieldType, string> = {
+              text: 'Tekst', textarea: 'Długi tekst', number: 'Liczba', date: 'Data',
+              select: 'Lista wyboru', 'checkbox-list': 'Lista checkboxów',
+              repeatable: 'Lista pozycji', 'delivery-list': 'Lista elementów dostawy',
+              doors: 'Konfigurator drzwi', 'quantity-toggle': 'Obecność + ilość', static: 'Tekst stały',
+            };
+            const togglePreview = previewValue && typeof previewValue === 'object' && 'enabled' in previewValue
+              ? previewValue as { enabled: boolean; quantity: string }
+              : { enabled: false, quantity: '1' };
+            const previewRows = Array.isArray(previewValue) ? previewValue as Row[] : [];
+            return <section className="mt-4 overflow-hidden rounded-xl border border-sky-200 bg-sky-50/50">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-sky-200 bg-sky-100/70 px-3 py-2">
+                <div><h4 className="text-sm font-bold text-sky-950">Podgląd pola na żywo</h4><p className="text-[11px] text-sky-800">Zmienia się od razu podczas edycji ustawień powyżej.</p></div>
+                <span className="rounded-full border border-sky-300 bg-white px-2 py-1 text-[10px] font-semibold text-sky-900">{typeLabels[selectedField.type]}</span>
+              </div>
+              <div className="grid grid-cols-1 gap-3 p-3 lg:grid-cols-2">
+                <div className="min-w-0 rounded-lg border border-slate-200 bg-white p-3">
+                  <div className="mb-2 flex flex-wrap items-center gap-1">
+                    <span className="text-xs font-semibold text-slate-700">{selectedField.label || 'Pole bez nazwy'}</span>
+                    {selectedField.required && <span className="text-xs font-bold text-rose-600" title="Pole wymagane">*</span>}
+                  </div>
+                  {selectedField.type === 'static' ? (
+                    <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-sm text-slate-700">{selectedField.helpText || previewText || selectedField.defaultValue || selectedField.label || 'Tekst stały'}</div>
+                  ) : selectedField.type === 'textarea' ? (
+                    <textarea disabled value={previewText} placeholder="Przykładowy dłuższy tekst…" rows={3} className="w-full resize-none rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 disabled:opacity-100"/>
+                  ) : selectedField.type === 'select' ? (
+                    <select disabled value={currentSelectValue && (options.includes(currentSelectValue) || String(currentSelectValue) === String(previewValue)) ? currentSelectValue : ''} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 disabled:opacity-100">
+                      <option value="">— wybierz —</option>
+                      {currentSelectValue && !options.includes(currentSelectValue) && <option value={currentSelectValue}>{currentSelectValue}</option>}
+                      {options.map((option) => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                  ) : selectedField.type === 'checkbox-list' ? (
+                    <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                      {options.length ? options.map((option) => <label key={option} className="flex items-center gap-2 rounded border border-slate-200 px-2 py-1.5 text-xs text-slate-700"><input type="checkbox" disabled checked={selectedOptions.includes(option)} readOnly/>{option}</label>) : <p className="text-xs text-slate-500">Dodaj opcje listy powyżej.</p>}
+                    </div>
+                  ) : selectedField.type === 'quantity-toggle' ? (
+                    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 p-3 text-sm">
+                      <label className="flex items-center gap-2"><input type="checkbox" checked={Boolean(togglePreview.enabled)} disabled readOnly/> Uwzględnij pozycję</label>
+                      <label className="flex items-center gap-2 text-xs text-slate-600">Ilość <input type="number" value={togglePreview.quantity || '1'} disabled className="w-16 rounded border px-2 py-1.5 disabled:opacity-100"/></label>
+                    </div>
+                  ) : selectedField.type === 'repeatable' ? (
+                    <div className="overflow-hidden rounded border border-slate-200">
+                      <div className="grid grid-cols-[minmax(0,1fr)_52px_minmax(0,1fr)] gap-1 bg-slate-100 px-2 py-1.5 text-[10px] font-bold text-slate-600"><span>Typ</span><span>Ilość</span><span>Położenie / opis</span></div>
+                      {(previewRows.length ? previewRows.slice(0, 2) : [{ id: 'preview-row', type: options[0] || 'Przykładowa pozycja', quantity: '1', position: 'Opis' } as Row]).map((row, index) => <div key={row.id || index} className="grid grid-cols-[minmax(0,1fr)_52px_minmax(0,1fr)] gap-1 border-t border-slate-200 px-2 py-2 text-[11px] text-slate-700"><span>{row.type || options[0] || 'Typ elementu'}</span><span>{row.quantity || '1'}</span><span>{row.position || '—'}</span></div>)}
+                    </div>
+                  ) : selectedField.type === 'delivery-list' ? (
+                    <div className="overflow-hidden rounded border border-slate-200">
+                      <div className="grid grid-cols-[minmax(0,1fr)_48px_minmax(0,1fr)] gap-1 bg-slate-100 px-2 py-1.5 text-[10px] font-bold text-slate-600"><span>Element</span><span>Ilość</span><span>Uwagi</span></div>
+                      {(previewRows.length ? previewRows.slice(0, 2) : [{ id: 'preview-delivery', type: DELIVERY_ITEM_OPTIONS[0], quantity: '1', position: 'Uwagi (opcjonalnie)' } as Row]).map((row, index) => <div key={row.id || index} className="grid grid-cols-[minmax(0,1fr)_48px_minmax(0,1fr)] gap-1 border-t border-slate-200 px-2 py-2 text-[11px] text-slate-700"><span>{row.type || 'Wybierz element'}</span><span>{row.quantity || '1'}</span><span>{row.position || '—'}</span></div>)}
+                    </div>
+                  ) : selectedField.type === 'doors' ? (
+                    <div className="space-y-2 rounded-lg border border-slate-200 p-2">
+                      <p className="text-xs font-semibold text-slate-700">{previewRows[0]?.category || previewRows[0]?.type || options[0] || 'Drzwi SN i NN'}</p>
+                      <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600"><span>Skrzydła: {previewRows[0]?.wings || 'Jednoskrzydłowe'}</span><span>Ilość: {previewRows[0]?.quantity || '1'}</span><span>Otwieranie: {previewRows[0]?.openingSide || 'Lewe'}</span><span>Wymiary: {previewRows[0]?.width && previewRows[0]?.height ? previewRows[0].width + ' × ' + previewRows[0].height + ' mm' : '—'}</span></div>
+                    </div>
+                  ) : (
+                    <input disabled type={selectedField.type === 'number' || selectedField.type === 'date' ? selectedField.type : 'text'} value={previewInputValue} placeholder={selectedField.type === 'number' ? 'np. 10' : selectedField.type === 'date' ? '' : 'Przykładowa wartość'} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 disabled:opacity-100"/>
+                  )}
+                  {selectedField.helpText && <p className="mt-2 text-[11px] leading-4 text-slate-500">{selectedField.helpText}</p>}
+                  <p className="mt-2 text-[10px] text-slate-400">Podgląd jest poglądowy — nie zmienia danych formularza.</p>
+                </div>
+                <div className="min-w-0 space-y-2">
+                  <div className="rounded-lg border border-slate-200 bg-white p-3">
+                    <h5 className="text-xs font-bold text-slate-800">Jak będzie widoczne w treści dokumentu</h5>
+                    <div className="mt-2 rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700">
+                      <strong>{selectedField.label || 'Pole bez nazwy'}:</strong> {previewText || (selectedField.type === 'static' ? selectedField.helpText || 'Tekst stały' : 'Przykładowa wartość')}
+                    </div>
+                    <p className="mt-2 break-words text-[10px] text-slate-500">Klucz danych: <code>{selectedField.valueKey}</code></p>
+                    {isReferenced ? <p className="mt-1 text-[11px] font-medium text-emerald-700">To pole jest powiązane z treścią obecnego wzorca.</p> : <p className="mt-1 text-[11px] leading-4 text-amber-800">Nie znaleziono odwołania do tego pola w treści dokumentu. Przejdź do zakładki „Treść dokumentu” i wstaw je z listy dynamicznych pól, aby pojawiło się w wydruku.</p>}
+                    {selectedField.visible === false && <p className="mt-1 text-[11px] font-semibold text-rose-700">To pole jest oznaczone jako ukryte na formularzu.</p>}
+                  </div>
+                  {selectedField.options?.length ? <div className="rounded-lg border border-slate-200 bg-white p-3"><h5 className="text-xs font-bold text-slate-800">Opcje pola</h5><div className="mt-2 flex flex-wrap gap-1">{selectedField.options.map((option) => <span key={option} className="rounded-full border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] text-blue-800">{option}</span>)}</div></div> : <div className="rounded-lg border border-dashed border-slate-200 bg-white/70 p-3 text-[11px] text-slate-500">Brak opcji listy — pole nie wymaga wyboru z listy.</div>}
+                </div>
+              </div>
+            </section>;
+          })()}
         </section>
       </div>}
       {designerTab === 'bindings' && <div className="space-y-4">
