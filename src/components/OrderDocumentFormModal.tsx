@@ -328,7 +328,8 @@ function sanitizeHtml(html: string): string {
   return Array.from(parsed.body.childNodes).map(cleanNode).join('');
 }
 function renderTemplateHtml(template: DocumentTemplate, form: FormData, order: Order, item?: OrderItem): string {
-  const titleParts = [form.typBudowli, [form.typObudowy, form.rozmiar].filter(Boolean).join(' ') , form.nazwaObiektu].filter(Boolean);
+  const variant = form.rozmiar && form.typObudowy && form.rozmiar.toUpperCase().startsWith(form.typObudowy.toUpperCase()) ? form.rozmiar : [form.typObudowy, form.rozmiar].filter(Boolean).join(' ');
+  const titleParts = [form.typBudowli, variant, form.nazwaObiektu].filter(Boolean);
   const title = titleParts.join(' ').replace(/\s+/g, ' ').trim();
   const dot = [title, form.dotExtra].filter(Boolean).join(' — ');
   const html = template.contentHtml.replace(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g, (_match, path: string) => {
@@ -581,8 +582,10 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
     setForm((previous) => {
       let next = setValueByKey(previous, field.valueKey, value);
       if (field.valueKey === 'typObudowy' || field.valueKey === 'rozmiar') {
-        const oldExpected = 'Wykonanie obudowy ' + [previous.typObudowy, previous.rozmiar].filter(Boolean).join(' ') + ' wraz z fundamentem i przepustami kablowymi SN, nN i uziemiającymi, wraz z montażem ślusarki i rozdzielnicy SN i nN.';
-        const newExpected = 'Wykonanie obudowy ' + [next.typObudowy, next.rozmiar].filter(Boolean).join(' ') + ' wraz z fundamentem i przepustami kablowymi SN, nN i uziemiającymi, wraz z montażem ślusarki i rozdzielnicy SN i nN.';
+        const oldVariant = previous.rozmiar && previous.typObudowy && previous.rozmiar.toUpperCase().startsWith(previous.typObudowy.toUpperCase()) ? previous.rozmiar : [previous.typObudowy, previous.rozmiar].filter(Boolean).join(' ');
+        const newVariant = next.rozmiar && next.typObudowy && next.rozmiar.toUpperCase().startsWith(next.typObudowy.toUpperCase()) ? next.rozmiar : [next.typObudowy, next.rozmiar].filter(Boolean).join(' ');
+        const oldExpected = 'Wykonanie obudowy ' + oldVariant + ' wraz z fundamentem i przepustami kablowymi SN, nN i uziemiającymi, wraz z montażem ślusarki i rozdzielnicy SN i nN.';
+        const newExpected = 'Wykonanie obudowy ' + newVariant + ' wraz z fundamentem i przepustami kablowymi SN, nN i uziemiającymi, wraz z montażem ślusarki i rozdzielnicy SN i nN.';
         if (!previous.opisObudowy || previous.opisObudowy === oldExpected) next = { ...next, opisObudowy: newExpected };
         if (field.valueKey === 'typObudowy') {
           next = { ...next, slusarka: next.slusarka.map((row) => {
@@ -784,11 +787,11 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
           <h3 className="mb-3 text-sm font-bold text-slate-900">{section.title}</h3>
           <div className={'grid grid-cols-1 gap-3 ' + (section.columns === 3 ? 'md:grid-cols-2 xl:grid-cols-3' : section.columns === 2 ? 'md:grid-cols-2' : '')}>
             {section.fieldIds.map((id) => activeTemplate.fields.find((field) => field.id === id)).filter((field): field is FormField => Boolean(field && field.visible !== false)).map((field) => (
-              <label key={field.id} className={'block min-w-0 space-y-1 ' + (field.fullWidth || ['textarea', 'checkbox-list', 'repeatable', 'doors', 'static'].includes(field.type) ? 'col-span-full' : '')}>
+              <div key={field.id} className={'block min-w-0 space-y-1 ' + (field.fullWidth || ['textarea', 'checkbox-list', 'repeatable', 'doors', 'static'].includes(field.type) ? 'col-span-full' : '')}>
                 <span className="block text-xs font-semibold text-slate-600">{field.label}{field.required ? ' *' : ''}</span>
                 <FormFieldInput field={field} value={getValueByKey(form, field.valueKey)} form={form} onChange={(value) => updateFormField(field, value)}/>
                 {field.helpText && <span className="block text-[11px] leading-4 text-slate-500">{field.helpText}</span>}
-              </label>
+              </div>
             ))}
           </div>
         </section>
@@ -904,7 +907,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
   );
 
   const renderFormPicker = () => (
-    <section className="border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
+    <section className="border-b border-slate-200 bg-white px-4 py-3 sm:px-6 print:hidden">
       <div className="mb-2 flex items-center justify-between"><div><h2 className="text-sm font-bold text-slate-900">Wybierz typ formularza</h2><p className="text-xs text-slate-500">W tej wersji aktywna jest obsługa Zlecenia obudowy.</p></div><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">1 dostępny</span></div>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-5">
         {[
@@ -923,7 +926,8 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
 
   const currentTemplateName = mode === 'custom' ? 'Custom Edit — tylko ten dokument' : mode === 'admin' ? 'Admin Edit — wzorzec wspólny' : 'Formularz dokumentu';
   const previewEmpty = renderedHtml.trim().length === 0;
-  const titleText = [form.typBudowli, [form.typObudowy, form.rozmiar].filter(Boolean).join(' '), form.nazwaObiektu].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  const titleVariant = form.rozmiar && form.typObudowy && form.rozmiar.toUpperCase().startsWith(form.typObudowy.toUpperCase()) ? form.rozmiar : [form.typObudowy, form.rozmiar].filter(Boolean).join(' ');
+  const titleText = [form.typBudowli, titleVariant, form.nazwaObiektu].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
 
   return <div className="fixed inset-0 z-[80] flex min-h-0 flex-col bg-slate-100 print:static print:block print:overflow-visible print:bg-white">
     <header className="flex shrink-0 items-center justify-between gap-3 bg-slate-900 px-4 py-3 text-white print:hidden sm:px-6">
@@ -954,13 +958,13 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
           {mode !== 'form' && <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs leading-5 text-blue-900">{mode === 'custom' ? 'Custom Edit może zmienić tekst, sekcje, pola, kolejność i ich układ. Nic nie zmienia się we wzorcu dla innych dokumentów.' : 'Admin Edit zawiera edycję tekstu jak w Wordzie, ustawienia sekcji i pól, mapowanie źródeł oraz reguły zależności. Publikacja tworzy nową wersję wzorca.'}</div>}
         </div>
       </main>
-      <aside className="flex min-h-[45vh] min-w-0 flex-1 flex-col border-t border-slate-200 bg-slate-200/70 xl:w-[52%] xl:border-l xl:border-t-0 print:hidden">
+      <aside className={'flex min-h-[45vh] min-w-0 flex-1 flex-col border-t border-slate-200 bg-slate-200/70 xl:w-[52%] xl:border-l xl:border-t-0 ' + (review ? 'print:hidden' : 'print:block')}>
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-300 bg-white px-3 py-2.5 sm:px-5">
           <div><h2 className="text-sm font-bold text-slate-900">Podgląd live</h2><p className="text-[10px] text-slate-500">Wzorzec v{templateForPreview.version} · {mode === 'admin' ? 'wersja robocza administratora' : 'dokument bieżący'}</p></div>
-          <div className="flex flex-wrap gap-2">{mode === 'form' && <button type="button" onClick={() => setReview(true)} className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold"><Eye size={14}/> Podsumowanie</button>}<button type="button" disabled={!canDownload} onClick={() => window.print()} className="inline-flex items-center gap-1.5 rounded-lg border bg-white px-3 py-2 text-xs font-semibold disabled:opacity-40"><Printer size={14}/> Drukuj / PDF</button></div>
+          <div className="flex flex-wrap gap-2">{mode === 'form' && <button type="button" onClick={() => setReview(true)} className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold"><Eye size={14}/> Podsumowanie</button>}<button type="button" onClick={() => setReview(true)} className="inline-flex items-center gap-1.5 rounded-lg border bg-white px-3 py-2 text-xs font-semibold"><Eye size={14}/> Podsumowanie / wydruk</button></div>
         </div>
         <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-5">
-          <article className="mx-auto min-h-[700px] w-full max-w-[850px] bg-white p-6 text-slate-900 shadow-md sm:p-10 print:min-h-0 print:max-w-none print:p-0 print:shadow-none">
+          <article className="document-print-target mx-auto min-h-[700px] w-full max-w-[850px] bg-white p-6 text-slate-900 shadow-md sm:p-10 print:min-h-0 print:max-w-none print:p-0 print:shadow-none">
             {previewEmpty ? <p className="text-sm text-slate-400">Treść dokumentu jest pusta.</p> : <div className="document-live-preview text-sm leading-6 [&_h1]:my-3 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:my-3 [&_h2]:text-lg [&_h2]:font-bold [&_p]:my-2 [&_table]:my-3 [&_table]:w-full [&_td]:border [&_td]:border-slate-300 [&_td]:p-1.5" dangerouslySetInnerHTML={{ __html: renderedHtml }}/>}
           </article>
           {mode === 'admin' && <div className="mx-auto mt-3 max-w-[850px] rounded-lg border border-blue-200 bg-white p-3 text-xs text-blue-900">Administrator widzi tu podgląd nowego wzorca razem z aktualnymi danymi przykładowego dokumentu. Nie oznacza to aktualizacji zlecenia.</div>}
@@ -978,7 +982,7 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
         </section>
         <section className="min-h-0 overflow-y-auto bg-slate-200/60 p-3 sm:p-5 print:bg-white print:p-0">
           <div className="mb-2 flex items-center justify-between gap-2 print:hidden"><h3 className="text-xs font-bold text-slate-700">Końcowy podgląd dokumentu</h3><button type="button" disabled={!canDownload} onClick={() => window.print()} className="inline-flex items-center gap-1 rounded-lg border bg-white px-3 py-1.5 text-xs font-semibold disabled:opacity-40"><Printer size={13}/> Drukuj / PDF</button></div>
-          <article className="mx-auto min-h-[600px] w-full max-w-[850px] bg-white p-6 text-slate-900 shadow print:min-h-0 print:max-w-none print:p-0 print:shadow-none"><div className="document-live-preview text-sm leading-6 [&_h1]:my-3 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:my-3 [&_h2]:text-lg [&_h2]:font-bold [&_p]:my-2 [&_table]:my-3 [&_table]:w-full [&_td]:border [&_td]:border-slate-300 [&_td]:p-1.5" dangerouslySetInnerHTML={{ __html: renderedHtml }}/></article>
+          <article className="document-print-target mx-auto min-h-[600px] w-full max-w-[850px] bg-white p-6 text-slate-900 shadow print:min-h-0 print:max-w-none print:p-0 print:shadow-none"><div className="document-live-preview text-sm leading-6 [&_h1]:my-3 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:my-3 [&_h2]:text-lg [&_h2]:font-bold [&_p]:my-2 [&_table]:my-3 [&_table]:w-full [&_td]:border [&_td]:border-slate-300 [&_td]:p-1.5" dangerouslySetInnerHTML={{ __html: renderedHtml }}/></article>
         </section>
       </div>
       <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-3 print:hidden">
@@ -1020,7 +1024,6 @@ export const OrderDocumentFormModal: React.FC<Props> = ({ order, isOpen, onClose
                 dostawaWarszawa: form.dostawaWarszawa,
                 uwagiDoZleceniaObudowy: form.uwagi,
                 terminRealizacji: form.terminRealizacji,
-                dachMaterial: form.customFields.dachMaterial,
                 wyposazenieDachu: form.customFields.wyposazenieDachu,
                 opisy: form.customFields.opisy,
                 rozdzielnicaSN: form.customFields.rozdzielnicaSN,
