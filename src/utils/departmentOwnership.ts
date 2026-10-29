@@ -153,7 +153,7 @@ const SUMMARY_LABEL_KEYS: Record<string, Record<string, string>> = {
     'Data dostawy do Pyskowic': 'dataPlDostawyPyskowice', 'Transformator w Pyskowicach': 'wPyskowicach',
   },
   TRANSFORMATOR_POTRZEB_WLASNYCH: {
-    'Moc / VA': 'va', 'Planowana data dostawy': 'dataDostawyPlan', 'Numer seryjny': 'numerSeryjny',
+    'Moc znamionowa transformatora potrzeb własnych (VA)': 'va', 'Planowana data dostawy': 'dataDostawyPlan', 'Numer seryjny': 'numerSeryjny',
     'Planowana dostawa do Pyskowic': 'dataPlDostawyPyskowice',
     'Transformator potrzeb własnych w Pyskowicach': 'wPyskowicach',
   },
