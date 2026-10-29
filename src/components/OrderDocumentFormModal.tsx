@@ -104,7 +104,7 @@ const uid = (prefix = 'field') => prefix + '-' + Date.now().toString(36) + '-' +
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 const TEMPLATE_FIELDS: FormField[] = [
-  { id: 'typBudowli', label: 'Typ budowli', valueKey: 'typBudowli', type: 'text', sourcePath: 'order.stationType', required: true, helpText: 'Pobierany ze zlecenia, jeśli jest określony.' },
+  { id: 'typBudowli', label: 'Typ budowli', valueKey: 'typBudowli', type: 'text', sourcePath: 'item.details.typBudowli', required: true, helpText: 'Pobierany ze zlecenia, jeśli jest określony.' },
   { id: 'typObudowy', label: 'Typ obudowy', valueKey: 'typObudowy', type: 'select', options: ['BEK', 'NZ'], sourcePath: 'item.details.typObudowy', required: true },
   { id: 'rozmiar', label: 'Rozmiar obudowy', valueKey: 'rozmiar', type: 'text', sourcePath: 'item.details.rozmiar', required: true },
   { id: 'nazwaObiektu', label: 'Nazwa obiektu', valueKey: 'nazwaObiektu', type: 'text', sourcePath: 'order.projectName', required: true },
@@ -353,7 +353,7 @@ function renderTemplateHtml(template: DocumentTemplate, form: FormData, order: O
 const resolveFieldLabel = (template: DocumentTemplate, fieldId: string) => template.fields.find((field) => field.id === fieldId)?.label || fieldId;
 const sourceExamples = [
   'order.orderNumber', 'order.projectName', 'order.client', 'order.stationSize', 'order.departureDate', 'order.createdAt',
-  'order.stationType', 'item.plannedDate', 'item.orderDate', 'item.details.typObudowy', 'item.details.rozmiar',
+  'item.details.typBudowli', 'item.plannedDate', 'item.orderDate', 'item.details.typObudowy', 'item.details.rozmiar',
   'item.details.typDachu', 'item.details.kolorObudowy', 'item.details.terminRealizacji', 'form.nazwaObiektu',
 ];
 function doorDimensions(stationType: string, category: string): { width: string; height: string } {
