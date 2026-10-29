@@ -21,6 +21,7 @@ type Row = {
   intakeFan?: boolean;
   exhaustFan?: boolean;
   _autoRuleId?: string;
+  _manualDelivery?: boolean;
 };
 type FieldType = 'text' | 'textarea' | 'number' | 'date' | 'select' | 'checkbox-list' | 'repeatable' | 'delivery-list' | 'doors' | 'quantity-toggle' | 'static';
 type FormField = {
@@ -126,8 +127,8 @@ const MANUAL_DELIVERY_VALUE = '__manual_delivery_item__';
 
 function normalizeDeliveryRows(value: unknown): Row[] {
   if (Array.isArray(value)) return value.map((row: any) => typeof row === 'string'
-    ? { id: uid('delivery'), type: row, quantity: '1', position: '' }
-    : { id: String(row?.id || uid('delivery')), type: String(row?.type || ''), quantity: String(row?.quantity || '1'), position: String(row?.position || '') });
+    ? { id: uid('delivery'), type: row, quantity: '1', position: '', _manualDelivery: !DELIVERY_ITEM_OPTIONS.includes(row as (typeof DELIVERY_ITEM_OPTIONS)[number]) }
+    : { id: String(row?.id || uid('delivery')), type: String(row?.type || ''), quantity: String(row?.quantity || '1'), position: String(row?.position || ''), _manualDelivery: Boolean(row?._manualDelivery) });
   if (typeof value === 'string' && value.trim()) return value.split(/\r?\n/).map((v) => v.trim()).filter(Boolean).map((type) => ({ id: uid('delivery'), type, quantity: '1', position: '' }));
   return [];
 }
@@ -753,7 +754,8 @@ const FormFieldInput: React.FC<{
       {!rows.length && <p className="text-xs text-slate-500">Brak elementów. Kliknij „Dodaj element”, a następnie wybierz go z listy lub wpisz własną nazwę.</p>}
       {rows.map((row) => {
         const isPreset = DELIVERY_ITEM_OPTIONS.includes(row.type as (typeof DELIVERY_ITEM_OPTIONS)[number]);
-        const selectValue = !row.type ? '' : isPreset ? row.type : MANUAL_DELIVERY_VALUE;
+        const manualMode = Boolean(row._manualDelivery || (!isPreset && row.type));
+        const selectValue = manualMode ? MANUAL_DELIVERY_VALUE : isPreset ? row.type : '';
         return <div key={row.id} className="grid grid-cols-1 items-end gap-2 rounded-lg border border-slate-200 p-2 sm:grid-cols-[minmax(0,1.6fr)_70px_minmax(0,1fr)_32px]">
           <div className="space-y-1">
             <label className="block text-xs font-semibold text-slate-600">Element</label>
@@ -762,9 +764,9 @@ const FormFieldInput: React.FC<{
               onChange={(e) => {
                 const selected = e.target.value;
                 if (selected === MANUAL_DELIVERY_VALUE) {
-                  updateRow(row.id, { type: isPreset ? '' : row.type });
+                  updateRow(row.id, { type: isPreset ? '' : row.type, _manualDelivery: true });
                 } else {
-                  updateRow(row.id, { type: selected });
+                  updateRow(row.id, { type: selected, _manualDelivery: false });
                 }
               }}
               className={commonInput}
@@ -773,10 +775,10 @@ const FormFieldInput: React.FC<{
               {DELIVERY_ITEM_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
               <option value={MANUAL_DELIVERY_VALUE}>Inny element — wpisz ręcznie…</option>
             </select>
-            {(!isPreset && (selectValue === MANUAL_DELIVERY_VALUE || row.type === '')) && (
+            {manualMode && (
               <input
                 value={row.type}
-                onChange={(e) => updateRow(row.id, { type: e.target.value })}
+                onChange={(e) => updateRow(row.id, { type: e.target.value, _manualDelivery: true })}
                 className={commonInput}
                 placeholder="Wpisz własną nazwę elementu"
                 aria-label="Własna nazwa elementu"
