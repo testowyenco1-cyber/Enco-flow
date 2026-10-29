@@ -65,7 +65,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
   const profile = currentProfile || USER_PROFILES.admin;
   const [itemsFilter, setItemsFilter] = useState<'all' | 'my_scope'>('all');
   const [showHiddenItems, setShowHiddenItems] = useState(false);
-  const hiddenMainPositionTypes = ["OBUDOWA","ROZDZIELNICA_SN","ROZDZIELNICA_NN","TABLICA_POMIAROWA","RPW","MOST","SZAFKA_TELEMECHANIKI","TRANSFORMATOR_POTRZEB_WLASNYCH","WSKAZNIKI_ZWARC","RYS_AKCEPTACJA","KOLORY","OPISY","DRZWI","ZAP_SERWISPOL","ZAM_SERWISPOL","ZLECENIE_MONTAZU","ZLECENIE MONTAŻU","ZLECENIE_MONTAŻU","POWYKONAWCZA","DATA_WYJAZDU","DODATKOWE"];
+  const hiddenMainPositionTypes = ["OBUDOWA","ROZDZIELNICA_SN","ROZDZIELNICA_NN","TABLICA_POMIAROWA","RPW","MOST","SZAFKA_TELEMECHANIKI","TRANSFORMATOR","TRANSFORMATOR_POTRZEB_WLASNYCH","WSKAZNIKI_ZWARC","RYS_AKCEPTACJA","KOLORY","OPISY","DRZWI","ZAP_SERWISPOL","ZAM_SERWISPOL","ZLECENIE_MONTAZU","ZLECENIE MONTAŻU","ZLECENIE_MONTAŻU","POWYKONAWCZA","DATA_WYJAZDU","DODATKOWE"];
   const isHiddenMainPosition = (item: OrderItem) => item.status === 'NOT_APPLICABLE' && hiddenMainPositionTypes.includes(item.type);
   const hiddenItems = order.items.filter(isHiddenMainPosition);
   const visibleItems = order.items.filter((item) => !isHiddenMainPosition(item));
@@ -969,6 +969,7 @@ export const OrderDetailView: React.FC<OrderDetailViewProps> = ({
             if (att.folderCategory === '02_Obudowa_Betonowa' && it.type === 'OBUDOWA') return true;
             if (att.folderCategory === '03_Rozdzielnica_SN' && it.type === 'ROZDZIELNICA_SN') return true;
             if (att.folderCategory === '04_Rozdzielnica_NN' && it.type === 'ROZDZIELNICA_NN') return true;
+            if (att.folderCategory === '14_Transformatory' && it.type === 'TRANSFORMATOR') return true;
             if (att.folderCategory === '05_Mosty_i_Szynoprzewody' && it.type === 'MOST') return true;
             if (att.folderCategory === '06_Rysunki_i_Akceptacje' && it.type === 'RYS_AKCEPTACJA') return true;
             if (att.folderCategory === '07_Kolory_i_Elewacja' && it.type === 'KOLORY') return true;
